@@ -1,6 +1,8 @@
 import dantai_codes from "@/assets/dantai_code_20240101.json"
 import code_todofuken from "@/assets/code_todofuken_20240101.json"
 import jumin from "@/assets/jumin2025.json"
+import type { BaseItemValue, Expression, Formula } from "./expression"
+import { calculate } from "./expression"
 
 const getPrefecture = (code: string) => {
   const prefecturePrefix = code.slice(0, 2)
@@ -8,20 +10,24 @@ const getPrefecture = (code: string) => {
   return {...prefecture, code}
 }
 
-const innerJoinSortedArraysBy = (key: (item: any) => number) => (as: any[], bs: any[]): any[] => {
-  if (as.length === 0 || bs.length === 0) return []
-  else {
-    
-    if (key(as[0]) === key(bs[0]))
-      return [{...as[0], ...bs[0]}, ...innerJoinSortedArraysBy(key)(as.slice(1), bs.slice(1))]
-    else if (key(as[0]) < key(bs[0]))
-      return [...innerJoinSortedArraysBy(key)(as.slice(1), bs)]
-    else
-      return [...innerJoinSortedArraysBy(key)(as, bs.slice(1))]
-  }
-}
+const innerJoinSortedArraysBy = <K extends string | number>(key: (item: any) => K) =>
+  <A extends object, B extends object>(as: A[], bs: B[]): (A & B)[] => {
+    if (as.length === 0 || bs.length === 0) return []
+    else {
 
-const joined = innerJoinSortedArraysBy((item) => item.code)(dantai_codes, jumin)
+      if (key(as[0]) === key(bs[0]))
+        return [{...as[0], ...bs[0]}, ...innerJoinSortedArraysBy(key)(as.slice(1), bs.slice(1))]
+      else if (key(as[0]) < key(bs[0]))
+        return [...innerJoinSortedArraysBy(key)(as.slice(1), bs)]
+      else
+        return [...innerJoinSortedArraysBy(key)(as, bs.slice(1))]
+    }
+  }
+
+type DantaiCodeEntry = (typeof dantai_codes)[number]
+type JuminEntry = (typeof jumin)[number]
+
+const joined = innerJoinSortedArraysBy((item: DantaiCodeEntry | JuminEntry) => item.code)(dantai_codes, jumin)
 
 
 type BaseItem = {
@@ -40,7 +46,7 @@ type BaseItem = {
   }
 }
 
-const toBaseItem = (item: any): BaseItem => ({
+const toBaseItem = (item: DantaiCodeEntry & JuminEntry): BaseItem => ({
   code: item.code,
   kanji: item.kanji,
   kana: item.kana,
@@ -62,54 +68,24 @@ const canonicalItems = {
     kana: {label: "都道府県カナ", valueGetter: (item: BaseItem) => item.prefecture.kana}
   },
   population: {
-    total: {label: "人口", valueGetter: (item: BaseItem) => item.population.total} as BaseItemValue<number>,
-    male: {label: "男性人口", valueGetter: (item: BaseItem) => item.population.male} as BaseItemValue<number>,
-    female: {label: "女性人口", valueGetter: (item: BaseItem) => item.population.female} as BaseItemValue<number>
+    total: {label: "人口", valueGetter: (item: BaseItem) => item.population.total} as BaseItemValue<number, BaseItem>,
+    male: {label: "男性人口", valueGetter: (item: BaseItem) => item.population.male} as BaseItemValue<number, BaseItem>,
+    female: {label: "女性人口", valueGetter: (item: BaseItem) => item.population.female} as BaseItemValue<number, BaseItem>
   }
-}
-
-type BaseItemValue<T extends string | number> = {
-  label: string
-  valueGetter: (item: BaseItem) => T
 }
 
 type Column = {
   label: string
-  expression: BaseItemValue<string> | Formula
+  expression: Expression<BaseItem>
 }
 
-type Negation = {
-  negatedvalue: Formula
-}
-
-type Sum = {
-  addends: Formula[]
-}
-
-type Formula = Negation | Sum | BaseItemValue<number>
-
-const calculateSum = (s: Sum) => (item: BaseItem): number =>
-  s.addends.reduce((acc, key) => acc + calculate(key)(item), 0)
-const calculateNegation = (s: Negation) => (item: BaseItem): number =>
-  -calculate(s.negatedvalue)(item)
-
-
-const calculate = (formula: Formula) => (item: BaseItem): number => {
-  if ("addends" in formula) {
-    return calculateSum(formula)(item)
-  } else if ("negatedvalue" in formula) {
-    return calculateNegation(formula)(item)
-  } else {
-    return formula.valueGetter(item)
-  }
-}
 
 const columns : Column[] = [
   {label: "コード", expression: canonicalItems.code},
   {label: "女性余剰人口", expression: {addends: [canonicalItems.population.male, {negatedvalue: canonicalItems.population.female}]}}
 ]
 
-const isFormula = (value: BaseItemValue<string> | Formula): value is Formula =>
+const isFormula = (value: BaseItemValue<string, BaseItem> | Formula<BaseItem>): value is Formula<BaseItem> =>
   "addends" in value || "negatedvalue" in value
 
 function App() {
