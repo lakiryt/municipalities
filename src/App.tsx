@@ -75,7 +75,7 @@ type BaseItemValue<T extends string | number> = {
 
 type Column = {
   label: string
-  value: BaseItemValue<string> | Formula
+  expression: BaseItemValue<string> | Formula
 }
 
 type Negation = {
@@ -105,8 +105,8 @@ const calculate = (formula: Formula) => (item: BaseItem): number => {
 }
 
 const columns : Column[] = [
-  {label: "コード", value: canonicalItems.code},
-  {label: "女性余剰人口", value: {addends: [canonicalItems.population.male, {negatedvalue: canonicalItems.population.female}]}}
+  {label: "コード", expression: canonicalItems.code},
+  {label: "女性余剰人口", expression: {addends: [canonicalItems.population.male, {negatedvalue: canonicalItems.population.female}]}}
 ]
 
 const isFormula = (value: BaseItemValue<string> | Formula): value is Formula =>
@@ -127,7 +127,7 @@ function App() {
           <tr key={item.code}>
             {columns.map((col) => (
               <td key={col.label} className="border border-gray-300 px-4 py-2">
-                {isFormula(col.value) ? calculate(col.value)(item) : col.value.valueGetter(item)}
+                {isFormula(col.expression) ? calculate(col.expression)(item) : col.expression.valueGetter(item)}
               </td>
             ))}
           </tr>
