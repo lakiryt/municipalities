@@ -20,7 +20,8 @@ export type BoolAnd  = { kind: 'AND'; args: BoolExpr[] }
 export type BoolOr   = { kind: 'OR';  args: BoolExpr[] }
 export type BoolNot  = { kind: 'NOT'; arg: BoolExpr }
 export type BoolLeq  = { kind: 'LEQ'; left: NumExpr; right: NumExpr }
-export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq
+export type BoolEq   = { kind: 'EQ';  left: TypedExpr; right: TypedExpr }
+export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq
 
 export type StrLiteral = { kind: 'strlit'; value: string }
 export type StrVar     = { kind: 'strvar'; name: string }
@@ -246,6 +247,13 @@ function typeCheck(raw: RawExpr): TypedExpr {
     case 'LEQ':
       arity(2)
       return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], 'LEQの1番目の引数'), right: requireNum(args[1], 'LEQの2番目の引数') } }
+    case 'EQ': {
+      arity(2)
+      const left = typeCheck(args[0])
+      const right = typeCheck(args[1])
+      if (left.type !== right.type) throw new TypeCheckError(`EQ: 両辺の型が一致していません（左辺: ${typeLabel(left)}、右辺: ${typeLabel(right)}）`)
+      return { type: 'b', expr: { kind: 'EQ', left, right } }
+    }
     case 'SUM':
       return { type: 'n', expr: { kind: 'SUM', args: args.map((a, i) => requireNum(a, `SUMの${i + 1}番目の引数`)) } }
     case 'NEG':

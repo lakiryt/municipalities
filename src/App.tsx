@@ -93,26 +93,28 @@ function App() {
   return (
     <main>
       <TestEditor />
-    <table className="border-collapse border border-gray-300">
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th key={col.label} className="border border-gray-300 px-4 py-2">{col.label}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {joined.map(toBaseItem).map((item : BaseItem) => (
-          <tr key={item.code}>
+      <table className="border-collapse border border-gray-300">
+        <thead>
+          <tr>
             {columns.map((col) => (
-              <td key={col.label} className="border border-gray-300 px-4 py-2">
-                {isFormula(col.expression) ? calculate(col.expression)(item) : col.expression.valueGetter(item)}
-              </td>
+              <th key={col.label} className="border border-gray-300 px-4 py-2">
+                {col.label}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {joined.map(toBaseItem).map((item : BaseItem) => (
+            <tr key={item.code}>
+              {columns.map((col) => (
+                <td key={col.label} className="border border-gray-300 px-4 py-2">
+                  {isFormula(col.expression) ? calculate(col.expression)(item) : col.expression.valueGetter(item)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </main>
   )
 }
