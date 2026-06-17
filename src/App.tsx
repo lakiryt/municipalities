@@ -110,14 +110,27 @@ function App() {
   const [filterExpr, setFilterExpr] = useState<TypedExpr | null>(null)
   const [filterExpression, setFilterExpression] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
+  const [sortState, setSortState] = useState<{ columnId: number; direction: 'asc' | 'desc' } | null>(null)
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
     : null
 
+  const numericColumns = columns.filter(col => col.typed.type === 'n')
+
   const filteredItems = filterExpr !== null
     ? items.filter(item => evaluate(filterExpr, baseItemEnv(item)) === true)
     : items
+
+  const sortColumn = sortState !== null ? numericColumns.find(c => c.id === sortState.columnId) ?? null : null
+
+  const displayItems = sortColumn !== null
+    ? [...filteredItems].sort((a, b) => {
+        const va = evaluate(sortColumn.typed, baseItemEnv(a)) as number
+        const vb = evaluate(sortColumn.typed, baseItemEnv(b)) as number
+        return sortState!.direction === 'asc' ? va - vb : vb - va
+      })
+    : filteredItems
 
   const handleSave = (label: string, expression: string, typed: TypedExpr) => {
     if (modal === null) return
@@ -158,7 +171,31 @@ function App() {
           onClose={() => setFilterOpen(false)}
         />
       )}
-      <div className="flex justify-end mb-2">
+      <div className="flex items-center justify-end gap-3 mb-2">
+        <div className="flex items-center gap-1 text-sm">
+          <span className="text-gray-500">並べ替え：</span>
+          <select
+            className="border border-gray-300 rounded px-2 py-1 bg-white cursor-pointer hover:bg-gray-50"
+            value={sortState?.columnId ?? ''}
+            onChange={e => {
+              const raw = e.target.value
+              setSortState(raw === '' ? null : { columnId: Number(raw), direction: sortState?.direction ?? 'asc' })
+            }}
+          >
+            <option value="">なし</option>
+            {numericColumns.map(col => (
+              <option key={col.id} value={col.id}>{col.label}</option>
+            ))}
+          </select>
+          {sortState !== null && (
+            <button
+              className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+              onClick={() => setSortState(s => s ? { ...s, direction: s.direction === 'asc' ? 'desc' : 'asc' } : s)}
+            >
+              {sortState.direction === 'asc' ? '↑' : '↓'}
+            </button>
+          )}
+        </div>
         <button
           className={`px-3 py-1 rounded text-sm border ${filterExpr !== null ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'border-gray-300 hover:bg-gray-50'}`}
           onClick={() => setFilterOpen(true)}
@@ -187,7 +224,7 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {filteredItems.map(item => (
+          {displayItems.map(item => (
             <tr key={item.code}>
               {columns.map(col => (
                 <td key={col.id} className="border border-gray-300 px-4 py-2">
