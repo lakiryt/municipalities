@@ -9,9 +9,12 @@ type LiveResult =
 
 type Props = {
   initialExpression?: string
+  requiredType?: 'n' | 'b' | 's'
   onValidExpr?: (expr: TypedExpr | null) => void
   onExpressionChange?: (raw: string) => void
 }
+
+const typeNames: Record<'n' | 'b' | 's', string> = { n: '数値', b: '真偽値', s: '文字列' }
 
 function AnimatedDots() {
   return (
@@ -29,7 +32,7 @@ function AnimatedDots() {
 
 const ERROR_DELAY_MS = 600
 
-function TestEditor({ initialExpression = '', onValidExpr, onExpressionChange }: Props) {
+function TestEditor({ initialExpression = '', requiredType, onValidExpr, onExpressionChange }: Props) {
   const [input, setInput] = useState(initialExpression)
   const [result, setResult] = useState<LiveResult>({ status: 'idle' })
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -47,6 +50,11 @@ function TestEditor({ initialExpression = '', onValidExpr, onExpressionChange }:
 
     try {
       const typed = parseAndTypeCheck(raw)
+      if (requiredType !== undefined && typed.type !== requiredType) {
+        setResult({ status: 'error', message: `${typeNames[typed.type]}の式です（ここでは${typeNames[requiredType]}の式が必要です）` })
+        onValidExpr?.(null)
+        return
+      }
       setResult({ status: 'ok', type: typed.type })
       onValidExpr?.(typed)
     } catch (e) {

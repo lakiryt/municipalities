@@ -5,6 +5,7 @@ import jumin from "@/assets/jumin2025.json"
 import { parseAndTypeCheck, type TypedExpr } from "./testExpr"
 import { evaluate, type Env } from "./evaluate"
 import ColumnModal from "./ColumnModal"
+import FilterModal from "./FilterModal"
 
 const getPrefecture = (code: string) => {
   const prefecturePrefix = code.slice(0, 2)
@@ -106,10 +107,17 @@ function App() {
   const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
   const [nextId, setNextId] = useState(initialColumns.length)
   const [modal, setModal] = useState<ModalState | null>(null)
+  const [filterExpr, setFilterExpr] = useState<TypedExpr | null>(null)
+  const [filterExpression, setFilterExpression] = useState('')
+  const [filterOpen, setFilterOpen] = useState(false)
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
     : null
+
+  const filteredItems = filterExpr !== null
+    ? items.filter(item => evaluate(filterExpr, baseItemEnv(item)) === true)
+    : items
 
   const handleSave = (label: string, expression: string, typed: TypedExpr) => {
     if (modal === null) return
@@ -130,7 +138,7 @@ function App() {
   }
 
   return (
-    <main>
+    <main className="max-w-screen-xl mx-auto px-6 py-4">
       {modal !== null && (
         <ColumnModal
           key={modal.kind === 'edit' ? modal.id : 'new'}
@@ -142,6 +150,22 @@ function App() {
           onClose={() => setModal(null)}
         />
       )}
+      {filterOpen && (
+        <FilterModal
+          initialExpression={filterExpression}
+          onApply={(expression, typed) => { setFilterExpression(expression); setFilterExpr(typed); setFilterOpen(false) }}
+          onClear={() => { setFilterExpression(''); setFilterExpr(null); setFilterOpen(false) }}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
+      <div className="flex justify-end mb-2">
+        <button
+          className={`px-3 py-1 rounded text-sm border ${filterExpr !== null ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'border-gray-300 hover:bg-gray-50'}`}
+          onClick={() => setFilterOpen(true)}
+        >
+          絞り込み{filterExpr !== null ? `（${filteredItems.length} / ${items.length}件）` : ''}
+        </button>
+      </div>
       <table className="border-collapse border border-gray-300">
         <thead>
           <tr>
@@ -163,7 +187,7 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {items.map(item => (
+          {filteredItems.map(item => (
             <tr key={item.code}>
               {columns.map(col => (
                 <td key={col.id} className="border border-gray-300 px-4 py-2">
