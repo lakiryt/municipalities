@@ -10,6 +10,7 @@ function evaluateNum(expr: NumExpr, env: Env): number {
     case 'literal': return expr.value
     case 'numvar':  return (env.numvars[expr.name] as number | undefined) ?? 0
     case 'SUM':     return expr.args.reduce((acc, a) => acc + evaluateNum(a, env), 0)
+    case 'MULT':    return expr.args.reduce((acc, a) => acc * evaluateNum(a, env), 1)
     case 'NEG':     return -evaluateNum(expr.arg, env)
     case 'INV':     return 1 / evaluateNum(expr.arg, env)
   }

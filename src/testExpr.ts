@@ -11,10 +11,11 @@ type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar
 
 export type NumLiteral = { kind: 'literal'; value: number }
 export type NumVar     = { kind: 'numvar';     name: string }
-export type NumSum     = { kind: 'SUM';     args: NumExpr[] }
-export type NumNeg     = { kind: 'NEG';     arg: NumExpr }
-export type NumInv     = { kind: 'INV';     arg: NumExpr }
-export type NumExpr    = NumLiteral | NumVar | NumSum | NumNeg | NumInv
+export type NumSum     = { kind: 'SUM';  args: NumExpr[] }
+export type NumMult    = { kind: 'MULT'; args: NumExpr[] }
+export type NumNeg     = { kind: 'NEG';  arg: NumExpr }
+export type NumInv     = { kind: 'INV';  arg: NumExpr }
+export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv
 
 export type BoolAnd  = { kind: 'AND'; args: BoolExpr[] }
 export type BoolOr   = { kind: 'OR';  args: BoolExpr[] }
@@ -255,7 +256,9 @@ function typeCheck(raw: RawExpr): TypedExpr {
       return { type: 'b', expr: { kind: 'EQ', left, right } }
     }
     case 'SUM':
-      return { type: 'n', expr: { kind: 'SUM', args: args.map((a, i) => requireNum(a, `SUMの${i + 1}番目の引数`)) } }
+      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a, i) => requireNum(a, `SUMの${i + 1}番目の引数`)) } }
+    case 'MULT':
+      return { type: 'n', expr: { kind: 'MULT', args: args.map((a, i) => requireNum(a, `MULTの${i + 1}番目の引数`)) } }
     case 'NEG':
       arity(1)
       return { type: 'n', expr: { kind: 'NEG', arg: requireNum(args[0], 'NEGの1番目の引数') } }
