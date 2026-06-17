@@ -81,7 +81,10 @@ type Column = {
 
 const staticColumns: Column[] = [
   { label: "コード",       expression: "$code" },
-  { label: "女性余剰人口", expression: "SUM(#female, NEG(#male))" },
+  { label: "都道府県名",   expression: "$prefkanji" },
+  { label: "自治体名",     expression: "$kanji" },
+  { label: "自治体名（カナ）", expression: "$kana" },
+  { label: "総人口",       expression: "#total" },
 ]
 
 const parsedStaticColumns = staticColumns.map(col => ({
