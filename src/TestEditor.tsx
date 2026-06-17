@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from './testExpr'
+import ExprEditor from './ExprEditor'
 
 type LiveResult =
   | { status: 'idle' }
@@ -33,7 +34,6 @@ function AnimatedDots() {
 const ERROR_DELAY_MS = 600
 
 function TestEditor({ initialExpression = '', requiredType, onValidExpr, onExpressionChange }: Props) {
-  const [input, setInput] = useState(initialExpression)
   const [result, setResult] = useState<LiveResult>({ status: 'idle' })
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -68,18 +68,10 @@ function TestEditor({ initialExpression = '', requiredType, onValidExpr, onExpre
 
   return (
     <div>
-      <textarea
-        className="border border-gray-300 p-2 w-full font-mono text-sm rounded"
-        rows={3}
-        value={input}
-        onChange={e => {
-          const raw = e.target.value
-          setInput(raw)
-          onExpressionChange?.(raw)
-          runCheck(raw)
-        }}
+      <ExprEditor
+        initialExpression={initialExpression}
         placeholder="e.g.  SUM(#female, NEG(#male))"
-        spellCheck={false}
+        onChange={raw => { onExpressionChange?.(raw); runCheck(raw) }}
       />
       <div className="mt-1 min-h-[1.25rem] text-sm">
         {result.status === 'ok' && (
