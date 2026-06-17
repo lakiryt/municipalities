@@ -44,7 +44,7 @@ function TestEditor() {
         </button>
         {result.status === 'ok' && (
           <span className="text-green-700 text-sm font-mono">
-            ✓ {result.type === 'n' ? 'n  (number)' : 'b  (boolean)'}
+            ✓ {result.type === 'n' ? 'n  (number)' : result.type === 'b' ? 'b  (boolean)' : 's  (string)'}
           </span>
         )}
         {result.status === 'error' && (
@@ -52,7 +52,7 @@ function TestEditor() {
         )}
       </div>
       <p className="mt-3 text-xs text-gray-400 font-mono leading-relaxed">
-        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · SUM(n…):n · NEG(n):n · INV(n):n · literal n
+        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · SUM(n…):n · NEG(n):n · INV(n):n · #var:n · 2.5:n · $var:s · "text":s
       </p>
     </div>
   )
