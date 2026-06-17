@@ -3,6 +3,7 @@ import code_todofuken from "@/assets/code_todofuken_20240101.json"
 import jumin from "@/assets/jumin2025.json"
 import type { BaseItemValue, Expression, Formula } from "./expression"
 import { calculate } from "./expression"
+import TestEditor from "./TestEditor"
 
 const getPrefecture = (code: string) => {
   const prefecturePrefix = code.slice(0, 2)
@@ -90,6 +91,8 @@ const isFormula = (value: BaseItemValue<string, BaseItem> | Formula<BaseItem>): 
 
 function App() {
   return (
+    <main>
+      <TestEditor />
     <table className="border-collapse border border-gray-300">
       <thead>
         <tr>
@@ -110,6 +113,7 @@ function App() {
         ))}
       </tbody>
     </table>
+    </main>
   )
 }
 
