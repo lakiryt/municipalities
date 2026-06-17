@@ -4,7 +4,7 @@ import code_todofuken from "@/assets/code_todofuken_20240101.json"
 import jumin from "@/assets/jumin2025.json"
 import { parseAndTypeCheck, type TypedExpr } from "./testExpr"
 import { evaluate, type Env } from "./evaluate"
-import TestEditor from "./TestEditor"
+import ColumnModal from "./ColumnModal"
 
 const getPrefecture = (code: string) => {
   const prefecturePrefix = code.slice(0, 2)
@@ -74,52 +74,99 @@ const baseItemEnv = (item: BaseItem): Env => ({
   }
 })
 
-type Column = {
+type ColumnState = {
+  id: number
   label: string
   expression: string
+  typed: TypedExpr
 }
 
-const staticColumns: Column[] = [
-  { label: "コード",       expression: "$code" },
-  { label: "都道府県名",   expression: "$prefkanji" },
-  { label: "自治体名",     expression: "$kanji" },
+type ModalState =
+  | { kind: 'edit'; id: number }
+  | { kind: 'add' }
+
+const initialExpressions = [
+  { label: "コード",           expression: "$code" },
+  { label: "都道府県名",       expression: "$prefkanji" },
+  { label: "自治体名",         expression: "$kanji" },
   { label: "自治体名（カナ）", expression: "$kana" },
-  { label: "総人口",       expression: "#total" },
+  { label: "総人口",           expression: "#total" },
 ]
 
-const parsedStaticColumns = staticColumns.map(col => ({
+const initialColumns: ColumnState[] = initialExpressions.map((col, i) => ({
+  id: i,
   label: col.label,
+  expression: col.expression,
   typed: parseAndTypeCheck(col.expression),
 }))
 
 const items = joined.map(toBaseItem)
 
 function App() {
-  const [editorExpr, setEditorExpr] = useState<TypedExpr | null>(null)
+  const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
+  const [nextId, setNextId] = useState(initialColumns.length)
+  const [modal, setModal] = useState<ModalState | null>(null)
 
-  const allColumns = [
-    ...parsedStaticColumns,
-    ...(editorExpr !== null ? [{ label: "式エディタ", typed: editorExpr }] : [])
-  ]
+  const editingColumn = modal?.kind === 'edit'
+    ? columns.find(c => c.id === modal.id) ?? null
+    : null
+
+  const handleSave = (label: string, expression: string, typed: TypedExpr) => {
+    if (modal === null) return
+    if (modal.kind === 'add') {
+      setColumns(cols => [...cols, { id: nextId, label, expression, typed }])
+      setNextId(id => id + 1)
+    } else {
+      setColumns(cols => cols.map(col =>
+        col.id === modal.id ? { ...col, label, expression, typed } : col
+      ))
+    }
+    setModal(null)
+  }
+
+  const handleDelete = (id: number) => {
+    setColumns(cols => cols.filter(col => col.id !== id))
+    setModal(null)
+  }
 
   return (
     <main>
-      <TestEditor onValidExpr={setEditorExpr} />
+      {modal !== null && (
+        <ColumnModal
+          key={modal.kind === 'edit' ? modal.id : 'new'}
+          initialLabel={editingColumn?.label ?? ''}
+          initialExpression={editingColumn?.expression ?? ''}
+          isNew={modal.kind === 'add'}
+          onSave={handleSave}
+          onDelete={modal.kind === 'edit' ? () => handleDelete(modal.id) : undefined}
+          onClose={() => setModal(null)}
+        />
+      )}
       <table className="border-collapse border border-gray-300">
         <thead>
           <tr>
-            {allColumns.map(col => (
-              <th key={col.label} className="border border-gray-300 px-4 py-2">
+            {columns.map(col => (
+              <th
+                key={col.id}
+                className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 select-none"
+                onClick={() => setModal({ kind: 'edit', id: col.id })}
+              >
                 {col.label}
               </th>
             ))}
+            <th
+              className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 text-gray-400 select-none"
+              onClick={() => setModal({ kind: 'add' })}
+            >
+              +
+            </th>
           </tr>
         </thead>
         <tbody>
           {items.map(item => (
             <tr key={item.code}>
-              {allColumns.map(col => (
-                <td key={col.label} className="border border-gray-300 px-4 py-2">
+              {columns.map(col => (
+                <td key={col.id} className="border border-gray-300 px-4 py-2">
                   {String(evaluate(col.typed, baseItemEnv(item)))}
                 </td>
               ))}

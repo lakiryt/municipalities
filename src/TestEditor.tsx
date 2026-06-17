@@ -7,11 +7,13 @@ type CheckResult =
   | { status: 'error'; message: string }
 
 type Props = {
+  initialExpression?: string
   onValidExpr?: (expr: TypedExpr | null) => void
+  onExpressionChange?: (raw: string) => void
 }
 
-function TestEditor({ onValidExpr }: Props) {
-  const [input, setInput] = useState('')
+function TestEditor({ initialExpression = '', onValidExpr, onExpressionChange }: Props) {
+  const [input, setInput] = useState(initialExpression)
   const [result, setResult] = useState<CheckResult>({ status: 'idle' })
 
   const handleCheck = () => {
@@ -32,13 +34,17 @@ function TestEditor({ onValidExpr }: Props) {
   }
 
   return (
-    <div className="mb-6 p-4 border border-gray-200 rounded">
-      <h2 className="text-lg font-bold mb-3">式エディタ (Test)</h2>
+    <div>
       <textarea
         className="border border-gray-300 p-2 w-full font-mono text-sm rounded"
         rows={3}
         value={input}
-        onChange={e => { setInput(e.target.value); setResult({ status: 'idle' }); onValidExpr?.(null) }}
+        onChange={e => {
+          setInput(e.target.value)
+          setResult({ status: 'idle' })
+          onValidExpr?.(null)
+          onExpressionChange?.(e.target.value)
+        }}
         placeholder="e.g.  SUM(#female, NEG(#male))"
         spellCheck={false}
       />
@@ -59,7 +65,7 @@ function TestEditor({ onValidExpr }: Props) {
         )}
       </div>
       <p className="mt-3 text-xs text-gray-400 font-mono leading-relaxed">
-        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · EQ(a,a):b · SUM(n…):n · NEG(n):n · INV(n):n
+        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · EQ(a,a):b · SUM(n…):n · MULT(n…):n · NEG(n):n · INV(n):n
         <br />
         #total · #male · #female · $code · $kanji · $kana · $prefcode · $prefkanji · $prefkana
       </p>
