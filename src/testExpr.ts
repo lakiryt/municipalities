@@ -2,15 +2,17 @@
 
 type RawCall = { kind: 'call'; name: string; args: RawExpr[] }
 type RawLiteral = { kind: 'literal'; value: number }
-type RawExpr = RawCall | RawLiteral
+type RawVar = { kind: 'var'; name: string }
+type RawExpr = RawCall | RawLiteral | RawVar
 
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
 export type NumLiteral = { kind: 'literal'; value: number }
+export type NumVar     = { kind: 'var'; name: string }
 export type NumSum     = { kind: 'SUM'; args: NumExpr[] }
 export type NumNeg     = { kind: 'NEG'; arg: NumExpr }
 export type NumInv     = { kind: 'INV'; arg: NumExpr }
-export type NumExpr    = NumLiteral | NumSum | NumNeg | NumInv
+export type NumExpr    = NumLiteral | NumVar | NumSum | NumNeg | NumInv
 
 export type BoolAnd  = { kind: 'AND'; args: BoolExpr[] }
 export type BoolOr   = { kind: 'OR';  args: BoolExpr[] }
@@ -26,15 +28,17 @@ export type TypedExpr = TypedNum | TypedBool
 
 type TokIdent  = { kind: 'ident';  value: string }
 type TokNumber = { kind: 'number'; value: number }
+type TokVar    = { kind: 'var';    name: string }
 type TokLParen = { kind: 'lparen' }
 type TokRParen = { kind: 'rparen' }
 type TokComma  = { kind: 'comma' }
 type TokEof    = { kind: 'eof' }
-type Token = TokIdent | TokNumber | TokLParen | TokRParen | TokComma | TokEof
+type Token = TokIdent | TokNumber | TokVar | TokLParen | TokRParen | TokComma | TokEof
 
 const japaneseDescriptions: Record<Token['kind'], string> = {
   ident: '識別子',
   number: '数値',
+  var: '変数',
   lparen: '左括弧',
   rparen: '右括弧',
   comma: 'カンマ',
@@ -73,6 +77,15 @@ function tokenize(input: string): Token[] {
       continue
     }
 
+    if (ch === '#') {
+      let j = i + 1
+      while (j < input.length && /[a-z]/.test(input[j])) j++
+      if (j === i + 1) throw new ParseError(`「#」の後には小文字のアルファベットが必要です（${i+1}文字目）`)
+      tokens.push({ kind: 'var', name: input.slice(i + 1, j) })
+      i = j
+      continue
+    }
+
     if (ch === '(') { tokens.push({ kind: 'lparen' }); i++; continue }
     if (ch === ')') { tokens.push({ kind: 'rparen' }); i++; continue }
     if (ch === ',') { tokens.push({ kind: 'comma'  }); i++; continue }
@@ -107,6 +120,11 @@ class Parser {
     if (tok.kind === 'number') {
       this.consume()
       return { kind: 'literal', value: tok.value }
+    }
+
+    if (tok.kind === 'var') {
+      this.consume()
+      return { kind: 'var', name: tok.name }
     }
 
     if (tok.kind === 'ident') {
@@ -154,6 +172,10 @@ function requireBool(raw: RawExpr, context: string): BoolExpr {
 function typeCheck(raw: RawExpr): TypedExpr {
   if (raw.kind === 'literal') {
     return { type: 'n', expr: { kind: 'literal', value: raw.value } }
+  }
+
+  if (raw.kind === 'var') {
+    return { type: 'n', expr: { kind: 'var', name: raw.name } }
   }
 
   const { name, args } = raw
