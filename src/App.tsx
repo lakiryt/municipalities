@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import dantai_codes from "@/assets/dantai_code_20240101.json"
 import code_todofuken from "@/assets/code_todofuken_20240101.json"
 import jumin from "@/assets/jumin2025.json"
-import type { BaseItemValue, Expression, Formula } from "./expression"
-import { calculate } from "./expression"
+import { parseAndTypeCheck, type TypedExpr } from "./testExpr"
+import { evaluate, type Env } from "./evaluate"
 import TestEditor from "./TestEditor"
 
 const getPrefecture = (code: string) => {
@@ -15,7 +16,6 @@ const innerJoinSortedArraysBy = <K extends string | number>(key: (item: any) => 
   <A extends object, B extends object>(as: A[], bs: B[]): (A & B)[] => {
     if (as.length === 0 || bs.length === 0) return []
     else {
-
       if (key(as[0]) === key(bs[0]))
         return [{...as[0], ...bs[0]}, ...innerJoinSortedArraysBy(key)(as.slice(1), bs.slice(1))]
       else if (key(as[0]) < key(bs[0]))
@@ -29,7 +29,6 @@ type DantaiCodeEntry = (typeof dantai_codes)[number]
 type JuminEntry = (typeof jumin)[number]
 
 const joined = innerJoinSortedArraysBy((item: DantaiCodeEntry | JuminEntry) => item.code)(dantai_codes, jumin)
-
 
 type BaseItem = {
   code: string
@@ -59,44 +58,54 @@ const toBaseItem = (item: DantaiCodeEntry & JuminEntry): BaseItem => ({
   }
 })
 
-const canonicalItems = {
-  code: {label: "団体コード", valueGetter: (item: BaseItem) => item.code},
-  kanji: {label: "団体名", valueGetter: (item: BaseItem) => item.kanji},
-  kana: {label: "カナ", valueGetter: (item: BaseItem) => item.kana},
-  prefecture: {
-    code: {label: "都道府県コード", valueGetter: (item: BaseItem) => item.prefecture.code},
-    kanji: {label: "都道府県名", valueGetter: (item: BaseItem) => item.prefecture.kanji},
-    kana: {label: "都道府県カナ", valueGetter: (item: BaseItem) => item.prefecture.kana}
+const baseItemEnv = (item: BaseItem): Env => ({
+  numvars: {
+    total:  item.population.total,
+    male:   item.population.male,
+    female: item.population.female,
   },
-  population: {
-    total: {label: "人口", valueGetter: (item: BaseItem) => item.population.total} as BaseItemValue<number, BaseItem>,
-    male: {label: "男性人口", valueGetter: (item: BaseItem) => item.population.male} as BaseItemValue<number, BaseItem>,
-    female: {label: "女性人口", valueGetter: (item: BaseItem) => item.population.female} as BaseItemValue<number, BaseItem>
+  strvars: {
+    code:      item.code,
+    kanji:     item.kanji,
+    kana:      item.kana,
+    prefcode:  item.prefecture.code,
+    prefkanji: item.prefecture.kanji ?? '',
+    prefkana:  item.prefecture.kana ?? '',
   }
-}
+})
 
 type Column = {
   label: string
-  expression: Expression<BaseItem>
+  expression: string
 }
 
-
-const columns : Column[] = [
-  {label: "コード", expression: canonicalItems.code},
-  {label: "女性余剰人口", expression: {addends: [canonicalItems.population.male, {negatedvalue: canonicalItems.population.female}]}}
+const staticColumns: Column[] = [
+  { label: "コード",       expression: "$code" },
+  { label: "女性余剰人口", expression: "SUM(#female, NEG(#male))" },
 ]
 
-const isFormula = (value: BaseItemValue<string, BaseItem> | Formula<BaseItem>): value is Formula<BaseItem> =>
-  "addends" in value || "negatedvalue" in value
+const parsedStaticColumns = staticColumns.map(col => ({
+  label: col.label,
+  typed: parseAndTypeCheck(col.expression),
+}))
+
+const items = joined.map(toBaseItem)
 
 function App() {
+  const [editorExpr, setEditorExpr] = useState<TypedExpr | null>(null)
+
+  const allColumns = [
+    ...parsedStaticColumns,
+    ...(editorExpr !== null ? [{ label: "式エディタ", typed: editorExpr }] : [])
+  ]
+
   return (
     <main>
-      <TestEditor />
+      <TestEditor onValidExpr={setEditorExpr} />
       <table className="border-collapse border border-gray-300">
         <thead>
           <tr>
-            {columns.map((col) => (
+            {allColumns.map(col => (
               <th key={col.label} className="border border-gray-300 px-4 py-2">
                 {col.label}
               </th>
@@ -104,11 +113,11 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {joined.map(toBaseItem).map((item : BaseItem) => (
+          {items.map(item => (
             <tr key={item.code}>
-              {columns.map((col) => (
+              {allColumns.map(col => (
                 <td key={col.label} className="border border-gray-300 px-4 py-2">
-                  {isFormula(col.expression) ? calculate(col.expression)(item) : col.expression.valueGetter(item)}
+                  {String(evaluate(col.typed, baseItemEnv(item)))}
                 </td>
               ))}
             </tr>
