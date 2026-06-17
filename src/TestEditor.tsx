@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from './testExpr'
 
-type CheckResult =
+type LiveResult =
   | { status: 'idle' }
+  | { status: 'pending' }
   | { status: 'ok'; type: 'n' | 'b' | 's' }
   | { status: 'error'; message: string }
 
@@ -12,24 +13,48 @@ type Props = {
   onExpressionChange?: (raw: string) => void
 }
 
+function AnimatedDots() {
+  return (
+    <span className="inline-flex items-end gap-px" aria-hidden="true">
+      {([0, -333, -666] as const).map((delay, i) => (
+        <span
+          key={i}
+          className="inline-block animate-bounce"
+          style={{ animationDelay: `${delay}ms` }}
+        >.</span>
+      ))}
+    </span>
+  )
+}
+
+const ERROR_DELAY_MS = 600
+
 function TestEditor({ initialExpression = '', onValidExpr, onExpressionChange }: Props) {
   const [input, setInput] = useState(initialExpression)
-  const [result, setResult] = useState<CheckResult>({ status: 'idle' })
+  const [result, setResult] = useState<LiveResult>({ status: 'idle' })
+  const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleCheck = () => {
-    if (!input.trim()) {
-      setResult({ status: 'error', message: 'Input is empty' })
+  useEffect(() => () => { if (errorTimer.current) clearTimeout(errorTimer.current) }, [])
+
+  const runCheck = (raw: string) => {
+    if (errorTimer.current) clearTimeout(errorTimer.current)
+
+    if (!raw.trim()) {
+      setResult({ status: 'idle' })
       onValidExpr?.(null)
       return
     }
+
     try {
-      const typed = parseAndTypeCheck(input)
+      const typed = parseAndTypeCheck(raw)
       setResult({ status: 'ok', type: typed.type })
       onValidExpr?.(typed)
     } catch (e) {
-      const label = e instanceof ParseError ? 'Parse error' : e instanceof TypeCheckError ? 'Type error' : 'Error'
-      setResult({ status: 'error', message: `${label}: ${e instanceof Error ? e.message : String(e)}` })
+      const prefix = e instanceof ParseError ? 'まだ構文に問題があるようです' : e instanceof TypeCheckError ? 'まだ型に問題があるようです' : 'エラーが発生しています'
+      const message = `${prefix}：${e instanceof Error ? e.message : String(e)}`
+      setResult({ status: 'pending' })
       onValidExpr?.(null)
+      errorTimer.current = setTimeout(() => setResult({ status: 'error', message }), ERROR_DELAY_MS)
     }
   }
 
@@ -40,31 +65,30 @@ function TestEditor({ initialExpression = '', onValidExpr, onExpressionChange }:
         rows={3}
         value={input}
         onChange={e => {
-          setInput(e.target.value)
-          setResult({ status: 'idle' })
-          onValidExpr?.(null)
-          onExpressionChange?.(e.target.value)
+          const raw = e.target.value
+          setInput(raw)
+          onExpressionChange?.(raw)
+          runCheck(raw)
         }}
         placeholder="e.g.  SUM(#female, NEG(#male))"
         spellCheck={false}
       />
-      <div className="flex items-center gap-4 mt-2">
-        <button
-          className="px-4 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-          onClick={handleCheck}
-        >
-          Type check
-        </button>
+      <div className="mt-1 min-h-[1.25rem] text-sm">
         {result.status === 'ok' && (
-          <span className="text-green-700 text-sm font-mono">
-            ✓ {result.type === 'n' ? 'n  (number)' : result.type === 'b' ? 'b  (boolean)' : 's  (string)'}
+          <span className="text-green-700 font-mono">
+            ✓ {result.type === 'n' ? '数値' : result.type === 'b' ? '真偽値' : '文字列'}の式として有効です
           </span>
         )}
+        {result.status === 'pending' && (
+          <span className="text-gray-400 font-mono"><AnimatedDots /></span>
+        )}
         {result.status === 'error' && (
-          <span className="text-red-600 text-sm">{result.message}</span>
+          <span className="text-gray-500">
+            <AnimatedDots />{' '}{result.message}
+          </span>
         )}
       </div>
-      <p className="mt-3 text-xs text-gray-400 font-mono leading-relaxed">
+      <p className="mt-2 text-xs text-gray-400 font-mono leading-relaxed">
         AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · EQ(a,a):b · SUM(n…):n · MULT(n…):n · NEG(n):n · INV(n):n
         <br />
         #total · #male · #female · $code · $kanji · $kana · $prefcode · $prefkanji · $prefkana

@@ -144,7 +144,7 @@ class Parser {
 
   private expect(kind: Token['kind']): Token {
     const tok = this.consume()
-    if (tok.kind !== kind) throw new ParseError(`〈${japaneseDescriptions[kind]}〉であるべきところ〈${japaneseDescriptions[tok.kind]}〉でした`)
+    if (tok.kind !== kind) throw new ParseError(`〈${japaneseDescriptions[kind]}〉が来るべきところ〈${japaneseDescriptions[tok.kind]}〉でした`)
     return tok
   }
 
