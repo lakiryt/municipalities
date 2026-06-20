@@ -16,6 +16,7 @@ function DataTable({ columns, displayItems, onEditColumn, onAddColumn }: Props) 
         <table className="border-collapse border border-gray-300">
           <thead className="sticky top-0 z-10 shadow-md">
             <tr>
+              <th className="border border-gray-300 bg-gray-50 px-4 py-2 text-gray-400 select-none">#</th>
               {columns.map(col => (
                 <th
                   key={col.id}
@@ -34,8 +35,9 @@ function DataTable({ columns, displayItems, onEditColumn, onAddColumn }: Props) 
             </tr>
           </thead>
           <tbody>
-            {displayItems.map(item => (
+            {displayItems.map((item, i) => (
               <tr key={item.code}>
+                <td className="border border-gray-300 px-4 py-2 text-right text-gray-400 tabular-nums">{i + 1}</td>
                 {columns.map(col => (
                   <td key={col.id} className="border border-gray-300 px-4 py-2">
                     {String(evaluate(col.typed, baseItemEnv(item)))}
