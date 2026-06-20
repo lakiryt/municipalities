@@ -40,7 +40,7 @@ function DataTable({ columns, displayItems, onEditColumn, onAddColumn }: Props) 
                 <td className="border border-gray-300 px-4 py-2 text-right text-gray-400 tabular-nums">{i + 1}</td>
                 {columns.map(col => (
                   <td key={col.id} className="border border-gray-300 px-4 py-2">
-                    {String(evaluate(col.typed, baseItemEnv(item)))}
+                    {(() => { const v = evaluate(col.typed, baseItemEnv(item)); return typeof v === 'number' && isNaN(v) ? '—' : String(v) })()}
                   </td>
                 ))}
               </tr>

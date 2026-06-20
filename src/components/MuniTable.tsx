@@ -63,6 +63,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     ? [...filteredItems].sort((a, b) => {
         const va = evaluate(sortState.typed, baseItemEnv(a)) as number
         const vb = evaluate(sortState.typed, baseItemEnv(b)) as number
+        if (isNaN(va) && isNaN(vb)) return 0
+        if (isNaN(va)) return 1
+        if (isNaN(vb)) return -1
         return sortState.direction === 'asc' ? va - vb : vb - va
       })
     : filteredItems

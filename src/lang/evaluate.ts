@@ -8,7 +8,7 @@ export type Env = {
 function evaluateNum(expr: NumExpr, env: Env): number {
   switch (expr.kind) {
     case 'literal': return expr.value
-    case 'numvar':  return (env.numvars[expr.name] as number | undefined) ?? 0
+    case 'numvar':  return (env.numvars[expr.name] as number | undefined) ?? NaN
     case 'SUM':     return expr.args.reduce((acc, a) => acc + evaluateNum(a, env), 0)
     case 'MULT':    return expr.args.reduce((acc, a) => acc * evaluateNum(a, env), 1)
     case 'NEG':     return -evaluateNum(expr.arg, env)

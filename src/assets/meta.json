@@ -23,7 +23,7 @@
             "name": "住民基本台帳に基づく人口、人口動態及び世帯数調査 / 調査の結果",
             "agency": "総務省 自治行政局 住民制度課",
             "as_of": "2025-08-06",
-            "path": "population/jumin2025.json",
+            "path": "population/jumin2025.csv",
             "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040306653"
         },
         {

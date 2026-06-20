@@ -16,15 +16,11 @@ export type BaseItem = {
     kanji?: string
     kana?: string
   }
-  population: {
-    total: number
-    male: number
-    female: number
-  }
+  population: Record<string, number>
   area: number
 }
 
-export type PopulationRecord = { total: number; male: number; female: number }
+export type PopulationRecord = Record<string, number>
 export type PopulationMap = Map<string, PopulationRecord>
 
 // ── Area data ─────────────────────────────────────────────────────────────────
@@ -46,26 +42,24 @@ export const fetchArea = (src: { path: string }): Promise<Map<string, number>> =
 
 export const populationSources = meta.population
 
-type JuminEntry = { code: string; total: string; male: string; female: string }
-
-const parseJuminJson = (raw: string): PopulationMap => {
-  const entries: JuminEntry[] = JSON.parse(raw)
-  return new Map(entries.map(e => [
-    e.code.slice(0, -1),
-    { total: Number(e.total), male: Number(e.male), female: Number(e.female) },
-  ]))
+const parsePopulationCsv = (raw: string): PopulationMap => {
+  const lines = raw.trim().split('\n').map(l => l.replace(/\r$/, ''))
+  const headers = lines[0].split(',')
+  const codeIdx = headers.indexOf('code')
+  return new Map(
+    lines.slice(1).map((line): [string, PopulationRecord] => {
+      const fields = line.split(',')
+      const record: PopulationRecord = {}
+      headers.forEach((h, i) => { if (i !== codeIdx) record[h] = Number(fields[i]) })
+      return [fields[codeIdx], record]
+    })
+  )
 }
-
-const parseKokuseiCsv = (raw: string): PopulationMap =>
-  new Map(raw.trim().split('\n').map((line): [string, PopulationRecord] => {
-    const [code, total, male, female] = line.split(',')
-    return [code, { total: Number(total), male: Number(male), female: Number(female) }]
-  }))
 
 export const fetchPopulation = (src: { path: string }): Promise<PopulationMap> =>
   fetch(`/${src.path}`)
     .then(r => r.text())
-    .then(raw => src.path.endsWith('.json') ? parseJuminJson(raw) : parseKokuseiCsv(raw))
+    .then(parsePopulationCsv)
 
 // ── Municipality data ─────────────────────────────────────────────────────────
 
@@ -78,23 +72,20 @@ const getPrefecture = (code: string) => {
 export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>): BaseItem[] =>
   (dantai_codes as DantaiCodeEntry[]).map(item => {
     const code5 = item.code.slice(0, -1)
-    const pop = popMap.get(code5) ?? { total: 0, male: 0, female: 0 }
     return {
       code: item.code,
       kanji: item.kanji,
       kana: item.kana,
       prefecture: getPrefecture(item.code),
-      population: pop,
-      area: areaMap.get(code5) ?? 0,
+      population: popMap.get(code5) ?? popMap.get(item.code) ?? {},
+      area: areaMap.get(code5) ?? NaN,
     }
   })
 
 export const baseItemEnv = (item: BaseItem): Env => ({
   numvars: {
-    totalpop:  item.population.total,
-    malepop:   item.population.male,
-    femalepop: item.population.female,
-    area:      item.area,
+    ...item.population,
+    area: item.area,
   },
   strvars: {
     code:      item.code,
@@ -106,10 +97,15 @@ export const baseItemEnv = (item: BaseItem): Env => ({
   },
 })
 
+// Seed with all jumin fields so varCompletions covers them statically
 const _dummy: BaseItem = {
   code: '', kanji: '', kana: '',
   prefecture: { code: '' },
-  population: { total: 0, male: 0, female: 0 },
+  population: {
+    totalpop: 0, malepop: 0, femalepop: 0, setai: 0,
+    inc_mov_dom: 0, inc_mov_intl: 0, inc_born: 0, inc_other: 0,
+    dec_mov_dom: 0, dec_mov_intl: 0, dec_deaths: 0, dec_other: 0,
+  },
   area: 0,
 }
 
