@@ -85,6 +85,8 @@ const _dummy: BaseItem = {
   population: { total: 0, male: 0, female: 0 },
   area: 0,
 }
+export const prefectures = code_todofuken
+
 export const varCompletions: string[] = [
   ...Object.keys(baseItemEnv(_dummy).numvars).map(k => `#${k}`),
   ...Object.keys(baseItemEnv(_dummy).strvars).map(k => `$${k}`),

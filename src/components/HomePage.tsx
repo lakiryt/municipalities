@@ -1,11 +1,6 @@
 import { Link } from 'react-router-dom'
-import hokkaidoDensity from '../rankings/hokkaidoDensity'
+import { prefectures } from '../data/municipalities'
 import populationOver500k from '../rankings/populationOver500k'
-
-const rankings: { path: string; config: { title: string } }[] = [
-  { path: '/rankings/hokkaido/density',          config: hokkaidoDensity },
-  { path: '/rankings/all/population-over-500k', config: populationOver500k },
-]
 
 function HomePage() {
   return (
@@ -17,20 +12,30 @@ function HomePage() {
       <section className="mb-8">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">ランキング</h2>
         <ul className="space-y-1">
-          {rankings.map(({ path, config }) => (
-            <li key={path}>
-              <Link to={path} className="text-blue-600 hover:underline">{config.title}</Link>
-            </li>
-          ))}
+          <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">全国 — 人口密度ランキング</Link></li>
+          <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
         </ul>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別人口密度</h2>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {prefectures.map(pref => (
+            <Link
+              key={pref.code}
+              to={`/rankings/${pref.romanized}/density`}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              {pref.kanji}
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">ツール</h2>
         <ul>
-          <li>
-            <Link to="/explore" className="text-blue-600 hover:underline">自由探索</Link>
-          </li>
+          <li><Link to="/explore" className="text-blue-600 hover:underline">自由探索</Link></li>
         </ul>
       </section>
     </div>
