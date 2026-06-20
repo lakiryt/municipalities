@@ -12,7 +12,7 @@ type Props = {
 function DataTable({ columns, displayItems, onEditColumn, onAddColumn }: Props) {
   return (
     <div className="fixed inset-x-0 top-11 bottom-0 overflow-auto">
-      <div className="pb-6 flex justify-center">
+      <div className="pb-6 flex justify-center min-w-max">
         <table className="border-collapse border border-gray-300">
           <thead className="sticky top-0 z-10 shadow-md">
             <tr>

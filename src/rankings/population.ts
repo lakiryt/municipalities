@@ -1,0 +1,31 @@
+import type { RankingConfig } from '../types'
+
+export const populationConfig: RankingConfig = {
+    title: '全国 — 人口統計',
+    columns: [
+        { label: '自治体名',   expression: '$kanji' },
+        { label: '人口(男)',    expression: '#malepop' },
+        { label: '人口(女)',    expression: '#femalepop' },
+        { label: '人口(計)',    expression: '#totalpop' },
+        { label: '世帯数',      expression: '#setai' },
+        { expression: '#inc_mov_dom', label: '昨年の転入者数（国内）'},
+        { expression: '#inc_mov_intl', label: '昨年の転入者数（国外）'},
+        { expression: '#inc_born',  label: '昨年の出生者数'},
+        { expression: '#inc_other', label: '昨年のその他住民票記載数'},
+        { expression: '#inc',       label: '昨年の住民票記載数' },
+        { expression: '#dec_mov_dom', label: '昨年の転出者数（国内）'},
+        { expression: '#dec_mov_intl', label: '昨年の転出者数（国外）'},
+        { expression: '#dec_deaths', label: '昨年の死亡者数'},
+        { expression: '#dec_other', label: '昨年のその他住民票消除数'},
+        { expression: '#dec',       label: '昨年の住民票消除数' },
+        { expression: '#inc_net',   label: '昨年からの増減数' },
+        { expression: 'ROUND(MULT(100, #inc_rate), 2)',  label: '増減率(%)' },
+        { expression: '#inc_nat',   label: '自然増減数' },
+        { expression: 'ROUND(MULT(100, #inc_nat_rate), 2)',      label: '自然増減率(%)' },
+        { expression: '#inc_soc',       label: '社会増減数' },
+        { expression: 'ROUND(MULT(100, #inc_soc_rate), 2)',      label: '社会増減率(%)' },
+  ],
+    filterExpression: undefined,
+    sortExpression: '',
+    sortDirection: 'desc',
+}

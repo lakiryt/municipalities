@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { prefectures } from '../data/municipalities'
 import populationOver500k from '../rankings/populationOver500k'
+import { populationConfig } from '../rankings/population'
 
 function HomePage() {
   return (
@@ -14,6 +15,7 @@ function HomePage() {
         <ul className="space-y-1">
           <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">全国 — 人口密度ランキング</Link></li>
           <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
+          <li><Link to="/list/all/population" className="text-blue-600 hover:underline">{populationConfig.title}</Link></li>
         </ul>
       </section>
 

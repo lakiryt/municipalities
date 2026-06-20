@@ -75,7 +75,7 @@ export const derivedExpressions = [
   { name: 'inc_rate',     expr: 'MULT(#inc_net, INV(#prev_total))',                               desc: '増減率' },
   { name: 'inc_nat',      expr: 'SUM(#inc_born, NEG(#dec_deaths))',                               desc: '自然増減数' },
   { name: 'inc_nat_rate', expr: 'MULT(#inc_nat, INV(#prev_total))',                               desc: '自然増減率' },
-  { name: 'inc_soc',      expr: 'SUM(#inc_mov, NEG(#dec_mov))',                                   desc: '社会増減数' },
+  { name: 'inc_soc',      expr: 'SUM(#inc_mov, #inc_other, NEG(SUM(#dec_mov, #dec_other)))',      desc: '社会増減数' },
   { name: 'inc_soc_rate', expr: 'MULT(#inc_soc, INV(#prev_total))',                               desc: '社会増減率' },
 ]
 

@@ -12,12 +12,9 @@ function RankingPage({ config }: Props) {
     typed: parseAndTypeCheck(col.expression),
   }))
 
-  const sortTyped = parseAndTypeCheck(config.sortExpression)
-  const initialSort: SortState = {
-    expression: config.sortExpression,
-    typed: sortTyped,
-    direction: config.sortDirection,
-  }
+  const initialSort: SortState | null = config.sortExpression
+    ? { expression: config.sortExpression, typed: parseAndTypeCheck(config.sortExpression), direction: config.sortDirection }
+    : null
 
   const initialFilter = config.filterExpression
     ? { expression: config.filterExpression, typed: parseAndTypeCheck(config.filterExpression) }
