@@ -9,6 +9,7 @@ import ColumnModal from './ColumnModal'
 import FilterModal from './FilterModal'
 import SortModal from './SortModal'
 import DataModal from './DataModal'
+import Sidebar from './Sidebar'
 
 type Props = {
   title?: string
@@ -31,6 +32,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [selectedAreaAsOf, setSelectedAreaAsOf] = useState(defaultAsOf)
   const [activeItems, setActiveItems] = useState(() => buildItems(new Map()))
   const [dataOpen, setDataOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     fetchAreaCsv(selectedAreaAsOf).then(areaMap => setActiveItems(buildItems(areaMap)))
@@ -107,6 +109,19 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onClose={() => setDataOpen(false)}
         />
       )}
+      {sidebarOpen && (
+        <Sidebar
+          totalCount={activeItems.length}
+          filteredCount={filteredItems.length}
+          filterActive={filterExpr !== null}
+          sortState={sortState}
+          selectedAreaAsOf={selectedAreaAsOf}
+          onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
+          onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
+          onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
       <FilterBar
         title={title}
         totalCount={activeItems.length}
@@ -117,6 +132,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
         onDataClick={() => setDataOpen(true)}
+        onMenuClick={() => setSidebarOpen(true)}
       />
       <DataTable
         columns={columns}
