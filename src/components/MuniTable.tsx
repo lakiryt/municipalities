@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { evaluate } from '../lang/evaluate'
 import type { TypedExpr } from '../lang/expr'
-import { items, baseItemEnv } from '../data/municipalities'
+import { buildItems, fetchAreaCsv, baseItemEnv, areaSources } from '../data/municipalities'
 import type { ColumnState, ModalState, SortState } from '../types'
 import FilterBar from './FilterBar'
 import DataTable from './DataTable'
 import ColumnModal from './ColumnModal'
 import FilterModal from './FilterModal'
 import SortModal from './SortModal'
+import DataModal from './DataModal'
 
 type Props = {
   title?: string
@@ -15,6 +16,8 @@ type Props = {
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
 }
+
+const defaultAsOf = areaSources[0].as_of
 
 function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null }: Props) {
   const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
@@ -25,14 +28,21 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortState, setSortState] = useState<SortState | null>(initialSort)
   const [sortOpen, setSortOpen] = useState(false)
+  const [selectedAreaAsOf, setSelectedAreaAsOf] = useState(defaultAsOf)
+  const [activeItems, setActiveItems] = useState(() => buildItems(new Map()))
+  const [dataOpen, setDataOpen] = useState(false)
+
+  useEffect(() => {
+    fetchAreaCsv(selectedAreaAsOf).then(areaMap => setActiveItems(buildItems(areaMap)))
+  }, [selectedAreaAsOf])
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
     : null
 
   const filteredItems = filterExpr !== null
-    ? items.filter(item => evaluate(filterExpr, baseItemEnv(item)) === true)
-    : items
+    ? activeItems.filter(item => evaluate(filterExpr, baseItemEnv(item)) === true)
+    : activeItems
 
   const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
@@ -90,14 +100,23 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onClose={() => setSortOpen(false)}
         />
       )}
+      {dataOpen && (
+        <DataModal
+          selectedAsOf={selectedAreaAsOf}
+          onApply={asOf => { setSelectedAreaAsOf(asOf); setDataOpen(false) }}
+          onClose={() => setDataOpen(false)}
+        />
+      )}
       <FilterBar
         title={title}
-        totalCount={items.length}
+        totalCount={activeItems.length}
         filteredCount={filteredItems.length}
         filterActive={filterExpr !== null}
         sortState={sortState}
+        selectedAreaAsOf={selectedAreaAsOf}
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
+        onDataClick={() => setDataOpen(true)}
       />
       <DataTable
         columns={columns}

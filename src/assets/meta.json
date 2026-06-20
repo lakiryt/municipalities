@@ -1,0 +1,94 @@
+{
+    "prefectures": [
+        {
+            "name": "全国地方公共団体コード",
+            "agency": "総務省",
+            "as_of": "2024-01-01",
+            "path": "code_todofuken_20240101.json",
+            "source": "https://www.soumu.go.jp/denshijiti/code.html"
+        }
+    ],
+    "dantai_codes": [
+        {
+            "name": "全国地方公共団体コード",
+            "agency": "総務省",
+            "as_of": "2024-01-01",
+            "path": "dantai_code_20240101.json",
+            "source": "https://www.soumu.go.jp/denshijiti/code.html"
+        }
+    ],
+    "population": [
+        {
+            "name": "住民基本台帳に基づく人口、人口動態及び世帯数調査 / 調査の結果",
+            "agency": "総務省",
+            "as_of": "2025-08-06",
+            "path": "jumin2025.json",
+            "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040306653"
+        }
+    ],
+    "area": [
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2026-01-01",
+            "path": "areas/area20260101.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2025-10-01",
+            "path": "areas/area20251001.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2025-07-01",
+            "path": "areas/area20250701.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2025-04-01",
+            "path": "areas/area20250401.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2025-01-01",
+            "path": "areas/area20250101.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2024-10-01",
+            "path": "areas/area20241001.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2024-07-01",
+            "path": "areas/area20240701.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2024-04-01",
+            "path": "areas/area20240401.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        },
+        {
+            "name": "全国都道府県市区町村別面積調",
+            "agency": "国土交通省 国土地理院",
+            "as_of": "2024-01-01",
+            "path": "areas/area20240101.csv",
+            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+        }
+    ]
+}

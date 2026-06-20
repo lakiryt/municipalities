@@ -7,11 +7,13 @@ type Props = {
   filteredCount: number
   filterActive: boolean
   sortState: SortState | null
+  selectedAreaAsOf: string
   onSortClick: () => void
   onFilterClick: () => void
+  onDataClick: () => void
 }
 
-function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick }: Props) {
+function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, selectedAreaAsOf, onSortClick, onFilterClick, onDataClick }: Props) {
   const btnBase = 'px-3 py-1 rounded text-sm border'
   const btnActive = 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'
@@ -21,6 +23,12 @@ function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, 
       <Link to="/"><img src="/favicon.svg" alt="home" className="h-6 w-6" /></Link>
       <span className="font-semibold text-sm truncate">{title}</span>
       <div className="ml-auto flex items-center gap-3">
+        <button
+          className={`${btnBase} ${btnInactive}`}
+          onClick={onDataClick}
+        >
+          面積: {selectedAreaAsOf}
+        </button>
         <button
           className={`${btnBase} ${sortState ? btnActive : btnInactive}`}
           onClick={onSortClick}
