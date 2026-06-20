@@ -2,7 +2,7 @@ import dantai_codes from '@/assets/dantai_code_20240101.json'
 import code_todofuken from '@/assets/code_todofuken_20240101.json'
 import meta from '@/assets/meta.json'
 import { parseAndTypeCheck } from '../lang/expr'
-import type { Env } from '../lang/evaluate'
+import { evaluate, type Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
 
 type DantaiCodeEntry = (typeof dantai_codes)[number]
@@ -61,6 +61,26 @@ export const fetchPopulation = (src: { path: string }): Promise<PopulationMap> =
     .then(r => r.text())
     .then(parsePopulationCsv)
 
+// ── Derived expressions ───────────────────────────────────────────────────────
+
+// Evaluated in order so later entries can reference earlier ones as numvars
+export const derivedExpressions = [
+  { name: 'popdensity',   expr: 'MULT(#totalpop, INV(#area))',                                    desc: '人口密度（人/km²）' },
+  { name: 'inc_mov',      expr: 'SUM(#inc_mov_dom, #inc_mov_intl)',                               desc: '転入者数（計）' },
+  { name: 'inc',          expr: 'SUM(#inc_mov_dom, #inc_mov_intl, #inc_born, #inc_other)',        desc: '昨年の住民票記載数' },
+  { name: 'dec_mov',      expr: 'SUM(#dec_mov_dom, #dec_mov_intl)',                               desc: '転出者数（計）' },
+  { name: 'dec',          expr: 'SUM(#dec_mov_dom, #dec_mov_intl, #dec_deaths, #dec_other)',      desc: '昨年の住民票消除数' },
+  { name: 'inc_net',      expr: 'SUM(#inc, NEG(#dec))',                                           desc: '住民票増減数' },
+  { name: 'prev_total',   expr: 'SUM(#totalpop, NEG(#inc_net))',                                  desc: '前年の人口' },
+  { name: 'inc_rate',     expr: 'MULT(#inc_net, INV(#prev_total))',                               desc: '増減率' },
+  { name: 'inc_nat',      expr: 'SUM(#inc_born, NEG(#dec_deaths))',                               desc: '自然増減数' },
+  { name: 'inc_nat_rate', expr: 'MULT(#inc_nat, INV(#prev_total))',                               desc: '自然増減率' },
+  { name: 'inc_soc',      expr: 'SUM(#inc_mov, NEG(#dec_mov))',                                   desc: '社会増減数' },
+  { name: 'inc_soc_rate', expr: 'MULT(#inc_soc, INV(#prev_total))',                               desc: '社会増減率' },
+]
+
+const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: parseAndTypeCheck(d.expr) }))
+
 // ── Municipality data ─────────────────────────────────────────────────────────
 
 const getPrefecture = (code: string) => {
@@ -82,20 +102,24 @@ export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>):
     }
   })
 
-export const baseItemEnv = (item: BaseItem): Env => ({
-  numvars: {
+export const baseItemEnv = (item: BaseItem): Env => {
+  const numvars: Record<string, number> = {
     ...item.population,
     area: item.area,
-  },
-  strvars: {
+  }
+  const strvars: Record<string, string> = {
     code:      item.code,
     kanji:     item.kanji,
     kana:      item.kana,
     prefcode:  item.prefecture.code,
     prefkanji: item.prefecture.kanji ?? '',
     prefkana:  item.prefecture.kana ?? '',
-  },
-})
+  }
+  for (const { name, typed } of derivedDefs) {
+    numvars[name] = evaluate(typed, { numvars, strvars }) as number
+  }
+  return { numvars, strvars }
+}
 
 // Seed with all jumin fields so varCompletions covers them statically
 const _dummy: BaseItem = {

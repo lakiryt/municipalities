@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { derivedExpressions } from '../data/municipalities'
 
 const functions = [
   { sig: 'AND(b…)',    ret: 'b', desc: 'すべて真のとき真' },
@@ -18,6 +19,15 @@ const numVars = [
   { name: '#malepop',   desc: '男性人口' },
   { name: '#femalepop', desc: '女性人口' },
   { name: '#area',      desc: '面積（km²）' },
+  { name: '#setai', desc: '世帯数（住民基本台帳のみ）'},
+  { name: '#inc_mov_dom', desc: '昨年の転入者数（国内）（住民基本台帳のみ）'},
+  { name: '#inc_mov_intl', desc: '昨年の転入者数（国外）（住民基本台帳のみ）'},
+  { name: '#inc_born', desc: '昨年の出生者数（住民基本台帳のみ）'},
+  { name: '#inc_other', desc: '昨年のその他住民票記載数（住民基本台帳のみ）'},
+  { name: '#dec_mov_dom', desc: '昨年の転出者数（国内）（住民基本台帳のみ）'},
+  { name: '#dec_mov_intl', desc: '昨年の転出者数（国外）（住民基本台帳のみ）'},
+  { name: '#dec_deaths', desc: '昨年の死亡者数（住民基本台帳のみ）'},
+  { name: '#dec_other', desc: '昨年のその他住民票消除数（住民基本台帳のみ）'},
 ]
 
 const strVars = [
@@ -28,6 +38,7 @@ const strVars = [
   { name: '$prefkanji', desc: '都道府県名（漢字）' },
   { name: '$prefkana',  desc: '都道府県名（仮名）' },
 ]
+
 
 const typeLabel: Record<string, string> = { n: '数値', b: '真偽値', s: '文字列', a: '任意' }
 
@@ -104,6 +115,27 @@ function FormulasPage() {
                 <tr key={v.name} className="border-b border-gray-100 last:border-0">
                   <td className="py-1.5 pr-6 font-mono text-gray-700 whitespace-nowrap">{v.name}</td>
                   <td className="py-1.5 text-gray-500">{v.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+
+        <Section title="よく使う式">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 border-b border-gray-200">
+                <th className="pb-1 pr-6 font-normal">名前</th>
+                <th className="pb-1 pr-6 font-normal">式</th>
+                <th className="pb-1 font-normal">説明</th>
+              </tr>
+            </thead>
+            <tbody>
+              {derivedExpressions.map(d => (
+                <tr key={d.name} className="border-b border-gray-100 last:border-0">
+                  <td className="py-1.5 pr-6 font-mono text-gray-700 whitespace-nowrap">#{d.name}</td>
+                  <td className="py-1.5 pr-6 font-mono text-gray-500 whitespace-nowrap">{d.expr}</td>
+                  <td className="py-1.5 text-gray-500">{d.desc}</td>
                 </tr>
               ))}
             </tbody>
