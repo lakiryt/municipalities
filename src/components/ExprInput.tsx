@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { varCompletions } from '@/data/municipalities'
 
 const COMPLETIONS = [
-  'AND(', 'OR(', 'NOT(', 'LEQ(', 'EQ(', 'SUM(', 'MULT(', 'NEG(', 'INV(',
+  'AND(', 'OR(', 'NOT(', 'LEQ(', 'EQ(', 'SUM(', 'MULT(', 'NEG(', 'INV(', 'ROUND(',
   ...varCompletions,
 ]
 

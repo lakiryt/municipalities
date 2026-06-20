@@ -89,7 +89,7 @@ function ExprEditor({ initialExpression = '', requiredType, onValidExpr, onExpre
         )}
       </div>
       <p className="mt-2 text-xs text-gray-400 font-mono leading-relaxed">
-        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · EQ(a,a):b · SUM(n…):n · MULT(n…):n · NEG(n):n · INV(n):n
+        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · EQ(a,a):b · SUM(n…):n · MULT(n…):n · NEG(n):n · INV(n):n · ROUND(n,n):n
         <br />
         #total · #male · #female · $code · $kanji · $kana · $prefcode · $prefkanji · $prefkana
       </p>

@@ -13,9 +13,10 @@ export type NumLiteral = { kind: 'literal'; value: number }
 export type NumVar     = { kind: 'numvar';     name: string }
 export type NumSum     = { kind: 'SUM';  args: NumExpr[] }
 export type NumMult    = { kind: 'MULT'; args: NumExpr[] }
-export type NumNeg     = { kind: 'NEG';  arg: NumExpr }
-export type NumInv     = { kind: 'INV';  arg: NumExpr }
-export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv
+export type NumNeg     = { kind: 'NEG';   arg: NumExpr }
+export type NumInv     = { kind: 'INV';   arg: NumExpr }
+export type NumRound   = { kind: 'ROUND'; arg: NumExpr; digits: NumExpr }
+export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv | NumRound
 
 export type BoolAnd  = { kind: 'AND'; args: BoolExpr[] }
 export type BoolOr   = { kind: 'OR';  args: BoolExpr[] }
@@ -182,7 +183,10 @@ class Parser {
           args.push(this.parseExpr())
         }
       }
-      this.expect('rparen')
+      const closing = this.peek()
+      if (closing.kind !== 'rparen')
+        throw new ParseError(`${tok.value}(...)を閉じる〈右括弧〉がないまま〈${japaneseDescriptions[closing.kind]}〉となりました`)
+      this.consume()
       return { kind: 'call', name: tok.value, args }
     }
 
@@ -264,10 +268,13 @@ function typeCheck(raw: RawExpr): TypedExpr {
       return { type: 'n', expr: { kind: 'MULT', args: args.map((a, i) => requireNum(a, `MULTの${i + 1}番目の引数`)) } }
     case 'NEG':
       arity(1)
-      return { type: 'n', expr: { kind: 'NEG', arg: requireNum(args[0], 'NEGの1番目の引数') } }
+      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], 'NEGの1番目の引数') } }
     case 'INV':
       arity(1)
-      return { type: 'n', expr: { kind: 'INV', arg: requireNum(args[0], 'INVの1番目の引数') } }
+      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], 'INVの1番目の引数') } }
+    case 'ROUND':
+      arity(2)
+      return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], 'ROUNDの1番目の引数'), digits: requireNum(args[1], 'ROUNDの2番目の引数') } }
     default:
       throw new TypeCheckError(`「${name}」という関数名はありません`)
   }

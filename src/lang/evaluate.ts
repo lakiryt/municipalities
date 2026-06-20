@@ -13,6 +13,7 @@ function evaluateNum(expr: NumExpr, env: Env): number {
     case 'MULT':    return expr.args.reduce((acc, a) => acc * evaluateNum(a, env), 1)
     case 'NEG':     return -evaluateNum(expr.arg, env)
     case 'INV':     return 1 / evaluateNum(expr.arg, env)
+    case 'ROUND':   { const f = Math.pow(10, evaluateNum(expr.digits, env)); return Math.round(evaluateNum(expr.arg, env) * f) / f }
   }
 }
 
