@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from '../lang/expr'
 import ExprInput from './ExprInput'
 
@@ -88,11 +89,9 @@ function ExprEditor({ initialExpression = '', requiredType, onValidExpr, onExpre
           </span>
         )}
       </div>
-      <p className="mt-2 text-xs text-gray-400 font-mono leading-relaxed">
-        AND(b…):b · OR(b…):b · NOT(b):b · LEQ(n,n):b · EQ(a,a):b · SUM(n…):n · MULT(n…):n · NEG(n):n · INV(n):n · ROUND(n,n):n
-        <br />
-        #total · #male · #female · $code · $kanji · $kana · $prefcode · $prefkanji · $prefkana
-      </p>
+      <Link to="/formulas" className="mt-2 block text-xs text-blue-500 hover:underline">
+        式の記述方法 →
+      </Link>
     </div>
   )
 }

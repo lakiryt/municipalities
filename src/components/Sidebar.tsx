@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { SortState } from '../types'
 
 type Props = {
@@ -35,6 +36,12 @@ function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortCli
           <button className={`${btnBase} ${filterActive ? btnActive : btnInactive}`} onClick={onFilterClick}>
             絞り込み{filterActive ? `（${filteredCount} / ${totalCount}件）` : ''}
           </button>
+        </div>
+
+        <div className="px-4 py-3 border-t border-gray-100">
+          <Link to="/formulas" onClick={onClose} className="text-sm text-blue-500 hover:underline">
+            式の記述方法 →
+          </Link>
         </div>
 
         <div className="mt-auto p-4 text-xs text-gray-400 space-y-1">
