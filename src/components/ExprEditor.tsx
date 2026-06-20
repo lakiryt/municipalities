@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from './testExpr'
-import ExprEditor from './ExprEditor'
+import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from '../lang/expr'
+import ExprInput from './ExprInput'
 
 type LiveResult =
   | { status: 'idle' }
@@ -33,7 +33,7 @@ function AnimatedDots() {
 
 const ERROR_DELAY_MS = 600
 
-function TestEditor({ initialExpression = '', requiredType, onValidExpr, onExpressionChange }: Props) {
+function ExprEditor({ initialExpression = '', requiredType, onValidExpr, onExpressionChange }: Props) {
   const [result, setResult] = useState<LiveResult>({ status: 'idle' })
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -68,7 +68,7 @@ function TestEditor({ initialExpression = '', requiredType, onValidExpr, onExpre
 
   return (
     <div>
-      <ExprEditor
+      <ExprInput
         initialExpression={initialExpression}
         placeholder="e.g.  SUM(#female, NEG(#male))"
         onChange={raw => { onExpressionChange?.(raw); runCheck(raw) }}
@@ -97,4 +97,4 @@ function TestEditor({ initialExpression = '', requiredType, onValidExpr, onExpre
   )
 }
 
-export default TestEditor
+export default ExprEditor

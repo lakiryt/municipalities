@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { parseAndTypeCheck, type TypedExpr } from './testExpr'
-import TestEditor from './TestEditor'
+import { parseAndTypeCheck, type TypedExpr } from '../lang/expr'
+import ExprEditor from './ExprEditor'
 
 type Props = {
   initialLabel: string
@@ -41,7 +41,7 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
         />
 
         <label className="block text-sm font-medium mb-1">式</label>
-        <TestEditor
+        <ExprEditor
           initialExpression={initialExpression}
           onValidExpr={expr => { setValidExpr(expr) }}
           onExpressionChange={setExpression}

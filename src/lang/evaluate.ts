@@ -1,4 +1,4 @@
-import type { NumExpr, BoolExpr, StrExpr, TypedExpr } from './testExpr'
+import type { NumExpr, BoolExpr, StrExpr, TypedExpr } from './expr'
 
 export type Env = {
   numvars: Record<string, number>

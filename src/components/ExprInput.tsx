@@ -26,7 +26,7 @@ type Props = {
   onChange: (raw: string) => void
 }
 
-function ExprEditor({ initialExpression = '', placeholder, onChange }: Props) {
+function ExprInput({ initialExpression = '', placeholder, onChange }: Props) {
   const [value,       setValue]       = useState(initialExpression)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [selectedIdx, setSelectedIdx] = useState(0)
@@ -115,4 +115,4 @@ function ExprEditor({ initialExpression = '', placeholder, onChange }: Props) {
   )
 }
 
-export default ExprEditor
+export default ExprInput

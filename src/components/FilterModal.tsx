@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { parseAndTypeCheck, type TypedExpr } from './testExpr'
-import TestEditor from './TestEditor'
+import { parseAndTypeCheck, type TypedExpr } from '../lang/expr'
+import ExprEditor from './ExprEditor'
 
 type Props = {
   initialExpression: string
@@ -27,7 +27,7 @@ function FilterModal({ initialExpression, onApply, onClear, onClose }: Props) {
       <div className="bg-white rounded-lg shadow-xl p-6 w-[520px] max-w-[calc(100vw-2rem)]">
         <h3 className="text-lg font-bold mb-4">絞り込み</h3>
 
-        <TestEditor
+        <ExprEditor
           initialExpression={initialExpression}
           requiredType="b"
           onValidExpr={setValidExpr}
