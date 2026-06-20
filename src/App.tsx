@@ -151,7 +151,7 @@ function App() {
   }
 
   return (
-    <main className="max-w-screen-xl mx-auto px-6 py-4">
+    <>
       {modal !== null && (
         <ColumnModal
           key={modal.kind === 'edit' ? modal.id : 'new'}
@@ -171,7 +171,7 @@ function App() {
           onClose={() => setFilterOpen(false)}
         />
       )}
-      <div className="flex items-center justify-end gap-3 mb-2">
+      <div className="fixed top-0 inset-x-0 z-20 h-11 flex items-center justify-end gap-3 bg-gray-50 border-b border-gray-200 px-4">
         <div className="flex items-center gap-1 text-sm">
           <span className="text-gray-500">並べ替え：</span>
           <select
@@ -203,39 +203,44 @@ function App() {
           絞り込み{filterExpr !== null ? `（${filteredItems.length} / ${items.length}件）` : ''}
         </button>
       </div>
-      <table className="border-collapse border border-gray-300">
-        <thead>
-          <tr>
-            {columns.map(col => (
-              <th
-                key={col.id}
-                className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 select-none"
-                onClick={() => setModal({ kind: 'edit', id: col.id })}
-              >
-                {col.label}
-              </th>
-            ))}
-            <th
-              className="border border-gray-300 px-4 py-2 cursor-pointer hover:bg-gray-50 text-gray-400 select-none"
-              onClick={() => setModal({ kind: 'add' })}
-            >
-              +
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {displayItems.map(item => (
-            <tr key={item.code}>
-              {columns.map(col => (
-                <td key={col.id} className="border border-gray-300 px-4 py-2">
-                  {String(evaluate(col.typed, baseItemEnv(item)))}
-                </td>
+
+      <div className="fixed inset-x-0 top-11 bottom-0 overflow-auto">
+        <div className="px-6 pb-6">
+          <table className="border-collapse border border-gray-300">
+            <thead className="sticky top-0 z-10 shadow-md">
+              <tr>
+                {columns.map(col => (
+                  <th
+                    key={col.id}
+                    className="border border-gray-300 bg-gray-50 px-4 py-2 cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => setModal({ kind: 'edit', id: col.id })}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+                <th
+                  className="border border-gray-300 bg-gray-50 px-4 py-2 cursor-pointer hover:bg-gray-100 text-gray-400 select-none"
+                  onClick={() => setModal({ kind: 'add' })}
+                >
+                  +
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayItems.map(item => (
+                <tr key={item.code}>
+                  {columns.map(col => (
+                    <td key={col.id} className="border border-gray-300 px-4 py-2">
+                      {String(evaluate(col.typed, baseItemEnv(item)))}
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </main>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   )
 }
 
