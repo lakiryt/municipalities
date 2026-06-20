@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { evaluate } from '../lang/evaluate'
 import type { TypedExpr } from '../lang/expr'
-import { buildItems, fetchAreaCsv, baseItemEnv, areaSources } from '../data/municipalities'
+import {
+  buildItems, fetchArea, fetchPopulation,
+  baseItemEnv, areaSources, populationSources,
+  type PopulationRecord,
+} from '../data/municipalities'
 import type { ColumnState, ModalState, SortState } from '../types'
 import FilterBar from './FilterBar'
 import DataTable from './DataTable'
@@ -18,8 +22,6 @@ type Props = {
   initialSort?: SortState | null
 }
 
-const defaultAsOf = areaSources[0].as_of
-
 function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null }: Props) {
   const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
   const [nextId, setNextId] = useState(initialColumns.length)
@@ -29,14 +31,25 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortState, setSortState] = useState<SortState | null>(initialSort)
   const [sortOpen, setSortOpen] = useState(false)
-  const [selectedAreaAsOf, setSelectedAreaAsOf] = useState(defaultAsOf)
-  const [activeItems, setActiveItems] = useState(() => buildItems(new Map()))
   const [dataOpen, setDataOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
+  const [selectedPopPath, setSelectedPopPath] = useState(populationSources[0].path)
+  const [areaMap, setAreaMap] = useState(new Map<string, number>())
+  const [popMap, setPopMap] = useState(new Map<string, PopulationRecord>())
+
   useEffect(() => {
-    fetchAreaCsv(selectedAreaAsOf).then(areaMap => setActiveItems(buildItems(areaMap)))
-  }, [selectedAreaAsOf])
+    const src = areaSources.find(s => s.path === selectedAreaPath)
+    if (src) fetchArea(src).then(setAreaMap)
+  }, [selectedAreaPath])
+
+  useEffect(() => {
+    const src = populationSources.find(s => s.path === selectedPopPath)
+    if (src) fetchPopulation(src).then(setPopMap)
+  }, [selectedPopPath])
+
+  const activeItems = useMemo(() => buildItems(popMap, areaMap), [popMap, areaMap])
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
@@ -104,8 +117,13 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       )}
       {dataOpen && (
         <DataModal
-          selectedAsOf={selectedAreaAsOf}
-          onApply={asOf => { setSelectedAreaAsOf(asOf); setDataOpen(false) }}
+          selectedAreaPath={selectedAreaPath}
+          selectedPopPath={selectedPopPath}
+          onApply={(areaPath, popPath) => {
+            setSelectedAreaPath(areaPath)
+            setSelectedPopPath(popPath)
+            setDataOpen(false)
+          }}
           onClose={() => setDataOpen(false)}
         />
       )}
@@ -115,7 +133,6 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           filteredCount={filteredItems.length}
           filterActive={filterExpr !== null}
           sortState={sortState}
-          selectedAreaAsOf={selectedAreaAsOf}
           onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
           onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
           onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
@@ -128,7 +145,6 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         filteredCount={filteredItems.length}
         filterActive={filterExpr !== null}
         sortState={sortState}
-        selectedAreaAsOf={selectedAreaAsOf}
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
         onDataClick={() => setDataOpen(true)}

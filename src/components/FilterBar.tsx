@@ -7,14 +7,13 @@ type Props = {
   filteredCount: number
   filterActive: boolean
   sortState: SortState | null
-  selectedAreaAsOf: string
   onSortClick: () => void
   onFilterClick: () => void
   onDataClick: () => void
   onMenuClick: () => void
 }
 
-function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, selectedAreaAsOf, onSortClick, onFilterClick, onDataClick, onMenuClick }: Props) {
+function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onMenuClick }: Props) {
   const btnBase = 'px-3 py-1 rounded text-sm border'
   const btnActive = 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'
@@ -26,7 +25,7 @@ function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, 
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-3">
           <button className={`${btnBase} ${btnInactive}`} onClick={onDataClick}>
-            面積: {selectedAreaAsOf}
+            データ選択
           </button>
           <button className={`${btnBase} ${sortState ? btnActive : btnInactive}`} onClick={onSortClick}>
             並べ替え

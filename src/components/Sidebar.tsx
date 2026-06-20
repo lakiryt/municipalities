@@ -5,14 +5,13 @@ type Props = {
   filteredCount: number
   filterActive: boolean
   sortState: SortState | null
-  selectedAreaAsOf: string
   onSortClick: () => void
   onFilterClick: () => void
   onDataClick: () => void
   onClose: () => void
 }
 
-function Sidebar({ totalCount, filteredCount, filterActive, sortState, selectedAreaAsOf, onSortClick, onFilterClick, onDataClick, onClose }: Props) {
+function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onClose }: Props) {
   const btnBase = 'w-full px-3 py-2 rounded text-sm border text-left'
   const btnActive = 'bg-blue-600 text-white border-blue-600'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'
@@ -28,7 +27,7 @@ function Sidebar({ totalCount, filteredCount, filterActive, sortState, selectedA
 
         <div className="md:hidden flex flex-col gap-2 p-4">
           <button className={`${btnBase} ${btnInactive}`} onClick={onDataClick}>
-            面積: {selectedAreaAsOf}
+            データ選択
           </button>
           <button className={`${btnBase} ${sortState ? btnActive : btnInactive}`} onClick={onSortClick}>
             並べ替え

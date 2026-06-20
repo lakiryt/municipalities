@@ -1,13 +1,11 @@
 import dantai_codes from '@/assets/dantai_code_20240101.json'
 import code_todofuken from '@/assets/code_todofuken_20240101.json'
-import jumin from '@/assets/jumin2025.json'
 import meta from '@/assets/meta.json'
 import { parseAndTypeCheck } from '../lang/expr'
 import type { Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
 
 type DantaiCodeEntry = (typeof dantai_codes)[number]
-type JuminEntry = (typeof jumin)[number]
 
 export type BaseItem = {
   code: string
@@ -26,6 +24,9 @@ export type BaseItem = {
   area: number
 }
 
+export type PopulationRecord = { total: number; male: number; female: number }
+export type PopulationMap = Map<string, PopulationRecord>
+
 // ── Area data ─────────────────────────────────────────────────────────────────
 
 export const areaSources = meta.area
@@ -36,10 +37,35 @@ export const parseAreaCsv = (raw: string): Map<string, number> =>
     return [code, Number(area)]
   }))
 
-export const fetchAreaCsv = (asOf: string): Promise<Map<string, number>> =>
-  fetch(`/areas/area${asOf.replace(/-/g, '')}.csv`)
+export const fetchArea = (src: { path: string }): Promise<Map<string, number>> =>
+  fetch(`/${src.path}`)
     .then(r => r.text())
     .then(parseAreaCsv)
+
+// ── Population data ───────────────────────────────────────────────────────────
+
+export const populationSources = meta.population
+
+type JuminEntry = { code: string; total: string; male: string; female: string }
+
+const parseJuminJson = (raw: string): PopulationMap => {
+  const entries: JuminEntry[] = JSON.parse(raw)
+  return new Map(entries.map(e => [
+    e.code.slice(0, -1),
+    { total: Number(e.total), male: Number(e.male), female: Number(e.female) },
+  ]))
+}
+
+const parseKokuseiCsv = (raw: string): PopulationMap =>
+  new Map(raw.trim().split('\n').map((line): [string, PopulationRecord] => {
+    const [code, total, male, female] = line.split(',')
+    return [code, { total: Number(total), male: Number(male), female: Number(female) }]
+  }))
+
+export const fetchPopulation = (src: { path: string }): Promise<PopulationMap> =>
+  fetch(`/${src.path}`)
+    .then(r => r.text())
+    .then(raw => src.path.endsWith('.json') ? parseJuminJson(raw) : parseKokuseiCsv(raw))
 
 // ── Municipality data ─────────────────────────────────────────────────────────
 
@@ -49,33 +75,19 @@ const getPrefecture = (code: string) => {
   return { ...prefecture, code }
 }
 
-const innerJoinSortedArraysBy = <K extends string | number>(key: (item: any) => K) =>
-  <A extends object, B extends object>(as: A[], bs: B[]): (A & B)[] => {
-    if (as.length === 0 || bs.length === 0) return []
-    if (key(as[0]) === key(bs[0]))
-      return [{ ...as[0], ...bs[0] }, ...innerJoinSortedArraysBy(key)(as.slice(1), bs.slice(1))]
-    if (key(as[0]) < key(bs[0]))
-      return innerJoinSortedArraysBy(key)(as.slice(1), bs)
-    return innerJoinSortedArraysBy(key)(as, bs.slice(1))
-  }
-
-const _joinedEntries = innerJoinSortedArraysBy(
-  (item: DantaiCodeEntry | JuminEntry) => item.code
-)(dantai_codes, jumin)
-
-export const buildItems = (areaMap: Map<string, number>): BaseItem[] =>
-  _joinedEntries.map(item => ({
-    code: item.code,
-    kanji: item.kanji,
-    kana: item.kana,
-    prefecture: getPrefecture(item.code),
-    population: {
-      total: Number(item.total) || 0,
-      male:  Number(item.male)  || 0,
-      female: Number(item.female) || 0,
-    },
-    area: areaMap.get(item.code.slice(0, -1)) ?? 0,
-  }))
+export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>): BaseItem[] =>
+  (dantai_codes as DantaiCodeEntry[]).map(item => {
+    const code5 = item.code.slice(0, -1)
+    const pop = popMap.get(code5) ?? { total: 0, male: 0, female: 0 }
+    return {
+      code: item.code,
+      kanji: item.kanji,
+      kana: item.kana,
+      prefecture: getPrefecture(item.code),
+      population: pop,
+      area: areaMap.get(code5) ?? 0,
+    }
+  })
 
 export const baseItemEnv = (item: BaseItem): Env => ({
   numvars: {
@@ -100,6 +112,7 @@ const _dummy: BaseItem = {
   population: { total: 0, male: 0, female: 0 },
   area: 0,
 }
+
 export const prefectures = code_todofuken
 
 export const varCompletions: string[] = [
