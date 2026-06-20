@@ -7,6 +7,7 @@ import FilterBar from './FilterBar'
 import DataTable from './DataTable'
 import ColumnModal from './ColumnModal'
 import FilterModal from './FilterModal'
+import SortModal from './SortModal'
 
 type Props = {
   title?: string
@@ -23,26 +24,21 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [filterExpression, setFilterExpression] = useState(initialFilter?.expression ?? '')
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortState, setSortState] = useState<SortState | null>(initialSort)
+  const [sortOpen, setSortOpen] = useState(false)
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
     : null
 
-  const numericColumns = columns.filter(col => col.typed.type === 'n')
-
   const filteredItems = filterExpr !== null
     ? items.filter(item => evaluate(filterExpr, baseItemEnv(item)) === true)
     : items
 
-  const sortColumn = sortState !== null
-    ? numericColumns.find(c => c.id === sortState.columnId) ?? null
-    : null
-
-  const displayItems = sortColumn !== null
+  const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortColumn.typed, baseItemEnv(a)) as number
-        const vb = evaluate(sortColumn.typed, baseItemEnv(b)) as number
-        return sortState!.direction === 'asc' ? va - vb : vb - va
+        const va = evaluate(sortState.typed, baseItemEnv(a)) as number
+        const vb = evaluate(sortState.typed, baseItemEnv(b)) as number
+        return sortState.direction === 'asc' ? va - vb : vb - va
       })
     : filteredItems
 
@@ -85,14 +81,22 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onClose={() => setFilterOpen(false)}
         />
       )}
+      {sortOpen && (
+        <SortModal
+          initialExpression={sortState?.expression ?? ''}
+          initialDirection={sortState?.direction ?? 'desc'}
+          onApply={(expression, typed, direction) => { setSortState({ expression, typed, direction }); setSortOpen(false) }}
+          onClear={() => { setSortState(null); setSortOpen(false) }}
+          onClose={() => setSortOpen(false)}
+        />
+      )}
       <FilterBar
         title={title}
-        numericColumns={numericColumns}
         totalCount={items.length}
         filteredCount={filteredItems.length}
         filterActive={filterExpr !== null}
         sortState={sortState}
-        onSortChange={setSortState}
+        onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
       />
       <DataTable

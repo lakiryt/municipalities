@@ -12,7 +12,8 @@ export type ModalState =
   | { kind: 'add' }
 
 export type SortState = {
-  columnId: number
+  expression: string
+  typed: TypedExpr
   direction: 'asc' | 'desc'
 }
 
