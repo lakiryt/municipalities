@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { ColumnState, SortState } from '../types'
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
 function FilterBar({ title, numericColumns, totalCount, filteredCount, filterActive, sortState, onSortChange, onFilterClick }: Props) {
   return (
     <div className="fixed top-0 inset-x-0 z-20 h-11 flex items-center gap-3 bg-gray-50 border-b border-gray-200 px-4">
+      <Link to="/"><img src="/favicon.svg" alt="home" className="h-6 w-6" /></Link>
       <span className="font-semibold text-sm truncate">{title}</span>
       <div className="ml-auto flex items-center gap-3">
         <div className="flex items-center gap-1 text-sm">
