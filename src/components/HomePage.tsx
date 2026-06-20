@@ -10,6 +10,7 @@ const rankings: { path: string; config: { title: string } }[] = [
 function HomePage() {
   return (
     <div className="max-w-lg mx-auto px-6 py-16">
+      <title>日本の自治体データ</title>
       <h1 className="text-3xl font-bold mb-2">日本の自治体データ</h1>
       <p className="text-gray-500 mb-10">人口・面積・その他の統計</p>
 

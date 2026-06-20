@@ -9,12 +9,13 @@ import ColumnModal from './ColumnModal'
 import FilterModal from './FilterModal'
 
 type Props = {
+  title?: string
   initialColumns: ColumnState[]
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
 }
 
-function MuniTable({ initialColumns, initialFilter = null, initialSort = null }: Props) {
+function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null }: Props) {
   const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
   const [nextId, setNextId] = useState(initialColumns.length)
   const [modal, setModal] = useState<ModalState | null>(null)
@@ -85,6 +86,7 @@ function MuniTable({ initialColumns, initialFilter = null, initialSort = null }:
         />
       )}
       <FilterBar
+        title={title}
         numericColumns={numericColumns}
         totalCount={items.length}
         filteredCount={filteredItems.length}

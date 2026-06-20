@@ -23,8 +23,9 @@ function RankingPage({ config }: Props) {
 
   return (
     <>
-      <h1 className="text-xl font-bold px-4 py-3">{config.title}</h1>
+      <title>{config.title}</title>
       <MuniTable
+        title={config.title}
         initialColumns={columns}
         initialFilter={initialFilter}
         initialSort={initialSort}
