@@ -1,0 +1,17 @@
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import App from './App'
+import HomePage from './components/HomePage'
+import RankingPage from './components/RankingPage'
+import hokkaidoDensity from './rankings/hokkaidoDensity'
+import populationOver500k from './rankings/populationOver500k'
+
+const router = createBrowserRouter([
+  { path: '/',                                   element: <HomePage /> },
+  { path: '/explore',                            element: <App /> },
+  { path: '/rankings/hokkaido/density',          element: <RankingPage config={hokkaidoDensity} /> },
+  { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
+])
+
+export function Router() {
+  return <RouterProvider router={router} />
+}

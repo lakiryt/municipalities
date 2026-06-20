@@ -15,3 +15,11 @@ export type SortState = {
   columnId: number
   direction: 'asc' | 'desc'
 }
+
+export type RankingConfig = {
+  title: string
+  columns: { label: string; expression: string }[]
+  filterExpression?: string
+  sortExpression: string
+  sortDirection: 'asc' | 'desc'
+}
