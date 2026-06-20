@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react'
+import { varCompletions } from '@/data/municipalities'
 
 const COMPLETIONS = [
   'AND(', 'OR(', 'NOT(', 'LEQ(', 'EQ(', 'SUM(', 'MULT(', 'NEG(', 'INV(',
-  '#total', '#male', '#female',
-  '$code', '$kanji', '$kana', '$prefcode', '$prefkanji', '$prefkana',
+  ...varCompletions,
 ]
 
 // The current token is everything between the last delimiter and the cursor.

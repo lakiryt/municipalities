@@ -1,6 +1,7 @@
 import dantai_codes from '@/assets/dantai_code_20240101.json'
 import code_todofuken from '@/assets/code_todofuken_20240101.json'
 import jumin from '@/assets/jumin2025.json'
+import areasCsv from '@/assets/areas/area20260101.csv?raw'
 import { parseAndTypeCheck } from '../lang/expr'
 import type { Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
@@ -22,7 +23,15 @@ export type BaseItem = {
     male: number
     female: number
   }
+  area: number
 }
+
+const areaMap = new Map<string, number>(
+  areasCsv.trim().split('\n').map((line): [string, number] => {
+    const [code, area] = line.split(',')
+    return [code, Number(area)]
+  })
+)
 
 const getPrefecture = (code: string) => {
   const prefecturePrefix = code.slice(0, 2)
@@ -50,13 +59,15 @@ const toBaseItem = (item: DantaiCodeEntry & JuminEntry): BaseItem => ({
     male: Number(item.male) || 0,
     female: Number(item.female) || 0,
   },
+  area: areaMap.get(item.code.slice(0, -1)) ?? 0,
 })
 
 export const baseItemEnv = (item: BaseItem): Env => ({
   numvars: {
-    total:  item.population.total,
-    male:   item.population.male,
-    female: item.population.female,
+    totalpop:  item.population.total,
+    malepop:   item.population.male,
+    femalepop: item.population.female,
+    area:   item.area,
   },
   strvars: {
     code:      item.code,
@@ -68,6 +79,17 @@ export const baseItemEnv = (item: BaseItem): Env => ({
   },
 })
 
+const _dummy: BaseItem = {
+  code: '', kanji: '', kana: '',
+  prefecture: { code: '' },
+  population: { total: 0, male: 0, female: 0 },
+  area: 0,
+}
+export const varCompletions: string[] = [
+  ...Object.keys(baseItemEnv(_dummy).numvars).map(k => `#${k}`),
+  ...Object.keys(baseItemEnv(_dummy).strvars).map(k => `$${k}`),
+]
+
 export const items: BaseItem[] = innerJoinSortedArraysBy(
   (item: DantaiCodeEntry | JuminEntry) => item.code
 )(dantai_codes, jumin).map(toBaseItem)
@@ -76,6 +98,6 @@ export const initialColumns: ColumnState[] = [
   { label: 'コード',           expression: '$code' },
   { label: '都道府県名',       expression: '$prefkanji' },
   { label: '自治体名',         expression: '$kanji' },
-  { label: '自治体名（カナ）', expression: '$kana' },
-  { label: '総人口',           expression: '#total' },
+  { label: '総人口',           expression: '#totalpop' },
+  { label: '面積',             expression: '#area' },
 ].map((col, i) => ({ id: i, ...col, typed: parseAndTypeCheck(col.expression) }))
