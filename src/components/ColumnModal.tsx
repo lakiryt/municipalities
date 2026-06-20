@@ -8,10 +8,11 @@ type Props = {
   isNew: boolean
   onSave: (label: string, expression: string, typed: TypedExpr) => void
   onDelete?: () => void
+  onSetSort?: (expression: string, typed: TypedExpr) => void
   onClose: () => void
 }
 
-function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete, onClose }: Props) {
+function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete, onSetSort, onClose }: Props) {
   const [label, setLabel] = useState(initialLabel)
   const [expression, setExpression] = useState(initialExpression)
 
@@ -48,13 +49,22 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
         />
 
         <div className="flex justify-between mt-5">
-          <div>
+          <div className="flex gap-2">
             {onDelete && (
               <button
                 className="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
                 onClick={onDelete}
               >
                 削除
+              </button>
+            )}
+            {onSetSort && (
+              <button
+                className="px-3 py-1 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={validExpr === null}
+                onClick={() => { if (validExpr) onSetSort(expression, validExpr) }}
+              >
+                この列で並び替える
               </button>
             )}
           </div>

@@ -98,6 +98,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           isNew={modal.kind === 'add'}
           onSave={handleSave}
           onDelete={modal.kind === 'edit' ? () => handleDelete(modal.id) : undefined}
+          onSetSort={(expression, typed) => { setSortState({ expression, typed, direction: 'desc' }); setModal(null) }}
           onClose={() => setModal(null)}
         />
       )}
