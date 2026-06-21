@@ -113,7 +113,7 @@ function SearchPage() {
   useEffect(() => { fetchArea(areaSources[0]).then(setAreaMap) }, [])
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
 
-  const [panelOpen,     setPanelOpen]     = useState(() => window.innerWidth >= 768)
+  const [panelOpen,     setPanelOpen]     = useState(true)
 
   const [kana,          setKana]          = useState('')
   const [pref,          setPref]          = useState('')
