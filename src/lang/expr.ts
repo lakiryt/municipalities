@@ -11,26 +11,29 @@ type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoo
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
 export type NumLiteral = { kind: 'literal'; value: number }
-export type NumVar     = { kind: 'numvar';     name: string }
-export type NumSum     = { kind: 'SUM';  args: NumExpr[] }
-export type NumMult    = { kind: 'MULT'; args: NumExpr[] }
-export type NumNeg     = { kind: 'NEG';   arg: NumExpr }
-export type NumInv     = { kind: 'INV';   arg: NumExpr }
-export type NumRound   = { kind: 'ROUND'; arg: NumExpr; digits: NumExpr }
-export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv | NumRound
+export type NumVar     = { kind: 'numvar';  name: string }
+export type NumSum     = { kind: 'SUM';     args: NumExpr[] }
+export type NumMult    = { kind: 'MULT';    args: NumExpr[] }
+export type NumNeg     = { kind: 'NEG';     arg: NumExpr }
+export type NumInv     = { kind: 'INV';     arg: NumExpr }
+export type NumRound   = { kind: 'ROUND';   arg: NumExpr; digits: NumExpr }
+export type NumIf      = { kind: 'IF'; cond: BoolExpr; then: NumExpr;  else_: NumExpr }
+export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv | NumRound | NumIf
 
-export type BoolAnd  = { kind: 'AND'; args: BoolExpr[] }
-export type BoolOr   = { kind: 'OR';  args: BoolExpr[] }
-export type BoolNot  = { kind: 'NOT'; arg: BoolExpr }
-export type BoolLeq  = { kind: 'LEQ'; left: NumExpr; right: NumExpr }
-export type BoolEq   = { kind: 'EQ';  left: TypedExpr; right: TypedExpr }
+export type BoolAnd  = { kind: 'AND';     args: BoolExpr[] }
+export type BoolOr   = { kind: 'OR';      args: BoolExpr[] }
+export type BoolNot  = { kind: 'NOT';     arg: BoolExpr }
+export type BoolLeq  = { kind: 'LEQ';     left: NumExpr;   right: NumExpr }
+export type BoolEq   = { kind: 'EQ';      left: TypedExpr; right: TypedExpr }
 export type BoolVar  = { kind: 'boolvar'; name: string }
-export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar
+export type BoolIf   = { kind: 'IF'; cond: BoolExpr; then: BoolExpr; else_: BoolExpr }
+export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar | BoolIf
 
-export type StrLiteral = { kind: 'strlit';  value: string }
-export type StrVar     = { kind: 'strvar';  name: string }
-export type StrSubstr  = { kind: 'SUBSTR';  str: StrExpr; len: NumExpr }
-export type StrExpr    = StrLiteral | StrVar | StrSubstr
+export type StrLiteral = { kind: 'strlit'; value: string }
+export type StrVar     = { kind: 'strvar'; name: string }
+export type StrSubstr  = { kind: 'SUBSTR'; str: StrExpr;   len: NumExpr }
+export type StrIf      = { kind: 'IF'; cond: BoolExpr; then: StrExpr;  else_: StrExpr }
+export type StrExpr    = StrLiteral | StrVar | StrSubstr | StrIf
 
 export type TypedNum  = { type: 'n'; expr: NumExpr }
 export type TypedBool = { type: 'b'; expr: BoolExpr }
@@ -309,6 +312,21 @@ function typeCheck(raw: RawExpr): TypedExpr {
       const str = requireStr(args[0], 'SUBSTRの1番目の引数')
       const len = requireNum(args[1], 'SUBSTRの2番目の引数')
       return { type: 's', expr: { kind: 'SUBSTR', str, len } }
+    }
+    case 'IF': {
+      arity(3)
+      const cond  = requireBool(args[0], 'IFの1番目の引数')
+      const then_ = typeCheck(args[1])
+      const else_ = typeCheck(args[2])
+      if (then_.type !== else_.type)
+        throw new TypeCheckError(`IF: 第2・第3引数の型が一致していません（真の場合: ${typeLabel(then_)}、偽の場合: ${typeLabel(else_)}）`)
+      if (then_.type === 'n' && else_.type === 'n')
+        return { type: 'n', expr: { kind: 'IF', cond, then: then_.expr, else_: else_.expr } }
+      if (then_.type === 'b' && else_.type === 'b')
+        return { type: 'b', expr: { kind: 'IF', cond, then: then_.expr, else_: else_.expr } }
+      if (then_.type === 's' && else_.type === 's')
+        return { type: 's', expr: { kind: 'IF', cond, then: then_.expr, else_: else_.expr } }
+      throw new TypeCheckError('IF: 型エラー')
     }
     default:
       throw new TypeCheckError(`「${name}」という関数名はありません`)

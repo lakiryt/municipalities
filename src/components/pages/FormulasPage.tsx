@@ -12,7 +12,8 @@ const functions = [
   { sig: 'NEG(n)',     ret: 'n', desc: '符号反転（× −1）' },
   { sig: 'INV(n)',     ret: 'n', desc: '逆数（1 ÷ n）' },
   { sig: 'ROUND(n, d)',  ret: 'n', desc: '小数点以下 d 桁に丸め（d < 0 で整数位）' },
-  { sig: 'SUBSTR(s, n)', ret: 's', desc: 'n ≥ 0: 先頭 n 文字、n < 0: 末尾 |n| 文字' },
+  { sig: 'SUBSTR(s, n)',    ret: 's', desc: 'n ≥ 0: 先頭 n 文字、n < 0: 末尾 |n| 文字' },
+  { sig: 'IF(b, a, a)',    ret: 'a', desc: '条件が真なら第2引数、偽なら第3引数（両引数は同じ型）' },
 ]
 
 const numVars = [

@@ -15,6 +15,7 @@ function evaluateNum(expr: NumExpr, env: Env): number {
     case 'NEG':     return -evaluateNum(expr.arg, env)
     case 'INV':     return 1 / evaluateNum(expr.arg, env)
     case 'ROUND':   { const f = Math.pow(10, evaluateNum(expr.digits, env)); return Math.round(evaluateNum(expr.arg, env) * f) / f }
+    case 'IF':      return evaluateBool(expr.cond, env) ? evaluateNum(expr.then, env) : evaluateNum(expr.else_, env)
   }
 }
 
@@ -26,15 +27,21 @@ function evaluateBool(expr: BoolExpr, env: Env): boolean {
     case 'LEQ':     return evaluateNum(expr.left, env) <= evaluateNum(expr.right, env)
     case 'EQ':      return evaluate(expr.left, env) === evaluate(expr.right, env)
     case 'boolvar': return (env.boolvars[expr.name] as boolean | undefined) ?? false
+    case 'IF':      return evaluateBool(expr.cond, env) ? evaluateBool(expr.then, env) : evaluateBool(expr.else_, env)
   }
 }
 
 function evaluateStr(expr: StrExpr, env: Env): string {
-  if (expr.kind === 'strlit') return expr.value
-  if (expr.kind === 'strvar') return (env.strvars[expr.name] as string | undefined) ?? ''
-  const s = evaluateStr(expr.str, env)
-  const n = Math.trunc(evaluateNum(expr.len, env))
-  return n >= 0 ? s.slice(0, n) : s.slice(n)
+  switch (expr.kind) {
+    case 'strlit': return expr.value
+    case 'strvar': return (env.strvars[expr.name] as string | undefined) ?? ''
+    case 'SUBSTR': {
+      const s = evaluateStr(expr.str, env)
+      const n = Math.trunc(evaluateNum(expr.len, env))
+      return n >= 0 ? s.slice(0, n) : s.slice(n)
+    }
+    case 'IF': return evaluateBool(expr.cond, env) ? evaluateStr(expr.then, env) : evaluateStr(expr.else_, env)
+  }
 }
 
 export function evaluate(expr: TypedExpr, env: Env): number | boolean | string {
