@@ -5,6 +5,7 @@ import RankingPage from './components/pages/RankingPage'
 import DensityPage from './components/pages/DensityPage'
 import CityPopulationPage from './components/pages/CityPopulationPage'
 import FormulasPage from './components/pages/FormulasPage'
+import SearchPage from './components/pages/SearchPage'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
 
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/formulas',                           element: <FormulasPage /> },
+  { path: '/search',                             element: <SearchPage /> },
 ])
 
 export function Router() {

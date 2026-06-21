@@ -104,6 +104,16 @@ export const fetchDesignations = (): Promise<DesignationSets> =>
       tokurei: new Set(data.tokurei),
     }))
 
+// ── Kana normalization ────────────────────────────────────────────────────────
+
+// Converts any mix of hiragana / half-width katakana / full-width katakana to
+// full-width katakana, so comparisons work regardless of input method.
+// NFKC handles half-width katakana including combining dakuten (ﾀﾞ → ダ).
+export const normalizeKana = (s: string): string =>
+  s.normalize('NFKC').replace(/[ぁ-ゖ]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) + 0x60)
+  )
+
 // ── Municipality data ─────────────────────────────────────────────────────────
 
 const getPrefecture = (code: string) => {
@@ -133,7 +143,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets): Env
   const strvars: Record<string, string> = {
     code:      item.code,
     kanji:     item.kanji,
-    kana:      item.kana,
+    kana:      normalizeKana(item.kana),
     prefcode:  item.prefecture.code,
     prefkanji: item.prefecture.kanji ?? '',
     prefkana:  item.prefecture.kana ?? '',
