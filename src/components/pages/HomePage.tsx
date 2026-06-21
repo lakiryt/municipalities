@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { prefectures } from '../../data/municipalities'
 import populationOver500k from '../../rankings/populationOver500k'
 import { populationConfig } from '../../rankings/population'
+import { cityPopulationConfig } from '../../rankings/cityPopulation'
 
 function HomePage() {
   return (
@@ -16,6 +17,7 @@ function HomePage() {
           <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">全国の自治体 — 人口密度ランキング</Link></li>
           <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
           <li><Link to="/list/all/population" className="text-blue-600 hover:underline">{populationConfig.title}</Link></li>
+          <li><Link to="/rankings/all/cities" className="text-blue-600 hover:underline">{cityPopulationConfig(null).title}</Link></li>
         </ul>
       </section>
 
@@ -26,6 +28,21 @@ function HomePage() {
             <Link
               key={pref.code}
               to={`/rankings/${pref.romanized}/density`}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              {pref.kanji}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別市の人口ランキング</h2>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {prefectures.map(pref => (
+            <Link
+              key={pref.code}
+              to={`/rankings/${pref.romanized}/cities`}
               className="text-blue-600 hover:underline text-sm"
             >
               {pref.kanji}
