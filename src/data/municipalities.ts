@@ -84,7 +84,7 @@ const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: parseAnd
 // ── Designation data ──────────────────────────────────────────────────────────
 
 export type DesignationSets = {
-  serei:   Set<string>
+  seirei:  Set<string>
   chukaku: Set<string>
   tokurei: Set<string>
 }
@@ -99,7 +99,7 @@ export const fetchDesignations = (): Promise<DesignationSets> =>
   fetch('/designation/designations2022.json')
     .then(r => r.json() as Promise<DesignationsJson>)
     .then(data => ({
-      serei:   new Set(data.seirei.map(e => e.code)),
+      seirei:  new Set(data.seirei.map(e => e.code)),
       chukaku: new Set(data.chukaku),
       tokurei: new Set(data.tokurei),
     }))
@@ -139,7 +139,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets): Env
     prefkana:  item.prefecture.kana ?? '',
   }
   const boolvars: Record<string, boolean> = {
-    serei:   designations?.serei.has(item.code)   ?? false,
+    seirei:  designations?.seirei.has(item.code)  ?? false,
     chukaku: designations?.chukaku.has(item.code) ?? false,
     tokurei: designations?.tokurei.has(item.code) ?? false,
   }
@@ -164,7 +164,7 @@ const _dummy: BaseItem = {
 export const prefectures = code_todofuken
 
 const _dummyDesignations: DesignationSets = {
-  serei: new Set(), chukaku: new Set(), tokurei: new Set(),
+  seirei: new Set(), chukaku: new Set(), tokurei: new Set(),
 }
 
 export const varCompletions: string[] = [

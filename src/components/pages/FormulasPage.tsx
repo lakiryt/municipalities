@@ -41,7 +41,7 @@ const strVars = [
 ]
 
 const boolVars = [
-  { name: '&serei',   desc: '政令指定都市' },
+  { name: '&seirei',  desc: '政令指定都市' },
   { name: '&chukaku', desc: '中核市' },
   { name: '&tokurei', desc: '施行時特例市' },
 ]

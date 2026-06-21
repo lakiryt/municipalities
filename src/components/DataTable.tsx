@@ -1,15 +1,16 @@
 import { evaluate } from '../lang/evaluate'
-import { baseItemEnv, type BaseItem } from '../data/municipalities'
+import { baseItemEnv, type BaseItem, type DesignationSets } from '../data/municipalities'
 import type { ColumnState } from '../types'
 
 type Props = {
   columns: ColumnState[]
   displayItems: BaseItem[]
+  designations: DesignationSets | undefined
   onEditColumn: (id: number) => void
   onAddColumn: () => void
 }
 
-function DataTable({ columns, displayItems, onEditColumn, onAddColumn }: Props) {
+function DataTable({ columns, displayItems, designations, onEditColumn, onAddColumn }: Props) {
   return (
     <div className="fixed inset-x-0 top-11 bottom-0 overflow-auto">
       <div className="pb-6 flex justify-center min-w-max">
@@ -40,7 +41,7 @@ function DataTable({ columns, displayItems, onEditColumn, onAddColumn }: Props) 
                 <td className="border border-gray-300 px-4 py-2 text-right text-gray-400 tabular-nums">{i + 1}</td>
                 {columns.map(col => (
                   <td key={col.id} className="border border-gray-300 px-4 py-2">
-                    {(() => { const v = evaluate(col.typed, baseItemEnv(item)); return typeof v === 'number' && isNaN(v) ? '—' : String(v) })()}
+                    {(() => { const v = evaluate(col.typed, baseItemEnv(item, designations)); return typeof v === 'number' && isNaN(v) ? '—' : String(v) })()}
                   </td>
                 ))}
               </tr>

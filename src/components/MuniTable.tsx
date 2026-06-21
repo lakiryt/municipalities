@@ -64,8 +64,8 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortState.typed, baseItemEnv(a)) as number
-        const vb = evaluate(sortState.typed, baseItemEnv(b)) as number
+        const va = evaluate(sortState.typed, baseItemEnv(a, designations)) as number
+        const vb = evaluate(sortState.typed, baseItemEnv(b, designations)) as number
         if (isNaN(va) && isNaN(vb)) return 0
         if (isNaN(va)) return 1
         if (isNaN(vb)) return -1
@@ -160,6 +160,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       <DataTable
         columns={columns}
         displayItems={displayItems}
+        designations={designations}
         onEditColumn={id => setModal({ kind: 'edit', id })}
         onAddColumn={() => setModal({ kind: 'add' })}
       />
