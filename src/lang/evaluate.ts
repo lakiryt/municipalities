@@ -30,10 +30,11 @@ function evaluateBool(expr: BoolExpr, env: Env): boolean {
 }
 
 function evaluateStr(expr: StrExpr, env: Env): string {
-  switch (expr.kind) {
-    case 'strlit': return expr.value
-    case 'strvar': return (env.strvars[expr.name] as string | undefined) ?? ''
-  }
+  if (expr.kind === 'strlit') return expr.value
+  if (expr.kind === 'strvar') return (env.strvars[expr.name] as string | undefined) ?? ''
+  const s = evaluateStr(expr.str, env)
+  const n = Math.trunc(evaluateNum(expr.len, env))
+  return n >= 0 ? s.slice(0, n) : s.slice(n)
 }
 
 export function evaluate(expr: TypedExpr, env: Env): number | boolean | string {

@@ -27,9 +27,10 @@ export type BoolEq   = { kind: 'EQ';  left: TypedExpr; right: TypedExpr }
 export type BoolVar  = { kind: 'boolvar'; name: string }
 export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar
 
-export type StrLiteral = { kind: 'strlit'; value: string }
-export type StrVar     = { kind: 'strvar'; name: string }
-export type StrExpr    = StrLiteral | StrVar
+export type StrLiteral = { kind: 'strlit';  value: string }
+export type StrVar     = { kind: 'strvar';  name: string }
+export type StrSubstr  = { kind: 'SUBSTR';  str: StrExpr; len: NumExpr }
+export type StrExpr    = StrLiteral | StrVar | StrSubstr
 
 export type TypedNum  = { type: 'n'; expr: NumExpr }
 export type TypedBool = { type: 'b'; expr: BoolExpr }
@@ -238,6 +239,12 @@ function requireBool(raw: RawExpr, context: string): BoolExpr {
   return t.expr
 }
 
+function requireStr(raw: RawExpr, context: string): StrExpr {
+  const t = typeCheck(raw)
+  if (t.type !== 's') throw new TypeCheckError(`${context}: 文字列であるべきところ、${typeLabel(t)}になっています`)
+  return t.expr
+}
+
 function typeCheck(raw: RawExpr): TypedExpr {
   if (raw.kind === 'literal') {
     return { type: 'n', expr: { kind: 'literal', value: raw.value } }
@@ -297,6 +304,12 @@ function typeCheck(raw: RawExpr): TypedExpr {
     case 'ROUND':
       arity(2)
       return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], 'ROUNDの1番目の引数'), digits: requireNum(args[1], 'ROUNDの2番目の引数') } }
+    case 'SUBSTR': {
+      arity(2)
+      const str = requireStr(args[0], 'SUBSTRの1番目の引数')
+      const len = requireNum(args[1], 'SUBSTRの2番目の引数')
+      return { type: 's', expr: { kind: 'SUBSTR', str, len } }
+    }
     default:
       throw new TypeCheckError(`「${name}」という関数名はありません`)
   }
