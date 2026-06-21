@@ -39,6 +39,12 @@ const strVars = [
   { name: '$prefkana',  desc: '都道府県名（仮名）' },
 ]
 
+const boolVars = [
+  { name: '&serei',   desc: '政令指定都市' },
+  { name: '&chukaku', desc: '中核市' },
+  { name: '&tokurei', desc: '施行時特例市' },
+]
+
 
 const typeLabel: Record<string, string> = { n: '数値', b: '真偽値', s: '文字列', a: '任意' }
 
@@ -112,6 +118,19 @@ function FormulasPage() {
           <table className="w-full text-sm">
             <tbody>
               {strVars.map(v => (
+                <tr key={v.name} className="border-b border-gray-100 last:border-0">
+                  <td className="py-1.5 pr-6 font-mono text-gray-700 whitespace-nowrap">{v.name}</td>
+                  <td className="py-1.5 text-gray-500">{v.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+
+        <Section title="真偽値変数">
+          <table className="w-full text-sm">
+            <tbody>
+              {boolVars.map(v => (
                 <tr key={v.name} className="border-b border-gray-100 last:border-0">
                   <td className="py-1.5 pr-6 font-mono text-gray-700 whitespace-nowrap">{v.name}</td>
                   <td className="py-1.5 text-gray-500">{v.desc}</td>

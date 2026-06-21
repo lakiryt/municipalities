@@ -109,4 +109,13 @@
             "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
         }
     ]
+    ,
+    "designation": [
+        {
+            "name": "指定都市一覧",
+            "path": "designation/designations2022.json",
+            "as_of": "2022-07-05",
+            "source": "https://www.soumu.go.jp/main_sosiki/jichi_gyousei/bunken/shitei_toshi-ichiran.html"
+        }
+    ]
 }

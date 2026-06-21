@@ -3,6 +3,7 @@ import type { NumExpr, BoolExpr, StrExpr, TypedExpr } from './expr'
 export type Env = {
   numvars: Record<string, number>
   strvars: Record<string, string>
+  boolvars: Record<string, boolean>
 }
 
 function evaluateNum(expr: NumExpr, env: Env): number {
@@ -19,11 +20,12 @@ function evaluateNum(expr: NumExpr, env: Env): number {
 
 function evaluateBool(expr: BoolExpr, env: Env): boolean {
   switch (expr.kind) {
-    case 'AND': return expr.args.every(a => evaluateBool(a, env))
-    case 'OR':  return expr.args.some(a => evaluateBool(a, env))
-    case 'NOT': return !evaluateBool(expr.arg, env)
-    case 'LEQ': return evaluateNum(expr.left, env) <= evaluateNum(expr.right, env)
-    case 'EQ':  return evaluate(expr.left, env) === evaluate(expr.right, env)
+    case 'AND':     return expr.args.every(a => evaluateBool(a, env))
+    case 'OR':      return expr.args.some(a => evaluateBool(a, env))
+    case 'NOT':     return !evaluateBool(expr.arg, env)
+    case 'LEQ':     return evaluateNum(expr.left, env) <= evaluateNum(expr.right, env)
+    case 'EQ':      return evaluate(expr.left, env) === evaluate(expr.right, env)
+    case 'boolvar': return (env.boolvars[expr.name] as boolean | undefined) ?? false
   }
 }
 

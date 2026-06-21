@@ -5,7 +5,8 @@ type RawLiteral = { kind: 'literal'; value: number }
 type RawVar     = { kind: 'numvar';     name: string }
 type RawStrLit  = { kind: 'strlit';  value: string }
 type RawStrVar  = { kind: 'strvar';  name: string }
-type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar
+type RawBoolVar = { kind: 'boolvar'; name: string }
+type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoolVar
 
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,8 @@ export type BoolOr   = { kind: 'OR';  args: BoolExpr[] }
 export type BoolNot  = { kind: 'NOT'; arg: BoolExpr }
 export type BoolLeq  = { kind: 'LEQ'; left: NumExpr; right: NumExpr }
 export type BoolEq   = { kind: 'EQ';  left: TypedExpr; right: TypedExpr }
-export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq
+export type BoolVar  = { kind: 'boolvar'; name: string }
+export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar
 
 export type StrLiteral = { kind: 'strlit'; value: string }
 export type StrVar     = { kind: 'strvar'; name: string }
@@ -36,27 +38,29 @@ export type TypedExpr = TypedNum | TypedBool | TypedStr
 
 // ── Tokenizer ─────────────────────────────────────────────────────────────────
 
-type TokIdent  = { kind: 'ident';  value: string }
-type TokNumber = { kind: 'number'; value: number }
-type TokVar    = { kind: 'numvar';    name: string }
-type TokStrLit = { kind: 'strlit'; value: string }
-type TokStrVar = { kind: 'strvar'; name: string }
-type TokLParen = { kind: 'lparen' }
-type TokRParen = { kind: 'rparen' }
-type TokComma  = { kind: 'comma' }
-type TokEof    = { kind: 'eof' }
-type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokLParen | TokRParen | TokComma | TokEof
+type TokIdent   = { kind: 'ident';   value: string }
+type TokNumber  = { kind: 'number';  value: number }
+type TokVar     = { kind: 'numvar';  name: string }
+type TokStrLit  = { kind: 'strlit'; value: string }
+type TokStrVar  = { kind: 'strvar'; name: string }
+type TokBoolVar = { kind: 'boolvar'; name: string }
+type TokLParen  = { kind: 'lparen' }
+type TokRParen  = { kind: 'rparen' }
+type TokComma   = { kind: 'comma' }
+type TokEof     = { kind: 'eof' }
+type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokBoolVar | TokLParen | TokRParen | TokComma | TokEof
 
 const japaneseDescriptions: Record<Token['kind'], string> = {
-  ident:  '識別子',
-  number: '数値',
-  numvar: '数値変数',
-  strlit: '文字列リテラル',
-  strvar: '文字列変数',
-  lparen: '左括弧',
-  rparen: '右括弧',
-  comma:  'カンマ',
-  eof:    '式の終わり',
+  ident:   '識別子',
+  number:  '数値',
+  numvar:  '数値変数',
+  strlit:  '文字列リテラル',
+  strvar:  '文字列変数',
+  boolvar: '真偽値変数',
+  lparen:  '左括弧',
+  rparen:  '右括弧',
+  comma:   'カンマ',
+  eof:     '式の終わり',
 }
 
 export class ParseError extends Error {}
@@ -105,6 +109,15 @@ function tokenize(input: string): Token[] {
       while (j < input.length && /[a-z_]/.test(input[j])) j++
       if (j === i + 1) throw new ParseError(`「$」の後には小文字のアルファベットまたはアンダースコアが必要です（${i + 1}文字目）`)
       tokens.push({ kind: 'strvar', name: input.slice(i + 1, j) })
+      i = j
+      continue
+    }
+
+    if (ch === '&') {
+      let j = i + 1
+      while (j < input.length && /[a-z_]/.test(input[j])) j++
+      if (j === i + 1) throw new ParseError(`「&」の後には小文字のアルファベットまたはアンダースコアが必要です（${i + 1}文字目）`)
+      tokens.push({ kind: 'boolvar', name: input.slice(i + 1, j) })
       i = j
       continue
     }
@@ -172,6 +185,11 @@ class Parser {
       return { kind: 'strvar', name: tok.name }
     }
 
+    if (tok.kind === 'boolvar') {
+      this.consume()
+      return { kind: 'boolvar', name: tok.name }
+    }
+
     if (tok.kind === 'ident') {
       this.consume()
       this.expect('lparen')
@@ -237,6 +255,10 @@ function typeCheck(raw: RawExpr): TypedExpr {
     return { type: 's', expr: { kind: 'strvar', name: raw.name } }
   }
 
+  if (raw.kind === 'boolvar') {
+    return { type: 'b', expr: { kind: 'boolvar', name: raw.name } }
+  }
+
   const { name, args } = raw
 
   const arity = (n: number) => {
@@ -246,9 +268,9 @@ function typeCheck(raw: RawExpr): TypedExpr {
 
   switch (name) {
     case 'AND':
-      return { type: 'b', expr: { kind: 'AND', args: args.map((a, i) => requireBool(a, `ANDの${i + 1}番目の引数`)) } }
+      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, `ANDの${i + 1}番目の引数`)) } }
     case 'OR':
-      return { type: 'b', expr: { kind: 'OR',  args: args.map((a, i) => requireBool(a, `ORの${i + 1}番目の引数`)) } }
+      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, `ORの${i + 1}番目の引数`)) } }
     case 'NOT':
       arity(1)
       return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], 'NOTの1番目の引数') } }
@@ -263,9 +285,9 @@ function typeCheck(raw: RawExpr): TypedExpr {
       return { type: 'b', expr: { kind: 'EQ', left, right } }
     }
     case 'SUM':
-      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a, i) => requireNum(a, `SUMの${i + 1}番目の引数`)) } }
+      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, `SUMの${i + 1}番目の引数`)) } }
     case 'MULT':
-      return { type: 'n', expr: { kind: 'MULT', args: args.map((a, i) => requireNum(a, `MULTの${i + 1}番目の引数`)) } }
+      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, `MULTの${i + 1}番目の引数`)) } }
     case 'NEG':
       arity(1)
       return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], 'NEGの1番目の引数') } }

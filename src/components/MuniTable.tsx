@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { evaluate } from '../lang/evaluate'
 import type { TypedExpr } from '../lang/expr'
 import {
-  buildItems, fetchArea, fetchPopulation,
+  buildItems, fetchArea, fetchPopulation, fetchDesignations,
   baseItemEnv, areaSources, populationSources,
-  type PopulationRecord,
+  type PopulationRecord, type DesignationSets,
 } from '../data/municipalities'
 import type { ColumnState, ModalState, SortState } from '../types'
 import FilterBar from '@/components/FilterBar'
@@ -38,6 +38,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [selectedPopPath, setSelectedPopPath] = useState(populationSources[0].path)
   const [areaMap, setAreaMap] = useState(new Map<string, number>())
   const [popMap, setPopMap] = useState(new Map<string, PopulationRecord>())
+  const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
 
   useEffect(() => {
     const src = areaSources.find(s => s.path === selectedAreaPath)
@@ -49,6 +50,8 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     if (src) fetchPopulation(src).then(setPopMap)
   }, [selectedPopPath])
 
+  useEffect(() => { fetchDesignations().then(setDesignations) }, [])
+
   const activeItems = useMemo(() => buildItems(popMap, areaMap), [popMap, areaMap])
 
   const editingColumn = modal?.kind === 'edit'
@@ -56,7 +59,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     : null
 
   const filteredItems = filterExpr !== null
-    ? activeItems.filter(item => evaluate(filterExpr, baseItemEnv(item)) === true)
+    ? activeItems.filter(item => evaluate(filterExpr, baseItemEnv(item, designations)) === true)
     : activeItems
 
   const displayItems = sortState !== null

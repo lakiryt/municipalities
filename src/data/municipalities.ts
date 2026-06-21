@@ -81,6 +81,29 @@ export const derivedExpressions = [
 
 const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: parseAndTypeCheck(d.expr) }))
 
+// ── Designation data ──────────────────────────────────────────────────────────
+
+export type DesignationSets = {
+  serei:   Set<string>
+  chukaku: Set<string>
+  tokurei: Set<string>
+}
+
+type DesignationsJson = {
+  seirei:  { code: string }[]
+  chukaku: string[]
+  tokurei: string[]
+}
+
+export const fetchDesignations = (): Promise<DesignationSets> =>
+  fetch('/designation/designations2022.json')
+    .then(r => r.json() as Promise<DesignationsJson>)
+    .then(data => ({
+      serei:   new Set(data.seirei.map(e => e.code)),
+      chukaku: new Set(data.chukaku),
+      tokurei: new Set(data.tokurei),
+    }))
+
 // ── Municipality data ─────────────────────────────────────────────────────────
 
 const getPrefecture = (code: string) => {
@@ -102,7 +125,7 @@ export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>):
     }
   })
 
-export const baseItemEnv = (item: BaseItem): Env => {
+export const baseItemEnv = (item: BaseItem, designations?: DesignationSets): Env => {
   const numvars: Record<string, number> = {
     ...item.population,
     area: item.area,
@@ -115,10 +138,15 @@ export const baseItemEnv = (item: BaseItem): Env => {
     prefkanji: item.prefecture.kanji ?? '',
     prefkana:  item.prefecture.kana ?? '',
   }
-  for (const { name, typed } of derivedDefs) {
-    numvars[name] = evaluate(typed, { numvars, strvars }) as number
+  const boolvars: Record<string, boolean> = {
+    serei:   designations?.serei.has(item.code)   ?? false,
+    chukaku: designations?.chukaku.has(item.code) ?? false,
+    tokurei: designations?.tokurei.has(item.code) ?? false,
   }
-  return { numvars, strvars }
+  for (const { name, typed } of derivedDefs) {
+    numvars[name] = evaluate(typed, { numvars, strvars, boolvars }) as number
+  }
+  return { numvars, strvars, boolvars }
 }
 
 // Seed with all jumin fields so varCompletions covers them statically
@@ -135,9 +163,14 @@ const _dummy: BaseItem = {
 
 export const prefectures = code_todofuken
 
+const _dummyDesignations: DesignationSets = {
+  serei: new Set(), chukaku: new Set(), tokurei: new Set(),
+}
+
 export const varCompletions: string[] = [
   ...Object.keys(baseItemEnv(_dummy).numvars).map(k => `#${k}`),
   ...Object.keys(baseItemEnv(_dummy).strvars).map(k => `$${k}`),
+  ...Object.keys(baseItemEnv(_dummy, _dummyDesignations).boolvars).map(k => `&${k}`),
 ]
 
 export const initialColumns: ColumnState[] = [
