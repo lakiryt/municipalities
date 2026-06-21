@@ -13,7 +13,7 @@ function HomePage() {
       <section className="mb-8">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">ランキング</h2>
         <ul className="space-y-1">
-          <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">全国 — 人口密度ランキング</Link></li>
+          <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">全国の自治体 — 人口密度ランキング</Link></li>
           <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
           <li><Link to="/list/all/population" className="text-blue-600 hover:underline">{populationConfig.title}</Link></li>
         </ul>
