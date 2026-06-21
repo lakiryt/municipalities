@@ -184,7 +184,7 @@ export const varCompletions: string[] = [
 ]
 
 export const initialColumns: ColumnState[] = [
-  { label: 'コード',     expression: '$code' },
+  { label: '自治体コード',     expression: '$code' },
   { label: '都道府県名', expression: '$prefkanji' },
   { label: '自治体名',   expression: '$kanji' },
   { label: '総人口',     expression: '#totalpop' },

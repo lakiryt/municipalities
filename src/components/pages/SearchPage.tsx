@@ -13,7 +13,7 @@ import { evaluate } from '../../lang/evaluate'
 const KUBUN_EXPR = 'IF(&seirei, "政令指定都市", IF(&chukaku, "中核市", IF(&tokurei, "施行時特例市", "")))'
 
 const ALL_COL_DEFS = [
-  { key: 'code',       group: '基本', label: 'コード',         expr: '$code' },
+  { key: 'code',       group: '基本', label: '自治体コード',         expr: '$code' },
   { key: 'pref',       group: '基本', label: '都道府県',       expr: '$prefkanji' },
   { key: 'name',       group: '基本', label: '自治体名',       expr: '$kanji' },
   { key: 'kubun',      group: '基本', label: '区分',           expr: KUBUN_EXPR },
@@ -48,6 +48,18 @@ const COL_TYPED = Object.fromEntries(
 const GROUPS = [...new Set(ALL_COL_DEFS.map(c => c.group))]
 
 const DEFAULT_ACTIVE: ColKey[] = ['pref', 'name', 'kubun', 'totalpop']
+
+// ── Sort options ──────────────────────────────────────────────────────────────
+
+type SortMode = 'num' | 'str' | 'code'
+type SortOption = { key: string; label: string; typed: TypedExpr; mode: SortMode }
+
+// Always present regardless of visible columns
+const FIXED_SORT_OPTIONS: SortOption[] = [
+  { key: 'code',     label: '自治体コード',              typed: parseAndTypeCheck('$code'),     mode: 'code' },
+  { key: 'kana',     label: 'よみかた（市区町村）', typed: parseAndTypeCheck('$kana'),     mode: 'str'  },
+  { key: 'prefkana', label: 'よみかた（都道府県）', typed: parseAndTypeCheck('$prefkana'), mode: 'str'  },
+]
 
 // ── Filter helpers ────────────────────────────────────────────────────────────
 
@@ -101,12 +113,14 @@ function SearchPage() {
   useEffect(() => { fetchArea(areaSources[0]).then(setAreaMap) }, [])
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
 
+  const [panelOpen,     setPanelOpen]     = useState(() => window.innerWidth >= 768)
+
   const [kana,          setKana]          = useState('')
   const [pref,          setPref]          = useState('')
   const [types,         setTypes]         = useState<Record<MuniType,  boolean>>({ shi: false, cho: false, son: false, ku: false })
   const [kubun,         setKubun]         = useState<Record<KubunKey,  boolean>>({ seirei: false, chukaku: false, tokurei: false })
   const [activeColKeys, setActiveColKeys] = useState<ColKey[]>(DEFAULT_ACTIVE)
-  const [sortKey,       setSortKey]       = useState<ColKey>('totalpop')
+  const [sortKey,       setSortKey]       = useState<string>('totalpop')
   const [sortDir,       setSortDir]       = useState<'asc' | 'desc'>('desc')
   const [pickerOpen,    setPickerOpen]    = useState(false)
 
@@ -117,15 +131,17 @@ function SearchPage() {
     [activeColKeys]
   )
 
-  const numericActiveCols = useMemo(
-    () => activeCols.filter(c => COL_TYPED[c.key].type === 'n'),
-    [activeCols]
-  )
+  const allSortOptions = useMemo<SortOption[]>(() => [
+    ...FIXED_SORT_OPTIONS,
+    ...activeCols
+      .filter(c => COL_TYPED[c.key].type === 'n')
+      .map(c => ({ key: c.key, label: c.label, typed: COL_TYPED[c.key], mode: 'num' as SortMode })),
+  ], [activeCols])
 
-  const effectiveSortKey = useMemo<ColKey | null>(() => {
-    if (numericActiveCols.some(c => c.key === sortKey)) return sortKey
-    return numericActiveCols[0]?.key ?? null
-  }, [numericActiveCols, sortKey])
+  const effectiveSortKey = useMemo(
+    () => allSortOptions.some(o => o.key === sortKey) ? sortKey : allSortOptions[0].key,
+    [allSortOptions, sortKey]
+  )
 
   const filterTyped = useMemo(() => {
     const expr = buildFilterExpr(kana, pref, types, kubun)
@@ -138,15 +154,24 @@ function SearchPage() {
     if (filterTyped) {
       items = items.filter(item => evaluate(filterTyped, baseItemEnv(item, designations)) === true)
     }
-    if (effectiveSortKey) {
-      const sortTyped = COL_TYPED[effectiveSortKey]
+    const sortOpt = allSortOptions.find(o => o.key === effectiveSortKey)
+    if (sortOpt) {
       items = [...items].sort((a, b) => {
-        const va = evaluate(sortTyped, baseItemEnv(a, designations)) as number
-        const vb = evaluate(sortTyped, baseItemEnv(b, designations)) as number
-        if (isNaN(va) && isNaN(vb)) return 0
-        if (isNaN(va)) return 1
-        if (isNaN(vb)) return -1
-        return sortDir === 'asc' ? va - vb : vb - va
+        const va = evaluate(sortOpt.typed, baseItemEnv(a, designations))
+        const vb = evaluate(sortOpt.typed, baseItemEnv(b, designations))
+        if (sortOpt.mode === 'str') {
+          const cmp = (va as string).localeCompare(vb as string, 'ja')
+          return sortDir === 'asc' ? cmp : -cmp
+        }
+        if (sortOpt.mode === 'code') {
+          const na = parseInt(va as string, 10), nb = parseInt(vb as string, 10)
+          return sortDir === 'asc' ? na - nb : nb - na
+        }
+        const na = va as number, nb = vb as number
+        if (isNaN(na) && isNaN(nb)) return 0
+        if (isNaN(na)) return 1
+        if (isNaN(nb)) return -1
+        return sortDir === 'asc' ? na - nb : nb - na
       })
     }
     return items
@@ -165,14 +190,31 @@ function SearchPage() {
       <title>詳細検索</title>
 
       {/* Top bar */}
-      <div className="fixed top-0 inset-x-0 z-20 h-11 flex items-center gap-3 bg-gray-50 border-b border-gray-200 px-4">
+      <div className="fixed top-0 inset-x-0 z-30 h-11 flex items-center gap-2 bg-gray-50 border-b border-gray-200 px-4">
         <Link to="/"><img src="/favicon.svg" alt="home" className="h-6 w-6" /></Link>
+        <button
+          onClick={() => setPanelOpen(o => !o)}
+          className="h-8 w-8 flex items-center justify-center rounded hover:bg-gray-200 text-gray-500"
+          title={panelOpen ? '絞り込みを隠す' : '絞り込みを表示'}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 8h12M9 12h6M11 16h2" />
+          </svg>
+        </button>
         <span className="font-semibold text-sm">詳細検索</span>
         <span className="ml-auto text-sm text-gray-500">{displayItems.length.toLocaleString()}件</span>
       </div>
 
+      {/* Mobile backdrop */}
+      {panelOpen && (
+        <div
+          className="fixed inset-0 top-11 bg-black/30 z-20 md:hidden"
+          onClick={() => setPanelOpen(false)}
+        />
+      )}
+
       {/* Search panel */}
-      <div className="fixed top-11 left-0 bottom-0 w-64 overflow-y-auto border-r border-gray-200 bg-white">
+      <div className={`fixed top-11 left-0 bottom-0 w-64 overflow-y-auto border-r border-gray-200 bg-white z-20 transition-transform duration-200 ${panelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 space-y-6">
 
           {/* Kana search */}
@@ -288,22 +330,19 @@ function SearchPage() {
             )}
           </div>
 
-          {/* Sort — only visible numeric columns */}
+          {/* Sort */}
           <div>
             <p className={`${headLabel} mb-2`}>並べ替え</p>
-            {numericActiveCols.length === 0 ? (
-              <p className="text-xs text-gray-400">数値の列を追加してください</p>
-            ) : (
-              <>
-                <select
-                  value={effectiveSortKey ?? ''}
-                  onChange={e => setSortKey(e.target.value as ColKey)}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white mb-2"
-                >
-                  {numericActiveCols.map(col => (
-                    <option key={col.key} value={col.key}>{col.label}</option>
-                  ))}
-                </select>
+            <>
+              <select
+                value={effectiveSortKey}
+                onChange={e => setSortKey(e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm bg-white mb-2"
+              >
+                {allSortOptions.map(opt => (
+                  <option key={opt.key} value={opt.key}>{opt.label}</option>
+                ))}
+              </select>
                 <div className="flex gap-1">
                   {(['desc', 'asc'] as const).map(dir => (
                     <button
@@ -316,14 +355,13 @@ function SearchPage() {
                   ))}
                 </div>
               </>
-            )}
           </div>
 
         </div>
       </div>
 
       {/* Results table */}
-      <div className="fixed top-11 left-64 right-0 bottom-0 overflow-auto">
+      <div className={`fixed top-11 right-0 bottom-0 overflow-auto transition-all duration-200 ${panelOpen ? 'md:left-64' : ''} left-0`}>
         <div className="pb-6 flex justify-center min-w-max">
           <table className="border-collapse border border-gray-300">
             <thead className="sticky top-0 z-10 shadow-md">
