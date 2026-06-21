@@ -7,13 +7,13 @@ import {
   type PopulationRecord,
 } from '../data/municipalities'
 import type { ColumnState, ModalState, SortState } from '../types'
-import FilterBar from './FilterBar'
-import DataTable from './DataTable'
-import ColumnModal from './ColumnModal'
-import FilterModal from './FilterModal'
-import SortModal from './SortModal'
-import DataModal from './DataModal'
-import Sidebar from './Sidebar'
+import FilterBar from '@/components/FilterBar'
+import DataTable from '@/components/DataTable'
+import ColumnModal from '@/components/modals/ColumnModal'
+import FilterModal from '@/components/modals/FilterModal'
+import SortModal from '@/components/modals/SortModal'
+import DataModal from '@/components/modals/DataModal'
+import Sidebar from '@/components/Sidebar'
 
 type Props = {
   title?: string

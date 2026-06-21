@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { derivedExpressions } from '../data/municipalities'
+import { derivedExpressions } from '@/data/municipalities'
 
 const functions = [
   { sig: 'AND(b…)',    ret: 'b', desc: 'すべて真のとき真' },

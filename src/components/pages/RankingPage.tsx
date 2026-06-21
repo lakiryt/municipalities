@@ -1,6 +1,6 @@
-import { parseAndTypeCheck } from '../lang/expr'
-import type { RankingConfig, ColumnState, SortState } from '../types'
-import MuniTable from './MuniTable'
+import { parseAndTypeCheck } from '@/lang/expr'
+import type { RankingConfig, ColumnState, SortState } from '@/types'
+import MuniTable from '@/components/MuniTable'
 
 type Props = { config: RankingConfig }
 

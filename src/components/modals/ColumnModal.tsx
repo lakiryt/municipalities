@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { parseAndTypeCheck, type TypedExpr } from '../lang/expr'
-import ExprEditor from './ExprEditor'
+import { parseAndTypeCheck, type TypedExpr } from '@/lang/expr'
+import ExprEditor from '@/components/ExprEditor'
 
 type Props = {
   initialLabel: string

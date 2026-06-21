@@ -1,9 +1,9 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from './App'
-import HomePage from './components/HomePage'
-import RankingPage from './components/RankingPage'
-import DensityPage from './components/DensityPage'
-import FormulasPage from './components/FormulasPage'
+import HomePage from './components/pages/HomePage'
+import RankingPage from './components/pages/RankingPage'
+import DensityPage from './components/pages/DensityPage'
+import FormulasPage from './components/pages/FormulasPage'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
 

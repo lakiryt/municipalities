@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { areaSources, populationSources } from '../data/municipalities'
+import { areaSources, populationSources } from '@/data/municipalities'
 
 type Props = {
   selectedAreaPath: string
