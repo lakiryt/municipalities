@@ -2,6 +2,7 @@ import type { RankingConfig } from '../types'
 
 export const populationConfig: RankingConfig = {
     title: '全国 — 人口統計',
+    description: '全国の市区町村の人口・世帯数・転入出・自然増減・社会増減などの統計一覧です。',
     columns: [
         { label: '自治体名',   expression: '$kanji' },
         { label: '人口(男)',    expression: '#malepop' },

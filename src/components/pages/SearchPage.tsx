@@ -187,7 +187,8 @@ function SearchPage() {
 
   return (
     <>
-      <title>詳細検索</title>
+      <title>詳細検索 — 日本の自治体データ</title>
+      <meta name="description" content="市区町村名・都道府県・種別・区分などで絞り込み、人口や面積など様々な統計でソートできます。" />
 
       {/* Top bar */}
       <div className="fixed top-0 inset-x-0 z-30 h-11 flex items-center gap-2 bg-gray-50 border-b border-gray-200 px-4">

@@ -19,6 +19,7 @@ export type SortState = {
 
 export type RankingConfig = {
   title: string
+  description?: string
   columns: { label: string; expression: string }[]
   filterExpression?: string
   sortExpression: string

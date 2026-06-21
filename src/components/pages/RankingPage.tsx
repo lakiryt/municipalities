@@ -22,7 +22,8 @@ function RankingPage({ config }: Props) {
 
   return (
     <>
-      <title>{config.title}</title>
+      <title>{config.title} — 日本の自治体データ</title>
+      {config.description && <meta name="description" content={config.description} />}
       <MuniTable
         title={config.title}
         initialColumns={columns}

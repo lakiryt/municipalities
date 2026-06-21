@@ -8,6 +8,7 @@ function HomePage() {
   return (
     <div className="max-w-lg mx-auto px-6 py-16">
       <title>日本の自治体データ</title>
+      <meta name="description" content="全国の市区町村の人口・面積・人口密度・増減率などの統計データを検索・比較できます。" />
       <h1 className="text-3xl font-bold mb-2">日本の自治体データ</h1>
       <p className="text-gray-500 mb-8">人口・面積・その他の統計</p>
 
