@@ -25,22 +25,22 @@ type Props = {
 }
 
 function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false }: Props) {
-  const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
-  const [nextId, setNextId] = useState(initialColumns.length)
-  const [modal, setModal] = useState<ModalState | null>(null)
-  const [filterExpr, setFilterExpr] = useState<TypedExpr | null>(initialFilter?.typed ?? null)
+  const [columns, setColumns]             = useState<ColumnState[]>(initialColumns)
+  const [nextId, setNextId]               = useState(initialColumns.length)
+  const [modal, setModal]                 = useState<ModalState | null>(null)
+  const [filterExpr, setFilterExpr]       = useState<TypedExpr | null>(initialFilter?.typed ?? null)
   const [filterExpression, setFilterExpression] = useState(initialFilter?.expression ?? '')
-  const [filterOpen, setFilterOpen] = useState(false)
-  const [sortState, setSortState] = useState<SortState | null>(initialSort)
-  const [sortOpen, setSortOpen] = useState(false)
-  const [dataOpen, setDataOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(initialSearchOpen)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [filterOpen, setFilterOpen]       = useState(false)
+  const [sortState, setSortState]         = useState<SortState | null>(initialSort)
+  const [sortOpen, setSortOpen]           = useState(false)
+  const [dataOpen, setDataOpen]           = useState(false)
+  const [searchOpen, setSearchOpen]       = useState(initialSearchOpen)
+  const [sidebarOpen, setSidebarOpen]     = useState(false)
 
   const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
-  const [selectedPopPath, setSelectedPopPath] = useState(populationSources[0].path)
-  const [areaMap, setAreaMap] = useState(new Map<string, number>())
-  const [popMap, setPopMap] = useState(new Map<string, PopulationRecord>())
+  const [selectedPopPath, setSelectedPopPath]   = useState(populationSources[0].path)
+  const [areaMap, setAreaMap]           = useState(new Map<string, number>())
+  const [popMap, setPopMap]             = useState(new Map<string, PopulationRecord>())
   const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
 
   useEffect(() => {
@@ -81,7 +81,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       })
     : filteredItems
 
-  const handleSave = (label: string, expression: string, typed: TypedExpr) => {
+  const handleColumnSave = (label: string, expression: string, typed: TypedExpr) => {
     if (modal === null) return
     if (modal.kind === 'add') {
       setColumns(cols => [...cols, { id: nextId, label, expression, typed }])
@@ -94,9 +94,20 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     setModal(null)
   }
 
-  const handleDelete = (id: number) => {
+  const handleColumnDelete = (id: number) => {
     setColumns(cols => cols.filter(col => col.id !== id))
     setModal(null)
+  }
+
+  const handleSearchApply: Parameters<typeof SearchModal>[0]['onApply'] = (
+    { filterExpr: fe, filterExpression: fex, sortExpression, sortTyped, sortDirection, columns: cols }
+  ) => {
+    setFilterExpr(fe)
+    setFilterExpression(fex)
+    setSortState(sortTyped ? { expression: sortExpression, typed: sortTyped, direction: sortDirection } : null)
+    setColumns(cols.map((c, i) => ({ ...c, id: nextId + i })))
+    setNextId(n => n + cols.length)
+    setSearchOpen(false)
   }
 
   return (
@@ -107,8 +118,8 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           initialLabel={editingColumn?.label ?? ''}
           initialExpression={editingColumn?.expression ?? ''}
           isNew={modal.kind === 'add'}
-          onSave={handleSave}
-          onDelete={modal.kind === 'edit' ? () => handleDelete(modal.id) : undefined}
+          onSave={handleColumnSave}
+          onDelete={modal.kind === 'edit' ? () => handleColumnDelete(modal.id) : undefined}
           onSetSort={(expression, typed) => { setSortState({ expression, typed, direction: 'desc' }); setModal(null) }}
           onClose={() => setModal(null)}
         />
@@ -143,18 +154,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         />
       )}
       {searchOpen && (
-        <SearchModal
-          onApply={({ filterExpr: fe, filterExpression: fex, sortExpression, sortTyped, sortDirection, columns: cols }) => {
-            setFilterExpr(fe)
-            setFilterExpression(fex)
-            setSortState(sortTyped ? { expression: sortExpression, typed: sortTyped, direction: sortDirection } : null)
-            let id = nextId
-            setColumns(cols.map(c => ({ ...c, id: id++ })))
-            setNextId(id)
-            setSearchOpen(false)
-          }}
-          onClose={() => setSearchOpen(false)}
-        />
+        <SearchModal onApply={handleSearchApply} onClose={() => setSearchOpen(false)} />
       )}
       {sidebarOpen && (
         <Sidebar
@@ -165,7 +165,6 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
           onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
           onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
-          onSearchClick={() => { setSearchOpen(true); setSidebarOpen(false) }}
           onClose={() => setSidebarOpen(false)}
         />
       )}
@@ -178,7 +177,6 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
         onDataClick={() => setDataOpen(true)}
-        onSearchClick={() => setSearchOpen(true)}
         onMenuClick={() => setSidebarOpen(true)}
       />
       <DataTable

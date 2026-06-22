@@ -22,39 +22,40 @@ type Props = {
   onClose: () => void
 }
 
-let nextColId = 0
-
 function SearchModal({ onApply, onClose }: Props) {
-  const [filterSimple, setFilterSimple] = useState<FilterState>(DEFAULT_FILTER_STATE)
-  const [sortKey, setSortKey]           = useState(DEFAULT_SORT_KEY)
-  const [sortDir, setSortDir]           = useState<'asc' | 'desc'>('desc')
-  const [colKeys, setColKeys]           = useState<ColKey[]>(DEFAULT_ACTIVE_COLS)
-
-  const canApply = colKeys.length > 0
+  const [filter, setFilter]   = useState<FilterState>(DEFAULT_FILTER_STATE)
+  const [sortKey, setSortKey] = useState(DEFAULT_SORT_KEY)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [colKeys, setColKeys] = useState<ColKey[]>(DEFAULT_ACTIVE_COLS)
 
   const handleApply = () => {
-    // Filter
-    let filterExpression = ''
+    const filterExpr = buildFilterExpr(filter)
     let filterExprTyped: TypedExpr | null = null
-    const expr = buildFilterExpr(filterSimple)
-    if (expr) {
-      try { const t = parseAndTypeCheck(expr); if (t.type === 'b') { filterExpression = expr; filterExprTyped = t } } catch { /* skip */ }
+    let filterExpression = ''
+    if (filterExpr) {
+      try {
+        const t = parseAndTypeCheck(filterExpr)
+        if (t.type === 'b') { filterExprTyped = t; filterExpression = filterExpr }
+      } catch { /* skip */ }
     }
 
-    // Sort
     const opt = ALL_SORT_OPTIONS.find(o => o.key === sortKey)
-    const sortExpression = opt?.expr ?? ''
-    const sortTyped      = opt?.typed ?? null
 
-    // Columns
-    const columns: ColumnState[] = colKeys.map(key => ({
-      id: nextColId++,
+    const columns: ColumnState[] = colKeys.map((key, i) => ({
+      id: i,
       label: COL_MAP[key].label,
       expression: COL_MAP[key].expr,
       typed: COL_TYPED[key],
     }))
 
-    onApply({ filterExpr: filterExprTyped, filterExpression, sortExpression, sortTyped, sortDirection: sortDir, columns })
+    onApply({
+      filterExpr: filterExprTyped,
+      filterExpression,
+      sortExpression: opt?.expr ?? '',
+      sortTyped: opt?.typed ?? null,
+      sortDirection: sortDir,
+      columns,
+    })
   }
 
   const btnBase     = 'flex-1 py-1 text-sm rounded border'
@@ -76,7 +77,7 @@ function SearchModal({ onApply, onClose }: Props) {
         <div className="overflow-y-auto px-6 py-5 space-y-6">
           <section>
             <p className={sectionHead}>絞り込み</p>
-            <FilterInput value={filterSimple} onChange={setFilterSimple} />
+            <FilterInput value={filter} onChange={setFilter} />
           </section>
 
           <section className="border-t border-gray-200 pt-5">
@@ -103,7 +104,7 @@ function SearchModal({ onApply, onClose }: Props) {
           </button>
           <button
             className="px-4 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-            disabled={!canApply}
+            disabled={colKeys.length === 0}
             onClick={handleApply}
           >
             適用
