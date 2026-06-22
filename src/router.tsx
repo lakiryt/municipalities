@@ -5,9 +5,10 @@ import RankingPage from './components/pages/RankingPage'
 import DensityPage from './components/pages/DensityPage'
 import CityPopulationPage from './components/pages/CityPopulationPage'
 import FormulasPage from './components/pages/FormulasPage'
-import SearchPage from './components/pages/SearchPage'
+import MuniTable from './components/MuniTable'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
+import { initialColumns } from './data/municipalities'
 
 const router = createBrowserRouter([
   { path: '/',                                   element: <HomePage /> },
@@ -17,7 +18,16 @@ const router = createBrowserRouter([
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/formulas',                           element: <FormulasPage /> },
-  { path: '/search',                             element: <SearchPage /> },
+  {
+    path: '/search',
+    element: (
+      <>
+        <title>自由探索 — 日本の自治体データ</title>
+        <meta name="description" content="市区町村名・都道府県・種別・区分などで絞り込み、人口や面積など様々な統計でソートできます。" />
+        <MuniTable title="自由探索" initialColumns={initialColumns} initialSearchOpen />
+      </>
+    ),
+  },
 ])
 
 export function Router() {

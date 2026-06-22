@@ -9,10 +9,11 @@ type Props = {
   onSortClick: () => void
   onFilterClick: () => void
   onDataClick: () => void
+  onSearchClick?: () => void
   onClose: () => void
 }
 
-function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onClose }: Props) {
+function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onSearchClick, onClose }: Props) {
   const btnBase = 'w-full px-3 py-2 rounded text-sm border text-left'
   const btnActive = 'bg-blue-600 text-white border-blue-600'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'

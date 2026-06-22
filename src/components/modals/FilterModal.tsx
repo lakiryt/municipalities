@@ -13,10 +13,7 @@ function FilterModal({ initialExpression, onApply, onClear, onClose }: Props) {
   const [expression, setExpression] = useState(initialExpression)
   const [validExpr, setValidExpr] = useState<TypedExpr | null>(() => {
     if (!initialExpression.trim()) return null
-    try {
-      const t = parseAndTypeCheck(initialExpression)
-      return t.type === 'b' ? t : null
-    } catch { return null }
+    try { const t = parseAndTypeCheck(initialExpression); return t.type === 'b' ? t : null } catch { return null }
   })
 
   return (
@@ -29,6 +26,7 @@ function FilterModal({ initialExpression, onApply, onClear, onClose }: Props) {
 
         <ExprEditor
           initialExpression={initialExpression}
+          placeholder='AND(EQ($prefkanji, "東京都"), LEQ(#totalpop, 100000))'
           requiredType="b"
           onValidExpr={setValidExpr}
           onExpressionChange={setExpression}
@@ -43,10 +41,7 @@ function FilterModal({ initialExpression, onApply, onClear, onClose }: Props) {
             クリア
           </button>
           <div className="flex gap-2">
-            <button
-              className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-              onClick={onClose}
-            >
+            <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm" onClick={onClose}>
               キャンセル
             </button>
             <button

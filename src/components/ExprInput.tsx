@@ -89,7 +89,7 @@ function ExprInput({ initialExpression = '', placeholder, onChange }: Props) {
       <textarea
         ref={ref}
         className="border border-gray-300 p-2 w-full font-mono text-sm rounded"
-        rows={3}
+        rows={2}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

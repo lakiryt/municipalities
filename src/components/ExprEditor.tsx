@@ -11,6 +11,7 @@ type LiveResult =
 
 type Props = {
   initialExpression?: string
+  placeholder?: string
   requiredType?: 'n' | 'b' | 's'
   onValidExpr?: (expr: TypedExpr | null) => void
   onExpressionChange?: (raw: string) => void
@@ -34,7 +35,7 @@ function AnimatedDots() {
 
 const ERROR_DELAY_MS = 600
 
-function ExprEditor({ initialExpression = '', requiredType, onValidExpr, onExpressionChange }: Props) {
+function ExprEditor({ initialExpression = '', placeholder, requiredType, onValidExpr, onExpressionChange }: Props) {
   const [result, setResult] = useState<LiveResult>({ status: 'idle' })
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -71,7 +72,7 @@ function ExprEditor({ initialExpression = '', requiredType, onValidExpr, onExpre
     <div>
       <ExprInput
         initialExpression={initialExpression}
-        placeholder="e.g.  SUM(#female, NEG(#male))"
+        placeholder={placeholder ?? 'SUM(#female, NEG(#male))'}
         onChange={raw => { onExpressionChange?.(raw); runCheck(raw) }}
       />
       <div className="mt-1 min-h-[1.25rem] text-sm">

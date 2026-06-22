@@ -10,10 +10,11 @@ type Props = {
   onSortClick: () => void
   onFilterClick: () => void
   onDataClick: () => void
+  onSearchClick?: () => void
   onMenuClick: () => void
 }
 
-function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onMenuClick }: Props) {
+function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onSearchClick, onMenuClick }: Props) {
   const btnBase = 'px-3 py-1 rounded text-sm border'
   const btnActive = 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'

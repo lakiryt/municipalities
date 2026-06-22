@@ -13,11 +13,9 @@ type Props = {
 }
 
 function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete, onSetSort, onClose }: Props) {
-  const [label, setLabel] = useState(initialLabel)
+  const [label, setLabel]       = useState(initialLabel)
   const [expression, setExpression] = useState(initialExpression)
-
-  // Pre-validate the initial expression so Save is available without re-checking
-  const [validExpr, setValidExpr] = useState<TypedExpr | null>(() => {
+  const [validExpr, setValidExpr]   = useState<TypedExpr | null>(() => {
     if (!initialExpression.trim()) return null
     try { return parseAndTypeCheck(initialExpression) } catch { return null }
   })
@@ -44,24 +42,22 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
         <label className="block text-sm font-medium mb-1">式</label>
         <ExprEditor
           initialExpression={initialExpression}
-          onValidExpr={expr => { setValidExpr(expr) }}
+          placeholder='SUM(#inc_mov, NEG(#dec_mov))'
+          onValidExpr={setValidExpr}
           onExpressionChange={setExpression}
         />
 
         <div className="flex justify-between mt-5">
           <div className="flex gap-2">
             {onDelete && (
-              <button
-                className="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-                onClick={onDelete}
-              >
+              <button className="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm" onClick={onDelete}>
                 削除
               </button>
             )}
             {onSetSort && (
               <button
                 className="px-3 py-1 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={validExpr === null}
+                disabled={!validExpr}
                 onClick={() => { if (validExpr) onSetSort(expression, validExpr) }}
               >
                 この列で並び替える
@@ -69,10 +65,7 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
-              onClick={onClose}
-            >
+            <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm" onClick={onClose}>
               キャンセル
             </button>
             <button

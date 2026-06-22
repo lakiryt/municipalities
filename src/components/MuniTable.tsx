@@ -13,6 +13,7 @@ import ColumnModal from '@/components/modals/ColumnModal'
 import FilterModal from '@/components/modals/FilterModal'
 import SortModal from '@/components/modals/SortModal'
 import DataModal from '@/components/modals/DataModal'
+import SearchModal from '@/components/modals/SearchModal'
 import Sidebar from '@/components/Sidebar'
 
 type Props = {
@@ -20,9 +21,10 @@ type Props = {
   initialColumns: ColumnState[]
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
+  initialSearchOpen?: boolean
 }
 
-function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null }: Props) {
+function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false }: Props) {
   const [columns, setColumns] = useState<ColumnState[]>(initialColumns)
   const [nextId, setNextId] = useState(initialColumns.length)
   const [modal, setModal] = useState<ModalState | null>(null)
@@ -32,6 +34,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [sortState, setSortState] = useState<SortState | null>(initialSort)
   const [sortOpen, setSortOpen] = useState(false)
   const [dataOpen, setDataOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(initialSearchOpen)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
@@ -64,12 +67,17 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortState.typed, baseItemEnv(a, designations)) as number
-        const vb = evaluate(sortState.typed, baseItemEnv(b, designations)) as number
-        if (isNaN(va) && isNaN(vb)) return 0
-        if (isNaN(va)) return 1
-        if (isNaN(vb)) return -1
-        return sortState.direction === 'asc' ? va - vb : vb - va
+        const va = evaluate(sortState.typed, baseItemEnv(a, designations))
+        const vb = evaluate(sortState.typed, baseItemEnv(b, designations))
+        const sign = sortState.direction === 'asc' ? 1 : -1
+        if (sortState.typed.type === 's') {
+          return sign * (va as string).localeCompare(vb as string, 'ja')
+        }
+        const na = va as number, nb = vb as number
+        if (isNaN(na) && isNaN(nb)) return 0
+        if (isNaN(na)) return 1
+        if (isNaN(nb)) return -1
+        return sign * (na - nb)
       })
     : filteredItems
 
@@ -134,6 +142,20 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onClose={() => setDataOpen(false)}
         />
       )}
+      {searchOpen && (
+        <SearchModal
+          onApply={({ filterExpr: fe, filterExpression: fex, sortExpression, sortTyped, sortDirection, columns: cols }) => {
+            setFilterExpr(fe)
+            setFilterExpression(fex)
+            setSortState(sortTyped ? { expression: sortExpression, typed: sortTyped, direction: sortDirection } : null)
+            let id = nextId
+            setColumns(cols.map(c => ({ ...c, id: id++ })))
+            setNextId(id)
+            setSearchOpen(false)
+          }}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
       {sidebarOpen && (
         <Sidebar
           totalCount={activeItems.length}
@@ -143,6 +165,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
           onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
           onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
+          onSearchClick={() => { setSearchOpen(true); setSidebarOpen(false) }}
           onClose={() => setSidebarOpen(false)}
         />
       )}
@@ -155,6 +178,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
         onDataClick={() => setDataOpen(true)}
+        onSearchClick={() => setSearchOpen(true)}
         onMenuClick={() => setSidebarOpen(true)}
       />
       <DataTable
