@@ -40,7 +40,20 @@ export const fetchArea = (src: { path: string }): Promise<Map<string, number>> =
 
 // ── Population data ───────────────────────────────────────────────────────────
 
-export const populationSources = meta.population
+type RawPopSrc = {
+  label: string; name: string; agency: string; as_of: string; source: string
+} & ({ path: string } | { paths: { id: string; path: string }[] })
+
+export type PopulationSource = {
+  label: string; as_of: string; path: string;
+  paths?: { id: string; path: string }[]
+}
+
+export const populationSources: PopulationSource[] = (meta.population as RawPopSrc[]).map(src =>
+  'path' in src
+    ? { label: src.label, as_of: src.as_of, path: src.path }
+    : { label: src.label, as_of: src.as_of, path: src.paths[0].path, paths: src.paths }
+)
 
 const parsePopulationCsv = (raw: string): PopulationMap => {
   const lines = raw.trim().split('\n').map(l => l.replace(/\r$/, ''))
@@ -56,10 +69,24 @@ const parsePopulationCsv = (raw: string): PopulationMap => {
   )
 }
 
-export const fetchPopulation = (src: { path: string }): Promise<PopulationMap> =>
-  fetch(`/${src.path}`)
-    .then(r => r.text())
-    .then(parsePopulationCsv)
+const mergeMaps = (maps: PopulationMap[]): PopulationMap => {
+  const merged = new Map<string, PopulationRecord>()
+  for (const map of maps) {
+    for (const [code, record] of map) {
+      merged.set(code, { ...(merged.get(code) ?? {}), ...record })
+    }
+  }
+  return merged
+}
+
+export const fetchPopulation = (src: PopulationSource): Promise<PopulationMap> => {
+  if (src.paths) {
+    return Promise.all(
+      src.paths.map(p => fetch(`/${p.path}`).then(r => r.text()).then(parsePopulationCsv))
+    ).then(mergeMaps)
+  }
+  return fetch(`/${src.path}`).then(r => r.text()).then(parsePopulationCsv)
+}
 
 // ── Derived expressions ───────────────────────────────────────────────────────
 
@@ -159,7 +186,14 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets): Env
   return { numvars, strvars, boolvars }
 }
 
-// Seed with all jumin fields so varCompletions covers them statically
+// Seed with all jumin + demog fields so varCompletions covers them statically
+const _ageSuffixes = ['0_4','5_9','10_14','15_19','20_24','25_29','30_34','35_39','40_44',
+  '45_49','50_54','55_59','60_64','65_69','70_74','75_79','80_84','85_89','90_94','95_99','100_']
+const _demogSeed = Object.fromEntries([
+  ..._ageSuffixes.map(s => [`total${s}`, 0]),
+  ..._ageSuffixes.map(s => [`female${s}`, 0]),
+  ..._ageSuffixes.map(s => [`male${s}`, 0]),
+])
 const _dummy: BaseItem = {
   code: '', kanji: '', kana: '',
   prefecture: { code: '' },
@@ -167,6 +201,7 @@ const _dummy: BaseItem = {
     totalpop: 0, malepop: 0, femalepop: 0, setai: 0,
     inc_mov_dom: 0, inc_mov_intl: 0, inc_born: 0, inc_other: 0,
     dec_mov_dom: 0, dec_mov_intl: 0, dec_deaths: 0, dec_other: 0,
+    ..._demogSeed,
   },
   area: 0,
 }

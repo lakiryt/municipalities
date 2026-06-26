@@ -101,7 +101,7 @@ function tokenize(input: string): Token[] {
 
     if (ch === '#') {
       let j = i + 1
-      while (j < input.length && /[a-z_]/.test(input[j])) j++
+      while (j < input.length && /[a-z0-9_]/.test(input[j])) j++
       if (j === i + 1) throw new ParseError(`「#」の後には小文字のアルファベットまたはアンダースコアが必要です（${i + 1}文字目）`)
       tokens.push({ kind: 'numvar', name: input.slice(i + 1, j) })
       i = j
@@ -110,7 +110,7 @@ function tokenize(input: string): Token[] {
 
     if (ch === '$') {
       let j = i + 1
-      while (j < input.length && /[a-z_]/.test(input[j])) j++
+      while (j < input.length && /[a-z0-9_]/.test(input[j])) j++
       if (j === i + 1) throw new ParseError(`「$」の後には小文字のアルファベットまたはアンダースコアが必要です（${i + 1}文字目）`)
       tokens.push({ kind: 'strvar', name: input.slice(i + 1, j) })
       i = j
@@ -119,7 +119,7 @@ function tokenize(input: string): Token[] {
 
     if (ch === '&') {
       let j = i + 1
-      while (j < input.length && /[a-z_]/.test(input[j])) j++
+      while (j < input.length && /[a-z0-9_]/.test(input[j])) j++
       if (j === i + 1) throw new ParseError(`「&」の後には小文字のアルファベットまたはアンダースコアが必要です（${i + 1}文字目）`)
       tokens.push({ kind: 'boolvar', name: input.slice(i + 1, j) })
       i = j
