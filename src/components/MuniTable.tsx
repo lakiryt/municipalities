@@ -37,6 +37,10 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [searchOpen, setSearchOpen]       = useState(initialSearchOpen)
   const [sidebarOpen, setSidebarOpen]     = useState(false)
 
+  useEffect(() => {
+    if (title) document.title = `${title} — 日本の自治体データ`
+  }, [title])
+
   const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
   const [selectedPopPath, setSelectedPopPath]   = useState(populationSources[0].path)
   const [areaMap, setAreaMap]           = useState(new Map<string, number>())

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { derivedExpressions } from '@/data/municipalities'
 
@@ -60,9 +61,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function FormulasPage() {
+  useEffect(() => { document.title = '式の記述方法 — 日本の自治体データ' }, [])
   return (
     <>
-      <title>式の記述方法 — 日本の自治体データ</title>
       <meta name="description" content="自由探索で使用できる数値・真偽・文字列の変数・関数・演算子の一覧です。" />
       <div className="fixed top-0 inset-x-0 z-20 h-11 flex items-center gap-3 bg-gray-50 border-b border-gray-200 px-4">
         <Link to="/"><img src="/favicon.svg" alt="home" className="h-6 w-6" /></Link>
