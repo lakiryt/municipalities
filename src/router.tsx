@@ -8,6 +8,7 @@ import FormulasPage from './components/pages/FormulasPage'
 import MuniTable from './components/MuniTable'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
+import elderlyRatioConfig from './rankings/elderlyRatio'
 import { initialColumns } from './data/municipalities'
 
 const router = createBrowserRouter([
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
   { path: '/rankings/:pref/density',             element: <DensityPage /> },
   { path: '/rankings/:pref/cities',              element: <CityPopulationPage /> },
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
+  { path: '/rankings/all/elderly-ratio',        element: <RankingPage config={elderlyRatioConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/formulas',                           element: <FormulasPage /> },
   {

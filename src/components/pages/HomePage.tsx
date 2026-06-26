@@ -3,6 +3,7 @@ import { prefectures } from '../../data/municipalities'
 import populationOver500k from '../../rankings/populationOver500k'
 import { populationConfig } from '../../rankings/population'
 import { cityPopulationConfig } from '../../rankings/cityPopulation'
+import elderlyRatioConfig from '../../rankings/elderlyRatio'
 
 function HomePage() {
   return (
@@ -35,6 +36,7 @@ function HomePage() {
           <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
           <li><Link to="/list/all/population" className="text-blue-600 hover:underline">{populationConfig.title}</Link></li>
           <li><Link to="/rankings/all/cities" className="text-blue-600 hover:underline">{cityPopulationConfig(null).title}</Link></li>
+          <li><Link to="/rankings/all/elderly-ratio" className="text-blue-600 hover:underline">{elderlyRatioConfig.title}</Link></li>
         </ul>
       </section>
 
