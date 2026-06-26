@@ -104,6 +104,9 @@ export const derivedExpressions = [
   { name: 'inc_nat_rate', expr: 'MULT(#inc_nat, INV(#prev_total))',                               desc: '自然増減率' },
   { name: 'inc_soc',      expr: 'SUM(#inc_mov, #inc_other, NEG(SUM(#dec_mov, #dec_other)))',      desc: '社会増減数' },
   { name: 'inc_soc_rate', expr: 'MULT(#inc_soc, INV(#prev_total))',                               desc: '社会増減率' },
+  { name: 'elderly_total',  expr: 'SUM(#total65_69, #total70_74, #total75_79, #total80_84, #total85_89, #total90_94, #total95_99, #total100_)',   desc: '65歳以上人口（計）' },
+  { name: 'elderly_female', expr: 'SUM(#female65_69, #female70_74, #female75_79, #female80_84, #female85_89, #female90_94, #female95_99, #female100_)', desc: '65歳以上人口（女）' },
+  { name: 'elderly_male',   expr: 'SUM(#male65_69, #male70_74, #male75_79, #male80_84, #male85_89, #male90_94, #male95_99, #male100_)',             desc: '65歳以上人口（男）' },
 ]
 
 const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: parseAndTypeCheck(d.expr) }))
