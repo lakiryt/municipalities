@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
-import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from '../lang/expr'
-import ExprInput from './ExprInput'
+import { useState, useRef, useEffect, forwardRef } from 'react'
+import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr, type ColumnTypeInfo } from '../lang/expr'
+import ExprInput, { type ExprInputHandle } from './ExprInput'
 
 type LiveResult =
   | { status: 'idle' }
@@ -12,6 +12,9 @@ type Props = {
   initialExpression?: string
   placeholder?: string
   requiredType?: 'n' | 'b' | 's'
+  // Only passed where `@id` column references are meaningful (filter/sort
+  // editors) — omitting it (as ColumnModal does) keeps them rejected there.
+  columns?: ColumnTypeInfo[]
   onValidExpr?: (expr: TypedExpr | null) => void
   onExpressionChange?: (raw: string) => void
 }
@@ -34,7 +37,9 @@ function AnimatedDots() {
 
 const ERROR_DELAY_MS = 600
 
-function ExprEditor({ initialExpression = '', placeholder, requiredType, onValidExpr, onExpressionChange }: Props) {
+const ExprEditor = forwardRef<ExprInputHandle, Props>(function ExprEditor(
+  { initialExpression = '', placeholder, requiredType, columns, onValidExpr, onExpressionChange }, ref
+) {
   const [result, setResult] = useState<LiveResult>({ status: 'idle' })
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -50,7 +55,7 @@ function ExprEditor({ initialExpression = '', placeholder, requiredType, onValid
     }
 
     try {
-      const typed = parseAndTypeCheck(raw)
+      const typed = parseAndTypeCheck(raw, columns)
       if (requiredType !== undefined && typed.type !== requiredType) {
         setResult({ status: 'error', message: `${typeNames[typed.type]}の式です（ここでは${typeNames[requiredType]}の式が必要です）` })
         onValidExpr?.(null)
@@ -70,6 +75,7 @@ function ExprEditor({ initialExpression = '', placeholder, requiredType, onValid
   return (
     <div>
       <ExprInput
+        ref={ref}
         initialExpression={initialExpression}
         placeholder={placeholder ?? 'SUM(#female, NEG(#male))'}
         onChange={raw => { onExpressionChange?.(raw); runCheck(raw) }}
@@ -91,6 +97,6 @@ function ExprEditor({ initialExpression = '', placeholder, requiredType, onValid
       </div>
     </div>
   )
-}
+})
 
 export default ExprEditor

@@ -6,7 +6,8 @@ type RawVar     = { kind: 'numvar';     name: string }
 type RawStrLit  = { kind: 'strlit';  value: string }
 type RawStrVar  = { kind: 'strvar';  name: string }
 type RawBoolVar = { kind: 'boolvar'; name: string }
-type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoolVar
+type RawColRef  = { kind: 'colref'; id: number }
+type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoolVar | RawColRef
 
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
@@ -18,7 +19,8 @@ export type NumNeg     = { kind: 'NEG';     arg: NumExpr }
 export type NumInv     = { kind: 'INV';     arg: NumExpr }
 export type NumRound   = { kind: 'ROUND';   arg: NumExpr; digits: NumExpr }
 export type NumIf      = { kind: 'IF'; cond: BoolExpr; then: NumExpr;  else_: NumExpr }
-export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv | NumRound | NumIf
+export type NumColRef  = { kind: 'colref'; id: number }
+export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv | NumRound | NumIf | NumColRef
 
 export type BoolAnd  = { kind: 'AND';     args: BoolExpr[] }
 export type BoolOr   = { kind: 'OR';      args: BoolExpr[] }
@@ -27,13 +29,20 @@ export type BoolLeq  = { kind: 'LEQ';     left: NumExpr;   right: NumExpr }
 export type BoolEq   = { kind: 'EQ';      left: TypedExpr; right: TypedExpr }
 export type BoolVar  = { kind: 'boolvar'; name: string }
 export type BoolIf   = { kind: 'IF'; cond: BoolExpr; then: BoolExpr; else_: BoolExpr }
-export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar | BoolIf
+export type BoolColRef = { kind: 'colref'; id: number }
+export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar | BoolIf | BoolColRef
 
 export type StrLiteral = { kind: 'strlit'; value: string }
 export type StrVar     = { kind: 'strvar'; name: string }
 export type StrSubstr  = { kind: 'SUBSTR'; str: StrExpr;   len: NumExpr }
 export type StrIf      = { kind: 'IF'; cond: BoolExpr; then: StrExpr;  else_: StrExpr }
-export type StrExpr    = StrLiteral | StrVar | StrSubstr | StrIf
+export type StrColRef  = { kind: 'colref'; id: number }
+export type StrExpr    = StrLiteral | StrVar | StrSubstr | StrIf | StrColRef
+
+// Type of the column being referenced by `@id` — supplied by the caller
+// (only where column references are allowed) so the type checker can
+// resolve `@id`'s type without needing to know the whole column's AST.
+export type ColumnTypeInfo = { id: number; type: 'n' | 'b' | 's' }
 
 export type TypedNum  = { type: 'n'; expr: NumExpr }
 export type TypedBool = { type: 'b'; expr: BoolExpr }
@@ -48,11 +57,12 @@ type TokVar     = { kind: 'numvar';  name: string }
 type TokStrLit  = { kind: 'strlit'; value: string }
 type TokStrVar  = { kind: 'strvar'; name: string }
 type TokBoolVar = { kind: 'boolvar'; name: string }
+type TokColRef  = { kind: 'colref'; id: number }
 type TokLParen  = { kind: 'lparen' }
 type TokRParen  = { kind: 'rparen' }
 type TokComma   = { kind: 'comma' }
 type TokEof     = { kind: 'eof' }
-type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokBoolVar | TokLParen | TokRParen | TokComma | TokEof
+type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokBoolVar | TokColRef | TokLParen | TokRParen | TokComma | TokEof
 
 const japaneseDescriptions: Record<Token['kind'], string> = {
   ident:   '識別子',
@@ -61,6 +71,7 @@ const japaneseDescriptions: Record<Token['kind'], string> = {
   strlit:  '文字列リテラル',
   strvar:  '文字列変数',
   boolvar: '真偽値変数',
+  colref:  '列参照',
   lparen:  '左括弧',
   rparen:  '右括弧',
   comma:   'カンマ',
@@ -135,6 +146,15 @@ function tokenize(input: string): Token[] {
       continue
     }
 
+    if (ch === '@') {
+      let j = i + 1
+      while (j < input.length && /[0-9]/.test(input[j])) j++
+      if (j === i + 1) throw new ParseError(`「@」の後には列ID（数字）が必要です（${i + 1}文字目）`)
+      tokens.push({ kind: 'colref', id: Number(input.slice(i + 1, j)) })
+      i = j
+      continue
+    }
+
     if (ch === '(') { tokens.push({ kind: 'lparen' }); i++; continue }
     if (ch === ')') { tokens.push({ kind: 'rparen' }); i++; continue }
     if (ch === ',') { tokens.push({ kind: 'comma'  }); i++; continue }
@@ -194,6 +214,11 @@ class Parser {
       return { kind: 'boolvar', name: tok.name }
     }
 
+    if (tok.kind === 'colref') {
+      this.consume()
+      return { kind: 'colref', id: tok.id }
+    }
+
     if (tok.kind === 'ident') {
       this.consume()
       this.expect('lparen')
@@ -230,25 +255,30 @@ class Parser {
 const typeLabel = (t: TypedExpr): string =>
   t.type === 'n' ? '数値' : t.type === 'b' ? '真偽値' : '文字列'
 
-function requireNum(raw: RawExpr, context: string): NumExpr {
-  const t = typeCheck(raw)
+function requireNum(raw: RawExpr, context: string, columns: ColumnTypeInfo[] | undefined): NumExpr {
+  const t = typeCheck(raw, columns)
   if (t.type !== 'n') throw new TypeCheckError(`${context}: 数値であるべきところ、${typeLabel(t)}になっています`)
   return t.expr
 }
 
-function requireBool(raw: RawExpr, context: string): BoolExpr {
-  const t = typeCheck(raw)
+function requireBool(raw: RawExpr, context: string, columns: ColumnTypeInfo[] | undefined): BoolExpr {
+  const t = typeCheck(raw, columns)
   if (t.type !== 'b') throw new TypeCheckError(`${context}: 真偽値であるべきところ、${typeLabel(t)}になっています`)
   return t.expr
 }
 
-function requireStr(raw: RawExpr, context: string): StrExpr {
-  const t = typeCheck(raw)
+function requireStr(raw: RawExpr, context: string, columns: ColumnTypeInfo[] | undefined): StrExpr {
+  const t = typeCheck(raw, columns)
   if (t.type !== 's') throw new TypeCheckError(`${context}: 文字列であるべきところ、${typeLabel(t)}になっています`)
   return t.expr
 }
 
-function typeCheck(raw: RawExpr): TypedExpr {
+// `columns` is only passed by callers where `@id` column references are
+// allowed (filter/sort expressions); when it's undefined, `@id` is rejected
+// outright. This keeps column expressions themselves free of the concept
+// entirely, which is what makes them safe from reference cycles — a column
+// can never depend on another column, only on filter/sort can depend on columns.
+function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedExpr {
   if (raw.kind === 'literal') {
     return { type: 'n', expr: { kind: 'literal', value: raw.value } }
   }
@@ -269,6 +299,15 @@ function typeCheck(raw: RawExpr): TypedExpr {
     return { type: 'b', expr: { kind: 'boolvar', name: raw.name } }
   }
 
+  if (raw.kind === 'colref') {
+    if (!columns) throw new TypeCheckError('「@」列参照はフィルター・並べ替えの式でのみ使用できます')
+    const col = columns.find(c => c.id === raw.id)
+    if (!col) throw new TypeCheckError(`列ID「@${raw.id}」に対応する列が見つかりません`)
+    if (col.type === 'n') return { type: 'n', expr: { kind: 'colref', id: raw.id } }
+    if (col.type === 'b') return { type: 'b', expr: { kind: 'colref', id: raw.id } }
+    return { type: 's', expr: { kind: 'colref', id: raw.id } }
+  }
+
   const { name, args } = raw
 
   const arity = (n: number) => {
@@ -278,46 +317,46 @@ function typeCheck(raw: RawExpr): TypedExpr {
 
   switch (name) {
     case 'AND':
-      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, `ANDの${i + 1}番目の引数`)) } }
+      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, `ANDの${i + 1}番目の引数`, columns)) } }
     case 'OR':
-      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, `ORの${i + 1}番目の引数`)) } }
+      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, `ORの${i + 1}番目の引数`, columns)) } }
     case 'NOT':
       arity(1)
-      return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], 'NOTの1番目の引数') } }
+      return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], 'NOTの1番目の引数', columns) } }
     case 'LEQ':
       arity(2)
-      return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], 'LEQの1番目の引数'), right: requireNum(args[1], 'LEQの2番目の引数') } }
+      return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], 'LEQの1番目の引数', columns), right: requireNum(args[1], 'LEQの2番目の引数', columns) } }
     case 'EQ': {
       arity(2)
-      const left = typeCheck(args[0])
-      const right = typeCheck(args[1])
+      const left = typeCheck(args[0], columns)
+      const right = typeCheck(args[1], columns)
       if (left.type !== right.type) throw new TypeCheckError(`EQ: 両辺の型が一致していません（左辺: ${typeLabel(left)}、右辺: ${typeLabel(right)}）`)
       return { type: 'b', expr: { kind: 'EQ', left, right } }
     }
     case 'SUM':
-      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, `SUMの${i + 1}番目の引数`)) } }
+      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, `SUMの${i + 1}番目の引数`, columns)) } }
     case 'MULT':
-      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, `MULTの${i + 1}番目の引数`)) } }
+      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, `MULTの${i + 1}番目の引数`, columns)) } }
     case 'NEG':
       arity(1)
-      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], 'NEGの1番目の引数') } }
+      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], 'NEGの1番目の引数', columns) } }
     case 'INV':
       arity(1)
-      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], 'INVの1番目の引数') } }
+      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], 'INVの1番目の引数', columns) } }
     case 'ROUND':
       arity(2)
-      return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], 'ROUNDの1番目の引数'), digits: requireNum(args[1], 'ROUNDの2番目の引数') } }
+      return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], 'ROUNDの1番目の引数', columns), digits: requireNum(args[1], 'ROUNDの2番目の引数', columns) } }
     case 'SUBSTR': {
       arity(2)
-      const str = requireStr(args[0], 'SUBSTRの1番目の引数')
-      const len = requireNum(args[1], 'SUBSTRの2番目の引数')
+      const str = requireStr(args[0], 'SUBSTRの1番目の引数', columns)
+      const len = requireNum(args[1], 'SUBSTRの2番目の引数', columns)
       return { type: 's', expr: { kind: 'SUBSTR', str, len } }
     }
     case 'IF': {
       arity(3)
-      const cond  = requireBool(args[0], 'IFの1番目の引数')
-      const then_ = typeCheck(args[1])
-      const else_ = typeCheck(args[2])
+      const cond  = requireBool(args[0], 'IFの1番目の引数', columns)
+      const then_ = typeCheck(args[1], columns)
+      const else_ = typeCheck(args[2], columns)
       if (then_.type !== else_.type)
         throw new TypeCheckError(`IF: 第2・第3引数の型が一致していません（真の場合: ${typeLabel(then_)}、偽の場合: ${typeLabel(else_)}）`)
       if (then_.type === 'n' && else_.type === 'n')
@@ -335,8 +374,8 @@ function typeCheck(raw: RawExpr): TypedExpr {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function parseAndTypeCheck(input: string): TypedExpr {
+export function parseAndTypeCheck(input: string, columns?: ColumnTypeInfo[]): TypedExpr {
   const tokens = tokenize(input.trim())
   const raw = new Parser(tokens).parse()
-  return typeCheck(raw)
+  return typeCheck(raw, columns)
 }

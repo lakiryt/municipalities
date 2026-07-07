@@ -8,8 +8,8 @@ import {
   baseItemEnv, areaSources, populationSources,
   type PopulationRecord, type DesignationSets,
 } from '../data/municipalities'
-import type { ColumnState, ModalState, SortState } from '../types'
-import { decodeExploreState, encodeExploreState, type ExploreState } from '@/lib/exploreState'
+import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
+import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import FilterBar from '@/components/FilterBar'
 import DataTable from '@/components/DataTable'
 import ColumnModal from '@/components/modals/ColumnModal'
@@ -27,6 +27,21 @@ type Props = {
   initialSearchOpen?: boolean
 }
 
+// Adds or updates a column by stable id, minting a fresh id for a new one.
+// Shared by "save column" and "set as sort" (which also needs the resulting
+// id to build an `@id` reference).
+function upsertColumn(
+  cols: ExploreState['columns'], modal: ModalState, label: string, expression: string
+): { cols: ExploreState['columns']; id: number } {
+  if (modal.kind === 'add') {
+    const id = nextColumnId(cols)
+    return { cols: [...cols, { id, label, expression }], id }
+  }
+  const idx = cols.findIndex(c => c.id === modal.id)
+  const next = idx === -1 ? cols : cols.map((c, i) => i === idx ? { ...c, label, expression } : c)
+  return { cols: next, id: modal.id }
+}
+
 function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false }: Props) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -37,7 +52,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // the new state, so a page's own `initial*` props are only ever the
   // starting point before the first edit.
   const defaultState: ExploreState = useMemo(() => ({
-    columns: initialColumns.map(c => ({ label: c.label, expression: c.expression })),
+    columns: initialColumns.map(c => ({ id: c.id, label: c.label, expression: c.expression })),
     filterExpression: initialFilter?.expression ?? '',
     sortExpression: initialSort?.expression ?? '',
     sortDirection: initialSort?.direction ?? 'desc',
@@ -45,31 +60,42 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   }), [])
   const effectiveState = decodeExploreState(searchParams.get('s')) ?? defaultState
 
+  // Columns can never reference `@id` themselves (only filter/sort can), so
+  // they're parsed with no column context at all — that's what guarantees
+  // the reference graph can't contain a cycle.
   const columns: ColumnState[] = useMemo(() => {
     const out: ColumnState[] = []
-    effectiveState.columns.forEach((c, i) => {
+    effectiveState.columns.forEach(c => {
       try {
-        out.push({ id: i, label: c.label, expression: c.expression, typed: parseAndTypeCheck(c.expression) })
+        out.push({ id: c.id, label: c.label, expression: c.expression, typed: parseAndTypeCheck(c.expression) })
       } catch { /* drop invalid column (e.g. hand-edited URL) */ }
     })
     return out
   }, [effectiveState])
 
+  // Includes labels (beyond what type-checking needs) so filter/sort modals
+  // can render a human-readable picker for `@id` references.
+  const columnRefs: ColumnRef[] = useMemo(
+    () => columns.map(c => ({ id: c.id, label: c.label, type: c.typed.type })),
+    [columns]
+  )
+  const colEnv = useMemo(() => columns.map(c => ({ id: c.id, typed: c.typed })), [columns])
+
   const filterExpr: TypedExpr | null = useMemo(() => {
     if (!effectiveState.filterExpression) return null
     try {
-      const t = parseAndTypeCheck(effectiveState.filterExpression)
+      const t = parseAndTypeCheck(effectiveState.filterExpression, columnRefs)
       return t.type === 'b' ? t : null
     } catch { return null }
-  }, [effectiveState])
+  }, [effectiveState, columnRefs])
   const filterExpression = effectiveState.filterExpression
 
   const sortState: SortState | null = useMemo(() => {
     if (!effectiveState.sortExpression) return null
     try {
-      return { expression: effectiveState.sortExpression, typed: parseAndTypeCheck(effectiveState.sortExpression), direction: effectiveState.sortDirection }
+      return { expression: effectiveState.sortExpression, typed: parseAndTypeCheck(effectiveState.sortExpression, columnRefs), direction: effectiveState.sortDirection }
     } catch { return null }
-  }, [effectiveState])
+  }, [effectiveState, columnRefs])
 
   const commit = (next: ExploreState) => navigate(`/explore?s=${encodeURIComponent(encodeExploreState(next))}`)
 
@@ -109,13 +135,13 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     : null
 
   const filteredItems = filterExpr !== null
-    ? activeItems.filter(item => evaluate(filterExpr, baseItemEnv(item, designations)) === true)
+    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations), columns: colEnv }) === true)
     : activeItems
 
   const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortState.typed, baseItemEnv(a, designations))
-        const vb = evaluate(sortState.typed, baseItemEnv(b, designations))
+        const va = evaluate(sortState.typed, { ...baseItemEnv(a, designations), columns: colEnv })
+        const vb = evaluate(sortState.typed, { ...baseItemEnv(b, designations), columns: colEnv })
         const sign = sortState.direction === 'asc' ? 1 : -1
         if (sortState.typed.type === 's') {
           return sign * (va as string).localeCompare(vb as string, 'ja')
@@ -130,18 +156,27 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   const handleColumnSave = (label: string, expression: string) => {
     if (modal === null) return
-    const cols = effectiveState.columns.slice()
-    if (modal.kind === 'add') {
-      cols.push({ label, expression })
-    } else {
-      cols[modal.id] = { label, expression }
-    }
+    const { cols } = upsertColumn(effectiveState.columns, modal, label, expression)
     commit({ ...effectiveState, columns: cols })
     setModal(null)
   }
 
+  // Saves the column (same as handleColumnSave) and also points the sort at
+  // it by `@id`, so the sort tracks future edits to the column instead of
+  // freezing today's expression text.
+  const handleSetColumnSort = (label: string, expression: string) => {
+    if (modal === null) return
+    const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
+    commit({ ...effectiveState, columns: cols, sortExpression: `@${id}`, sortDirection: 'desc' })
+    setModal(null)
+  }
+
+  // Deleting a column never needs to touch filter/sort: their `@id`
+  // references (if any) stay pointed at whatever they pointed at before.
+  // A reference to the column that was just deleted becomes a normal
+  // "column not found" type-check error, same as any other invalid edit.
   const handleColumnDelete = (id: number) => {
-    commit({ ...effectiveState, columns: effectiveState.columns.filter((_, i) => i !== id) })
+    commit({ ...effectiveState, columns: effectiveState.columns.filter(c => c.id !== id) })
     setModal(null)
   }
 
@@ -149,7 +184,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     { filterExpression: fex, sortExpression, sortDirection, columns: cols }
   ) => {
     commit({
-      columns: cols.map(c => ({ label: c.label, expression: c.expression })),
+      columns: cols.map(c => ({ id: c.id, label: c.label, expression: c.expression })),
       filterExpression: fex,
       sortExpression,
       sortDirection,
@@ -167,13 +202,14 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           isNew={modal.kind === 'add'}
           onSave={handleColumnSave}
           onDelete={modal.kind === 'edit' ? () => handleColumnDelete(modal.id) : undefined}
-          onSetSort={(expression) => { commit({ ...effectiveState, sortExpression: expression, sortDirection: 'desc' }); setModal(null) }}
+          onSetSort={handleSetColumnSort}
           onClose={() => setModal(null)}
         />
       )}
       {filterOpen && (
         <FilterModal
           initialExpression={filterExpression}
+          columns={columnRefs}
           onApply={(expression) => { commit({ ...effectiveState, filterExpression: expression }); setFilterOpen(false) }}
           onClear={() => { commit({ ...effectiveState, filterExpression: '' }); setFilterOpen(false) }}
           onClose={() => setFilterOpen(false)}
@@ -183,6 +219,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         <SortModal
           initialExpression={sortState?.expression ?? ''}
           initialDirection={sortState?.direction ?? 'desc'}
+          columns={columnRefs}
           onApply={(expression, _typed, direction) => { commit({ ...effectiveState, sortExpression: expression, sortDirection: direction }); setSortOpen(false) }}
           onClear={() => { commit({ ...effectiveState, sortExpression: '', sortDirection: 'desc' }); setSortOpen(false) }}
           onClose={() => setSortOpen(false)}

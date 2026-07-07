@@ -8,7 +8,9 @@ type Props = {
   isNew: boolean
   onSave: (label: string, expression: string, typed: TypedExpr) => void
   onDelete?: () => void
-  onSetSort?: (expression: string, typed: TypedExpr) => void
+  // Saves this column (creating it if new) and points the sort at it via
+  // `@id`, so the sort stays in sync if the column is edited again later.
+  onSetSort?: (label: string, expression: string, typed: TypedExpr) => void
   onClose: () => void
 }
 
@@ -57,8 +59,8 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
             {onSetSort && (
               <button
                 className="px-3 py-1 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={!validExpr}
-                onClick={() => { if (validExpr) onSetSort(expression, validExpr) }}
+                disabled={!canSave}
+                onClick={() => { if (canSave && validExpr) onSetSort(label.trim(), expression, validExpr) }}
               >
                 この列で並び替える
               </button>

@@ -1,4 +1,4 @@
-import type { TypedExpr } from './lang/expr'
+import type { TypedExpr, ColumnTypeInfo } from './lang/expr'
 
 export type ColumnState = {
   id: number
@@ -6,6 +6,10 @@ export type ColumnState = {
   expression: string
   typed: TypedExpr
 }
+
+// Enough to both type-check `@id` references (ColumnTypeInfo) and render a
+// human-readable picker for them (label) in the filter/sort UI.
+export type ColumnRef = ColumnTypeInfo & { label: string }
 
 export type ModalState =
   | { kind: 'edit'; id: number }

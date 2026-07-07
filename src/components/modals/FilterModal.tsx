@@ -1,20 +1,25 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { parseAndTypeCheck, type TypedExpr } from '@/lang/expr'
+import type { ColumnRef } from '@/types'
 import ExprEditor from '@/components/ExprEditor'
+import { type ExprInputHandle } from '@/components/ExprInput'
+import ColumnRefChips from '@/components/ColumnRefChips'
 
 type Props = {
   initialExpression: string
+  columns?: ColumnRef[]
   onApply: (expression: string, typed: TypedExpr) => void
   onClear: () => void
   onClose: () => void
 }
 
-function FilterModal({ initialExpression, onApply, onClear, onClose }: Props) {
+function FilterModal({ initialExpression, columns = [], onApply, onClear, onClose }: Props) {
   const [expression, setExpression] = useState(initialExpression)
   const [validExpr, setValidExpr] = useState<TypedExpr | null>(() => {
     if (!initialExpression.trim()) return null
-    try { const t = parseAndTypeCheck(initialExpression); return t.type === 'b' ? t : null } catch { return null }
+    try { const t = parseAndTypeCheck(initialExpression, columns); return t.type === 'b' ? t : null } catch { return null }
   })
+  const editorRef = useRef<ExprInputHandle>(null)
 
   return (
     <div
@@ -25,12 +30,15 @@ function FilterModal({ initialExpression, onApply, onClear, onClose }: Props) {
         <h3 className="text-lg font-bold mb-4">絞り込み</h3>
 
         <ExprEditor
+          ref={editorRef}
           initialExpression={initialExpression}
           placeholder='AND(EQ($prefkanji, "東京都"), LEQ(#totalpop, 100000))'
           requiredType="b"
+          columns={columns}
           onValidExpr={setValidExpr}
           onExpressionChange={setExpression}
         />
+        <ColumnRefChips columns={columns} onInsert={text => editorRef.current?.insertAtCursor(text)} />
 
         <div className="flex justify-between mt-5">
           <button

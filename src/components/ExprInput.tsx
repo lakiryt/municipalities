@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { varCompletions } from '@/data/municipalities'
+
+export type ExprInputHandle = { insertAtCursor: (text: string) => void }
 
 const COMPLETIONS = [
   'AND(', 'OR(', 'NOT(', 'LEQ(', 'EQ(', 'SUM(', 'MULT(', 'NEG(', 'INV(', 'ROUND(',
@@ -77,7 +79,7 @@ type Props = {
   onChange: (raw: string) => void
 }
 
-function ExprInput({ initialExpression = '', placeholder, onChange }: Props) {
+const ExprInput = forwardRef<ExprInputHandle, Props>(function ExprInput({ initialExpression = '', placeholder, onChange }, handleRef) {
   const [value,       setValue]       = useState(initialExpression)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [selectedIdx, setSelectedIdx] = useState(0)
@@ -118,6 +120,8 @@ function ExprInput({ initialExpression = '', placeholder, onChange }: Props) {
       ta.setSelectionRange(newCursor, newCursor)
     })
   }
+
+  useImperativeHandle(handleRef, () => ({ insertAtCursor: complete }))
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (suggestions.length === 0) return
@@ -164,6 +168,6 @@ function ExprInput({ initialExpression = '', placeholder, onChange }: Props) {
       )}
     </div>
   )
-}
+})
 
 export default ExprInput
