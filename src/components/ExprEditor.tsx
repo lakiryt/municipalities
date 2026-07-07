@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr } from '../lang/expr'
 import ExprInput from './ExprInput'
 
@@ -90,9 +89,6 @@ function ExprEditor({ initialExpression = '', placeholder, requiredType, onValid
           </span>
         )}
       </div>
-      <Link to="/formulas" className="mt-2 block text-xs text-blue-500 hover:underline">
-        式の記述方法 →
-      </Link>
     </div>
   )
 }
