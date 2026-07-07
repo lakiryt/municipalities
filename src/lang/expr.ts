@@ -385,3 +385,47 @@ export function parseAndTypeCheck(input: string, columns?: ColumnTypeInfo[]): Ty
   const raw = new Parser(tokens).parse()
   return typeCheck(raw, columns)
 }
+
+// Walks the already-typed AST looking for an `@id` node — used to warn
+// before deleting a column that a filter/sort expression depends on.
+// Deliberately walks the parsed tree rather than searching the source text,
+// since a string literal argument could coincidentally contain "@3".
+function numReferencesColumn(expr: NumExpr, id: number): boolean {
+  switch (expr.kind) {
+    case 'literal': case 'numvar': return false
+    case 'SUM': case 'MULT': case 'MIN': case 'MAX': return expr.args.some(a => numReferencesColumn(a, id))
+    case 'NEG': case 'INV': return numReferencesColumn(expr.arg, id)
+    case 'ROUND': return numReferencesColumn(expr.arg, id) || numReferencesColumn(expr.digits, id)
+    case 'IF': return boolReferencesColumn(expr.cond, id) || numReferencesColumn(expr.then, id) || numReferencesColumn(expr.else_, id)
+    case 'colref': return expr.id === id
+  }
+}
+
+function boolReferencesColumn(expr: BoolExpr, id: number): boolean {
+  switch (expr.kind) {
+    case 'AND': case 'OR': return expr.args.some(a => boolReferencesColumn(a, id))
+    case 'NOT': return boolReferencesColumn(expr.arg, id)
+    case 'LEQ': return numReferencesColumn(expr.left, id) || numReferencesColumn(expr.right, id)
+    case 'EQ': return referencesColumn(expr.left, id) || referencesColumn(expr.right, id)
+    case 'boolvar': return false
+    case 'IF': return boolReferencesColumn(expr.cond, id) || boolReferencesColumn(expr.then, id) || boolReferencesColumn(expr.else_, id)
+    case 'colref': return expr.id === id
+  }
+}
+
+function strReferencesColumn(expr: StrExpr, id: number): boolean {
+  switch (expr.kind) {
+    case 'strlit': case 'strvar': return false
+    case 'SUBSTR': return strReferencesColumn(expr.str, id) || numReferencesColumn(expr.len, id)
+    case 'IF': return boolReferencesColumn(expr.cond, id) || strReferencesColumn(expr.then, id) || strReferencesColumn(expr.else_, id)
+    case 'colref': return expr.id === id
+  }
+}
+
+export function referencesColumn(expr: TypedExpr, id: number): boolean {
+  switch (expr.type) {
+    case 'n': return numReferencesColumn(expr.expr, id)
+    case 'b': return boolReferencesColumn(expr.expr, id)
+    case 's': return strReferencesColumn(expr.expr, id)
+  }
+}

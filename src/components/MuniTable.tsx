@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { evaluate } from '../lang/evaluate'
-import { parseAndTypeCheck } from '../lang/expr'
+import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import {
   buildItems, fetchArea, fetchPopulation, fetchDesignations,
@@ -18,6 +18,7 @@ import SortModal from '@/components/modals/SortModal'
 import DataModal from '@/components/modals/DataModal'
 import SearchModal from '@/components/modals/SearchModal'
 import Sidebar from '@/components/Sidebar'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 type Props = {
   title?: string
@@ -100,6 +101,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const commit = (next: ExploreState) => navigate(`/explore?s=${encodeURIComponent(encodeExploreState(next))}`)
 
   const [modal, setModal]                 = useState<ModalState | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [filterOpen, setFilterOpen]       = useState(false)
   const [sortOpen, setSortOpen]           = useState(false)
   const [dataOpen, setDataOpen]           = useState(false)
@@ -180,6 +182,24 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     setModal(null)
   }
 
+  const columnUsedIn = (id: number): string[] => {
+    const usedIn: string[] = []
+    if (filterExpr !== null && referencesColumn(filterExpr, id)) usedIn.push('絞り込み')
+    if (sortState !== null && referencesColumn(sortState.typed, id)) usedIn.push('並べ替え')
+    return usedIn
+  }
+
+  // Deleting a column that filter/sort currently depends on (via `@id`)
+  // doesn't fail — it just becomes a type-check error next render — but a
+  // silent "your filter stopped working" is bad UX, so confirm first.
+  const requestColumnDelete = (id: number) => {
+    if (columnUsedIn(id).length > 0) {
+      setConfirmDeleteId(id)
+    } else {
+      handleColumnDelete(id)
+    }
+  }
+
   const handleSearchApply: Parameters<typeof SearchModal>[0]['onApply'] = (
     { filterExpression: fex, sortExpression, sortDirection, columns: cols }
   ) => {
@@ -201,9 +221,16 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           initialExpression={editingColumn?.expression ?? ''}
           isNew={modal.kind === 'add'}
           onSave={handleColumnSave}
-          onDelete={modal.kind === 'edit' ? () => handleColumnDelete(modal.id) : undefined}
+          onDelete={modal.kind === 'edit' ? () => requestColumnDelete(modal.id) : undefined}
           onSetSort={handleSetColumnSort}
           onClose={() => setModal(null)}
+        />
+      )}
+      {confirmDeleteId !== null && (
+        <ConfirmDialog
+          message={`この列は${columnUsedIn(confirmDeleteId).join('・')}で使用されています。\n削除すると、それらの設定が無効になります。\n本当に削除しますか？`}
+          onConfirm={() => { handleColumnDelete(confirmDeleteId); setConfirmDeleteId(null) }}
+          onCancel={() => setConfirmDeleteId(null)}
         />
       )}
       {filterOpen && (

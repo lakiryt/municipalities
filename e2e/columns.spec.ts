@@ -48,7 +48,7 @@ test('"この列で並び替える" sorts by @id and survives editing the column
   expect(referencedColumn.label).toBe('総人口')
 })
 
-test('deleting a column that a sort references degrades gracefully instead of crashing', async ({ page }) => {
+test('deleting a column referenced by sort warns first, and confirming degrades gracefully instead of crashing', async ({ page }) => {
   await page.getByRole('columnheader', { name: '面積', exact: true }).click()
   await page.getByRole('button', { name: 'この列で並び替える' }).click()
 
@@ -56,8 +56,36 @@ test('deleting a column that a sort references degrades gracefully instead of cr
   await page.getByRole('columnheader', { name: '面積', exact: true }).click()
   await page.getByRole('button', { name: '削除' }).click()
 
+  const warning = page.getByText(/並べ替え.*使用されています/)
+  await expect(warning).toBeVisible()
+  await page.getByRole('button', { name: '削除' }).last().click()
+
   // The app should still render a working table (no crash / blank page) —
   // the dangling @id becomes a normal "no active sort" state, not an error.
   await expect(page.locator('tbody tr').first()).toBeVisible()
   await expect(page.getByRole('columnheader', { name: '面積', exact: true })).toHaveCount(0)
+})
+
+test('canceling the delete-confirmation warning keeps the column', async ({ page }) => {
+  await page.getByRole('columnheader', { name: '面積', exact: true }).click()
+  await page.getByRole('button', { name: 'この列で並び替える' }).click()
+
+  await page.getByRole('columnheader', { name: '面積', exact: true }).click()
+  await page.getByRole('button', { name: '削除' }).click()
+  await expect(page.getByText(/使用されています/)).toBeVisible()
+  await page.getByRole('button', { name: 'キャンセル' }).last().click()
+
+  await expect(page.getByRole('columnheader', { name: '面積', exact: true })).toBeVisible()
+})
+
+test('deleting a column referenced by the filter also warns', async ({ page }) => {
+  await page.getByRole('button', { name: '絞り込み', exact: true }).click()
+  // Column ids for the default seeded columns are 0..4 in order; "総人口" is id 3.
+  await page.getByPlaceholder(/AND\(EQ/).fill('LEQ(@3, 1000000)')
+  await page.getByRole('button', { name: '適用' }).click()
+
+  await page.getByRole('columnheader', { name: '総人口', exact: true }).click()
+  await page.getByRole('button', { name: '削除' }).click()
+
+  await expect(page.getByText(/絞り込み.*使用されています/)).toBeVisible()
 })

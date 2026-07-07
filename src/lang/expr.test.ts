@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseAndTypeCheck, ParseError, TypeCheckError } from './expr'
+import { parseAndTypeCheck, referencesColumn, ParseError, TypeCheckError } from './expr'
 
 describe('literals and variables', () => {
   it('parses a numeric literal', () => {
@@ -119,5 +119,44 @@ describe('@id column references', () => {
 
   it('a reference id is independent of array position (ids need not be 0-based/contiguous)', () => {
     expect(parseAndTypeCheck('@7', [{ id: 7, type: 'n' }]).type).toBe('n')
+  })
+})
+
+describe('referencesColumn', () => {
+  it('finds a direct reference', () => {
+    const t = parseAndTypeCheck('@3', [{ id: 3, type: 'n' }])
+    expect(referencesColumn(t, 3)).toBe(true)
+    expect(referencesColumn(t, 4)).toBe(false)
+  })
+
+  it('finds a reference nested inside a call (used for warning before deleting a referenced column)', () => {
+    const t = parseAndTypeCheck('LEQ(@3, 100000)', [{ id: 3, type: 'n' }])
+    expect(referencesColumn(t, 3)).toBe(true)
+  })
+
+  it('finds a reference nested inside AND/OR/NOT/IF', () => {
+    const t = parseAndTypeCheck('AND(NOT(&seirei), IF(@0, &seirei, NOT(&seirei)))', [{ id: 0, type: 'b' }])
+    // @0 is used as the IF condition here, not as a plain boolvar
+    expect(referencesColumn(t, 0)).toBe(true)
+  })
+
+  it('finds a reference on either side of EQ regardless of type', () => {
+    const t = parseAndTypeCheck('EQ($kanji, @0)', [{ id: 0, type: 's' }])
+    expect(referencesColumn(t, 0)).toBe(true)
+  })
+
+  it('finds a reference inside SUBSTR', () => {
+    const t = parseAndTypeCheck('SUBSTR(@0, 2)', [{ id: 0, type: 's' }])
+    expect(referencesColumn(t, 0)).toBe(true)
+  })
+
+  it('returns false when the expression has no column references at all', () => {
+    const t = parseAndTypeCheck('LEQ(#totalpop, 100000)')
+    expect(referencesColumn(t, 0)).toBe(false)
+  })
+
+  it('does not confuse a string literal that happens to contain "@3" with an actual reference', () => {
+    const t = parseAndTypeCheck('EQ($kanji, "@3")')
+    expect(referencesColumn(t, 3)).toBe(false)
   })
 })
