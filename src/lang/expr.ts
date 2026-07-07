@@ -15,12 +15,14 @@ export type NumLiteral = { kind: 'literal'; value: number }
 export type NumVar     = { kind: 'numvar';  name: string }
 export type NumSum     = { kind: 'SUM';     args: NumExpr[] }
 export type NumMult    = { kind: 'MULT';    args: NumExpr[] }
+export type NumMin     = { kind: 'MIN';     args: NumExpr[] }
+export type NumMax     = { kind: 'MAX';     args: NumExpr[] }
 export type NumNeg     = { kind: 'NEG';     arg: NumExpr }
 export type NumInv     = { kind: 'INV';     arg: NumExpr }
 export type NumRound   = { kind: 'ROUND';   arg: NumExpr; digits: NumExpr }
 export type NumIf      = { kind: 'IF'; cond: BoolExpr; then: NumExpr;  else_: NumExpr }
 export type NumColRef  = { kind: 'colref'; id: number }
-export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumNeg | NumInv | NumRound | NumIf | NumColRef
+export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumMin | NumMax | NumNeg | NumInv | NumRound | NumIf | NumColRef
 
 export type BoolAnd  = { kind: 'AND';     args: BoolExpr[] }
 export type BoolOr   = { kind: 'OR';      args: BoolExpr[] }
@@ -337,6 +339,10 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
       return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, `SUMの${i + 1}番目の引数`, columns)) } }
     case 'MULT':
       return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, `MULTの${i + 1}番目の引数`, columns)) } }
+    case 'MIN':
+      return { type: 'n', expr: { kind: 'MIN',  args: args.map((a: RawExpr, i: number) => requireNum(a, `MINの${i + 1}番目の引数`, columns)) } }
+    case 'MAX':
+      return { type: 'n', expr: { kind: 'MAX',  args: args.map((a: RawExpr, i: number) => requireNum(a, `MAXの${i + 1}番目の引数`, columns)) } }
     case 'NEG':
       arity(1)
       return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], 'NEGの1番目の引数', columns) } }

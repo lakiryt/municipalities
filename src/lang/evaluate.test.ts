@@ -16,6 +16,16 @@ describe('numeric evaluation', () => {
     expect(evaluate(parseAndTypeCheck('INV(#area)'), baseEnv)).toBe(0.25)
   })
 
+  it('evaluates MIN and MAX', () => {
+    expect(evaluate(parseAndTypeCheck('MIN(#female, #male, 10)'), baseEnv)).toBe(10)
+    expect(evaluate(parseAndTypeCheck('MAX(#female, #male, 10)'), baseEnv)).toBe(60)
+  })
+
+  it('MIN/MAX with no arguments matches JS Math.min/max identity (+/-Infinity)', () => {
+    expect(evaluate(parseAndTypeCheck('MIN()'), baseEnv)).toBe(Infinity)
+    expect(evaluate(parseAndTypeCheck('MAX()'), baseEnv)).toBe(-Infinity)
+  })
+
   it('evaluates ROUND', () => {
     expect(evaluate(parseAndTypeCheck('ROUND(MULT(#totalpop, INV(#area)), 2)'), baseEnv)).toBe(25)
   })

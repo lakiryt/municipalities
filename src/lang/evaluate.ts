@@ -20,6 +20,8 @@ function evaluateNum(expr: NumExpr, env: Env): number {
     case 'numvar':  return (env.numvars[expr.name] as number | undefined) ?? NaN
     case 'SUM':     return expr.args.reduce((acc, a) => acc + evaluateNum(a, env), 0)
     case 'MULT':    return expr.args.reduce((acc, a) => acc * evaluateNum(a, env), 1)
+    case 'MIN':     return Math.min(...expr.args.map(a => evaluateNum(a, env)))
+    case 'MAX':     return Math.max(...expr.args.map(a => evaluateNum(a, env)))
     case 'NEG':     return -evaluateNum(expr.arg, env)
     case 'INV':     return 1 / evaluateNum(expr.arg, env)
     case 'ROUND':   { const f = Math.pow(10, evaluateNum(expr.digits, env)); return Math.round(evaluateNum(expr.arg, env) * f) / f }

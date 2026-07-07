@@ -10,6 +10,8 @@ const functions = [
   { sig: 'EQ(a, a)',   ret: 'b', desc: '等しい（型は同じであること）' },
   { sig: 'SUM(n…)',    ret: 'n', desc: '合計' },
   { sig: 'MULT(n…)',   ret: 'n', desc: '積' },
+  { sig: 'MIN(n…)',    ret: 'n', desc: '最小値' },
+  { sig: 'MAX(n…)',    ret: 'n', desc: '最大値' },
   { sig: 'NEG(n)',     ret: 'n', desc: '符号反転（× −1）' },
   { sig: 'INV(n)',     ret: 'n', desc: '逆数（1 ÷ n）' },
   { sig: 'ROUND(n, d)',  ret: 'n', desc: '小数点以下 d 桁に丸め（d < 0 で整数位）' },

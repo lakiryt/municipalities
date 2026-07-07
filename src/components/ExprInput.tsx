@@ -4,7 +4,7 @@ import { varCompletions } from '@/data/municipalities'
 export type ExprInputHandle = { insertAtCursor: (text: string) => void }
 
 const COMPLETIONS = [
-  'AND(', 'OR(', 'NOT(', 'LEQ(', 'EQ(', 'SUM(', 'MULT(', 'NEG(', 'INV(', 'ROUND(',
+  'AND(', 'OR(', 'NOT(', 'LEQ(', 'EQ(', 'SUM(', 'MULT(', 'MIN(', 'MAX(', 'NEG(', 'INV(', 'ROUND(',
   ...varCompletions,
 ]
 

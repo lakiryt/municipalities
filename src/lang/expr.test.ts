@@ -45,6 +45,16 @@ describe('function calls', () => {
     expect(t.type).toBe('n')
   })
 
+  it('type-checks MIN and MAX over numvars, variadic like SUM/MULT', () => {
+    expect(parseAndTypeCheck('MIN(#female, #male)').type).toBe('n')
+    expect(parseAndTypeCheck('MAX(#female, #male, 100)').type).toBe('n')
+  })
+
+  it('rejects a non-numeric argument to MIN/MAX', () => {
+    expect(() => parseAndTypeCheck('MIN(1, "x")')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('MAX(&seirei)')).toThrow(TypeCheckError)
+  })
+
   it('rejects wrong arity', () => {
     expect(() => parseAndTypeCheck('NEG(1, 2)')).toThrow(TypeCheckError)
   })
