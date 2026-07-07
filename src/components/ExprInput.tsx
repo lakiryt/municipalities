@@ -14,10 +14,61 @@ function tokenAtCursor(text: string, cursor: number): { token: string; start: nu
   return { token: text.slice(start, cursor), start }
 }
 
+// Levenshtein edit distance between two strings.
+function editDistance(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0))
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+  return dp[a.length][b.length]
+}
+
+// Typo-tolerance fallback only kicks in for near matches, otherwise every
+// completion would show up (in distance order) for any keystroke.
+const FUZZY_DISTANCE_THRESHOLD = 2
+
+// Checks whether every character of `q` appears in `s`, in order (gaps allowed),
+// e.g. "fema20" matches "female20_24" by skipping "le" and "_24"'s underscore.
+// Returns the gap count (skipped chars between first and last match, lower = tighter)
+// and the start index of the match (lower = earlier in the string), or null if
+// `q` isn't a subsequence of `s`.
+function subsequenceMatch(q: string, s: string): { gap: number; first: number } | null {
+  let qi = 0
+  let first = -1
+  let last = -1
+  for (let i = 0; i < s.length && qi < q.length; i++) {
+    if (s[i] === q[qi]) {
+      if (first === -1) first = i
+      last = i
+      qi++
+    }
+  }
+  if (qi < q.length) return null
+  return { gap: (last - first + 1) - q.length, first }
+}
+
 function getSuggestions(token: string): string[] {
   if (!token) return []
   const q = token.toLowerCase()
-  return COMPLETIONS.filter(c => c.toLowerCase().includes(q))
+  return COMPLETIONS
+    .filter(c => c.toLowerCase() !== q)
+    .map(c => {
+      const lc = c.toLowerCase()
+      if (lc.startsWith(q)) return { c, tier: 0, a: lc.length, b: 0 }
+      if (lc.includes(q)) return { c, tier: 1, a: lc.indexOf(q), b: 0 }
+      const match = subsequenceMatch(q, lc)
+      if (match !== null) return { c, tier: 2, a: match.gap, b: match.first }
+      return { c, tier: 3, a: editDistance(q, lc), b: 0 }
+    })
+    .filter(({ tier, a }) => tier < 3 || a <= FUZZY_DISTANCE_THRESHOLD)
+    .sort((x, y) => x.tier - y.tier || x.a - y.a || x.b - y.b)
+    .map(({ c }) => c)
 }
 
 type Props = {
