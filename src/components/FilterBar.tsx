@@ -21,7 +21,7 @@ function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, 
   return (
     <div className="fixed top-0 inset-x-0 z-20 h-11 flex items-center gap-3 bg-gray-50 border-b border-gray-200 px-4">
       <Link to="/"><img src="/favicon.svg" alt="home" className="h-6 w-6" /></Link>
-      <span className="font-semibold text-sm truncate">{title}</span>
+      <h1 className="font-semibold text-sm truncate">{title}</h1>
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-3">
           <button className={`${btnBase} ${btnInactive}`} onClick={onDataClick}>データ選択</button>

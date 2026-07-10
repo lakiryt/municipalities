@@ -1,6 +1,7 @@
 import { parseAndTypeCheck } from '@/lang/expr'
 import type { RankingConfig, ColumnState, SortState } from '@/types'
 import MuniTable from '@/components/MuniTable'
+import Canonical from '@/components/Canonical'
 
 type Props = { config: RankingConfig }
 
@@ -22,6 +23,7 @@ function RankingPage({ config }: Props) {
 
   return (
     <>
+      <Canonical />
       {config.description && <meta name="description" content={config.description} />}
       <MuniTable
         title={config.title}

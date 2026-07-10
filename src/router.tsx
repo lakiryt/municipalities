@@ -8,6 +8,7 @@ import AreaPage from './components/pages/AreaPage'
 import CityAreaPage from './components/pages/CityAreaPage'
 import FormulasPage from './components/pages/FormulasPage'
 import MuniTable from './components/MuniTable'
+import Canonical from './components/Canonical'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
 import elderlyRatioConfig from './rankings/elderlyRatio'
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
     path: '/search',
     element: (
       <>
+        <Canonical />
         <meta name="description" content="市区町村名・都道府県・種別・区分などで絞り込み、人口や面積など様々な統計でソートできます。" />
         <MuniTable title="自由探索" initialColumns={initialColumns} initialSearchOpen />
       </>
