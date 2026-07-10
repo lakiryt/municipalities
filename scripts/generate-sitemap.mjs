@@ -24,13 +24,18 @@ const urls = [
   { path: '/search',                            priority: '0.8', changefreq: 'monthly' },
   { path: '/rankings/all/density',              priority: '0.8', changefreq: 'monthly' },
   { path: '/rankings/all/cities',               priority: '0.8', changefreq: 'monthly' },
+  { path: '/rankings/all/area',                 priority: '0.8', changefreq: 'monthly' },
+  { path: '/rankings/all/city-area',            priority: '0.8', changefreq: 'monthly' },
+  { path: '/rankings/all/elderly-ratio',        priority: '0.7', changefreq: 'monthly' },
   { path: '/rankings/all/population-over-500k', priority: '0.7', changefreq: 'monthly' },
   { path: '/list/all/population',               priority: '0.7', changefreq: 'monthly' },
   { path: '/explore',                           priority: '0.5', changefreq: 'monthly' },
   { path: '/formulas',                          priority: '0.4', changefreq: 'yearly'  },
   ...prefectures.flatMap(p => [
-    { path: `/rankings/${p.romanized}/density`, priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/cities`,  priority: '0.7', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/density`,   priority: '0.7', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/cities`,    priority: '0.7', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/area`,      priority: '0.7', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/city-area`, priority: '0.7', changefreq: 'monthly' },
   ]),
 ]
 
@@ -47,3 +52,12 @@ ${urls.map(u => `  <url>
 
 writeFileSync(resolve(root, 'public/sitemap.xml'), xml)
 console.log(`Sitemap: ${urls.length} URLs → public/sitemap.xml`)
+
+const robotsTxt = `User-agent: *
+Allow: /
+
+Sitemap: ${SITE_URL}/sitemap.xml
+`
+
+writeFileSync(resolve(root, 'public/robots.txt'), robotsTxt)
+console.log('Robots: public/robots.txt')

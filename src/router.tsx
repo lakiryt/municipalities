@@ -4,6 +4,8 @@ import HomePage from './components/pages/HomePage'
 import RankingPage from './components/pages/RankingPage'
 import DensityPage from './components/pages/DensityPage'
 import CityPopulationPage from './components/pages/CityPopulationPage'
+import AreaPage from './components/pages/AreaPage'
+import CityAreaPage from './components/pages/CityAreaPage'
 import FormulasPage from './components/pages/FormulasPage'
 import MuniTable from './components/MuniTable'
 import populationOver500k from './rankings/populationOver500k'
@@ -16,6 +18,8 @@ const router = createBrowserRouter([
   { path: '/explore',                            element: <App /> },
   { path: '/rankings/:pref/density',             element: <DensityPage /> },
   { path: '/rankings/:pref/cities',              element: <CityPopulationPage /> },
+  { path: '/rankings/:pref/area',                element: <AreaPage /> },
+  { path: '/rankings/:pref/city-area',           element: <CityAreaPage /> },
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
   { path: '/rankings/all/elderly-ratio',        element: <RankingPage config={elderlyRatioConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },

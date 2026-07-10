@@ -4,7 +4,7 @@ type Pref = { kanji: string }
 
 export function densityConfig(pref: Pref | null): RankingConfig {
   return {
-    title: pref ? `${pref.kanji}の自治体 — 人口密度ランキング` : '全国の自治体 — 人口密度ランキング',
+    title: pref ? `${pref.kanji}の自治体の人口密度ランキング` : '全国の自治体の人口密度ランキング',
     description: pref
       ? `${pref.kanji}の市区町村を人口密度（人/km²）の高い順に並べたランキングです。`
       : '全国の市区町村を人口密度（人/km²）の高い順に並べたランキングです。',

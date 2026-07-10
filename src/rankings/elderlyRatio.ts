@@ -1,7 +1,7 @@
 import type { RankingConfig } from '../types'
 
 const elderlyRatioConfig: RankingConfig = {
-  title: '老年人口比率ランキング（全国）',
+  title: '全国の自治体の老年人口比率ランキング',
   description: '全国の市区町村を65歳以上人口の比率の高い順に並べたランキングです。住民基本台帳の年齢別データが必要です。',
   columns: [
     { label: '都道府県',        expression: '$prefkanji' },

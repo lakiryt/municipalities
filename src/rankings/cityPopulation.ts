@@ -11,7 +11,7 @@ export function cityPopulationConfig(pref: Pref | null): RankingConfig {
     : cityFilter
 
   return {
-    title: pref ? `${pref.kanji}の市 — 人口ランキング` : '全国の市 — 人口ランキング',
+    title: pref ? `${pref.kanji}の市の人口ランキング` : '全国の市の人口ランキング',
     description: pref
       ? `${pref.kanji}の市を人口の多い順に並べたランキングです。政令指定都市・中核市・施行時特例市の区分も表示しています。`
       : '全国の市を人口の多い順に並べたランキングです。政令指定都市・中核市・施行時特例市の区分も表示しています。',

@@ -3,6 +3,8 @@ import { prefectures } from '../../data/municipalities'
 import populationOver500k from '../../rankings/populationOver500k'
 import { populationConfig } from '../../rankings/population'
 import { cityPopulationConfig } from '../../rankings/cityPopulation'
+import { densityConfig } from '../../rankings/density'
+import { areaConfig, cityAreaConfig } from '../../rankings/area'
 import elderlyRatioConfig from '../../rankings/elderlyRatio'
 
 function HomePage() {
@@ -32,11 +34,19 @@ function HomePage() {
       <section className="mb-8">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">ランキング</h2>
         <ul className="space-y-1">
-          <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">全国の自治体 — 人口密度ランキング</Link></li>
+          <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">{densityConfig(null).title}</Link></li>
+          <li><Link to="/rankings/all/cities" className="text-blue-600 hover:underline">{cityPopulationConfig(null).title}</Link></li>
+          <li><Link to="/rankings/all/area" className="text-blue-600 hover:underline">{areaConfig(null).title}</Link></li>
+          <li><Link to="/rankings/all/city-area" className="text-blue-600 hover:underline">{cityAreaConfig(null).title}</Link></li>
+          <li><Link to="/rankings/all/elderly-ratio" className="text-blue-600 hover:underline">{elderlyRatioConfig.title}</Link></li>
+        </ul>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">一覧・統計</h2>
+        <ul className="space-y-1">
           <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
           <li><Link to="/list/all/population" className="text-blue-600 hover:underline">{populationConfig.title}</Link></li>
-          <li><Link to="/rankings/all/cities" className="text-blue-600 hover:underline">{cityPopulationConfig(null).title}</Link></li>
-          <li><Link to="/rankings/all/elderly-ratio" className="text-blue-600 hover:underline">{elderlyRatioConfig.title}</Link></li>
         </ul>
       </section>
 
@@ -62,6 +72,36 @@ function HomePage() {
             <Link
               key={pref.code}
               to={`/rankings/${pref.romanized}/cities`}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              {pref.kanji}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別面積ランキング（市区町村）</h2>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {prefectures.map(pref => (
+            <Link
+              key={pref.code}
+              to={`/rankings/${pref.romanized}/area`}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              {pref.kanji}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別面積ランキング（市のみ）</h2>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {prefectures.map(pref => (
+            <Link
+              key={pref.code}
+              to={`/rankings/${pref.romanized}/city-area`}
               className="text-blue-600 hover:underline text-sm"
             >
               {pref.kanji}
