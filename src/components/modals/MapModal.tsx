@@ -136,57 +136,79 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     setIsDragging(true)
   }
 
-  // One finger pans, two fingers pinch-zoom. `touch-action: none` on the svg
-  // (below) stops the browser from also treating these as a page scroll/zoom
-  // gesture — without it, mobile pinches zoom the whole page instead of just
-  // the map.
-  const touchDistance = (touches: React.TouchList) =>
-    Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY)
-  const touchMidpoint = (touches: React.TouchList) => ({
-    x: (touches[0].clientX + touches[1].clientX) / 2,
-    y: (touches[0].clientY + touches[1].clientY) / 2,
-  })
+  // One finger pans, two fingers pinch-zoom. Registered as native (non-React)
+  // listeners below, not JSX onTouch* props: React attaches its synthetic
+  // touchstart/touchmove listeners as passive, which silently no-ops
+  // preventDefault() — the touch-action: none CSS (below) is what mostly
+  // stops the browser from treating this as a page pinch/scroll instead of
+  // the map's own, but it's inconsistently honored for two-finger gestures
+  // across mobile browsers, so a real preventDefault() is the necessary
+  // backup, and that requires an explicitly non-passive listener.
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
 
-  const handleTouchStart = (e: React.TouchEvent<SVGSVGElement>) => {
-    if (e.touches.length === 1) {
-      touchRef.current = { kind: 'pan', lastClientX: e.touches[0].clientX, lastClientY: e.touches[0].clientY }
-    } else if (e.touches.length === 2) {
-      touchRef.current = { kind: 'pinch', lastDistance: touchDistance(e.touches) }
-    }
-  }
+    const touchDistance = (touches: TouchList) =>
+      Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY)
+    const touchMidpoint = (touches: TouchList) => ({
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2,
+    })
 
-  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
-    const state = touchRef.current
-    if (!state) return
-    if (state.kind === 'pan' && e.touches.length === 1) {
-      const ctm = svgRef.current?.getScreenCTM()
-      if (!ctm) return
-      const unitsPerPixel = 1 / ctm.a
-      const t = e.touches[0]
-      const dx = (t.clientX - state.lastClientX) * unitsPerPixel
-      const dy = (t.clientY - state.lastClientY) * unitsPerPixel
-      setView(v => ({ ...v, x: v.x + dx, y: v.y + dy }))
-      touchRef.current = { kind: 'pan', lastClientX: t.clientX, lastClientY: t.clientY }
-    } else if (state.kind === 'pinch' && e.touches.length === 2) {
-      const distance = touchDistance(e.touches)
-      const mid = touchMidpoint(e.touches)
-      const at = clientToSvgPoint(mid.x, mid.y)
-      if (at) setView(v => zoomAt(v, at, distance / state.lastDistance))
-      touchRef.current = { kind: 'pinch', lastDistance: distance }
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) e.preventDefault()
+      if (e.touches.length === 1) {
+        touchRef.current = { kind: 'pan', lastClientX: e.touches[0].clientX, lastClientY: e.touches[0].clientY }
+      } else if (e.touches.length === 2) {
+        touchRef.current = { kind: 'pinch', lastDistance: touchDistance(e.touches) }
+      }
     }
-  }
 
-  // Dropping to one finger mid-pinch resumes as a pan instead of stopping;
-  // dropping to zero clears state entirely.
-  const handleTouchEnd = (e: React.TouchEvent<SVGSVGElement>) => {
-    if (e.touches.length === 1) {
-      touchRef.current = { kind: 'pan', lastClientX: e.touches[0].clientX, lastClientY: e.touches[0].clientY }
-    } else if (e.touches.length === 2) {
-      touchRef.current = { kind: 'pinch', lastDistance: touchDistance(e.touches) }
-    } else {
-      touchRef.current = null
+    const onTouchMove = (e: TouchEvent) => {
+      const state = touchRef.current
+      if (!state) return
+      e.preventDefault()
+      if (state.kind === 'pan' && e.touches.length === 1) {
+        const ctm = svg.getScreenCTM()
+        if (!ctm) return
+        const unitsPerPixel = 1 / ctm.a
+        const t = e.touches[0]
+        const dx = (t.clientX - state.lastClientX) * unitsPerPixel
+        const dy = (t.clientY - state.lastClientY) * unitsPerPixel
+        setView(v => ({ ...v, x: v.x + dx, y: v.y + dy }))
+        touchRef.current = { kind: 'pan', lastClientX: t.clientX, lastClientY: t.clientY }
+      } else if (state.kind === 'pinch' && e.touches.length === 2) {
+        const distance = touchDistance(e.touches)
+        const mid = touchMidpoint(e.touches)
+        const at = clientToSvgPoint(mid.x, mid.y)
+        if (at) setView(v => zoomAt(v, at, distance / state.lastDistance))
+        touchRef.current = { kind: 'pinch', lastDistance: distance }
+      }
     }
-  }
+
+    // Dropping to one finger mid-pinch resumes as a pan instead of stopping;
+    // dropping to zero clears state entirely.
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        touchRef.current = { kind: 'pan', lastClientX: e.touches[0].clientX, lastClientY: e.touches[0].clientY }
+      } else if (e.touches.length === 2) {
+        touchRef.current = { kind: 'pinch', lastDistance: touchDistance(e.touches) }
+      } else {
+        touchRef.current = null
+      }
+    }
+
+    svg.addEventListener('touchstart', onTouchStart, { passive: false })
+    svg.addEventListener('touchmove', onTouchMove, { passive: false })
+    svg.addEventListener('touchend', onTouchEnd, { passive: false })
+    svg.addEventListener('touchcancel', onTouchEnd, { passive: false })
+    return () => {
+      svg.removeEventListener('touchstart', onTouchStart)
+      svg.removeEventListener('touchmove', onTouchMove)
+      svg.removeEventListener('touchend', onTouchEnd)
+      svg.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [paths])
 
   return (
     <div
@@ -226,7 +248,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
           </button>
         </div>
 
-        <div className="relative flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0 touch-none">
           {!paths ? (
             <div className="h-full flex items-center justify-center text-gray-400 text-sm">読み込み中…</div>
           ) : (
@@ -236,10 +258,6 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               className={`w-full h-full touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
               onWheel={handleWheel}
               onMouseDown={handleMouseDown}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onTouchCancel={handleTouchEnd}
             >
               <g transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>
                 {[...paths.entries()].map(([code, d]) => {

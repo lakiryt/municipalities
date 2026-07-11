@@ -15,6 +15,13 @@ test.beforeEach(async ({ page }) => {
 // fires instead of the map's handler, which only a real touch dispatch
 // (not a synthetic TouchEvent constructed in-page) exercises faithfully.
 test('a two-finger pinch zooms the map, not the page', async ({ page }) => {
+  // If React had attached the touch listeners as passive, preventDefault()
+  // would silently no-op and Chromium logs a console warning about it —
+  // catching that here confirms the belt-and-suspenders preventDefault()
+  // backup (alongside touch-action: none) is actually taking effect.
+  const consoleMessages: string[] = []
+  page.on('console', msg => consoleMessages.push(msg.text()))
+
   const svg = page.locator('svg')
   const box = await svg.boundingBox()
   if (!box) throw new Error('svg not visible')
@@ -43,6 +50,8 @@ test('a two-finger pinch zooms the map, not the page', async ({ page }) => {
   expect(after).not.toBe(before)
   const scale = Number(after?.match(/scale\(([\d.]+)\)/)?.[1])
   expect(scale).toBeGreaterThan(1)
+
+  expect(consoleMessages.some(m => m.includes('passive'))).toBe(false)
 })
 
 test('a one-finger touch drag pans the map', async ({ page }) => {
