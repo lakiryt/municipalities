@@ -63,22 +63,29 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
 
   const selectedColumn = numericColumns.find(c => c.id === colId) ?? null
 
-  // Keyed by 5-digit JIS code (no check digit), matching the topojson properties.
+  // Keyed by 5-digit JIS code, matching the topojson properties.
   const itemByCode = useMemo(() => {
     const m = new Map<string, BaseItem>()
-    for (const item of displayItems) m.set(item.code.slice(0, -1), item)
+    for (const item of displayItems) m.set(item.code, item)
     return m
   }, [displayItems])
 
   const values = useMemo(() => {
-    if (!selectedColumn) return new Map<string, number>()
+    if (!selectedColumn || !paths) return new Map<string, number>()
     const map = new Map<string, number>()
     for (const [code, item] of itemByCode) {
+      // Codes without a drawn path would otherwise skew the color scale
+      // toward values that never appear on the map itself. Prefecture-level
+      // totals (code ending "000") are excluded outright too — a handful of
+      // small islands are drawn under their prefecture's own code rather
+      // than a municipality's, and coloring them by the prefecture's total
+      // would be just as misleading as including the total itself.
+      if (!paths.has(code) || code.endsWith('000')) continue
       const v = evaluate(selectedColumn.typed, baseItemEnv(item, designations, coastal)) as number
       if (!isNaN(v)) map.set(code, v)
     }
     return map
-  }, [itemByCode, selectedColumn, designations, coastal])
+  }, [itemByCode, selectedColumn, designations, coastal, paths])
 
   const [min, max] = useMemo(() => {
     const vs = [...values.values()]

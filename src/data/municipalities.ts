@@ -1,11 +1,8 @@
-import dantai_codes from '@/assets/dantai_code_20240101.json'
 import code_todofuken from '@/assets/code_todofuken_20240101.json'
 import meta from '@/assets/meta.json'
 import { parseAndTypeCheck } from '../lang/expr'
 import { evaluate, type Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
-
-type DantaiCodeEntry = (typeof dantai_codes)[number]
 
 export type BaseItem = {
   code: string
@@ -88,6 +85,38 @@ export const fetchPopulation = (src: PopulationSource): Promise<PopulationMap> =
   return fetch(`/${src.path}`).then(r => r.text()).then(parsePopulationCsv)
 }
 
+// ── Municipality codes ────────────────────────────────────────────────────────
+
+// 総務省統計局 標準地域コード: one row per prefecture, city, ward, or grouping
+// (Hokkaido's 振興局, other prefectures' 郡). Rows the app has no area/population
+// data for just render as "no data" — there's no need to tell them apart here.
+export type CodeEntry = { code: string; kanji: string; kana: string }
+
+const parseCodesCsv = (raw: string): CodeEntry[] =>
+  raw.trim().split('\n').map(l => l.replace(/\r$/, '')).slice(1).map(line => {
+    const [, , tiiki_code, , name1, name2, name3, yomigana] = line.split(',')
+    return {
+      code: tiiki_code,
+      kanji: [name1, name2, name3].map(s => s.trim()).filter(Boolean).join(''),
+      kana: (yomigana ?? '').trim(),
+    }
+  })
+
+export const fetchMunicipalityCodes = (): Promise<CodeEntry[]> =>
+  fetch('/codes/codes20230822.csv').then(r => r.text()).then(parseCodesCsv)
+
+// Some population sources (住民基本台帳) still key rows by the legacy 6-digit
+// dantai code (5-digit code + a JIS X0401/0402 check digit) instead of the
+// plain 5-digit code everything else in this app uses — this reproduces just
+// enough of that checksum to look a row up under either key.
+const checkDigit = (code5: string): number => {
+  const weights = [6, 5, 4, 3, 2]
+  const sum = code5.split('').reduce((acc, d, i) => acc + Number(d) * weights[i], 0)
+  const cd = 11 - (sum % 11)
+  return cd === 10 ? 0 : cd === 11 ? 1 : cd
+}
+const toCode6 = (code5: string): string => code5 + checkDigit(code5)
+
 // ── Derived expressions ───────────────────────────────────────────────────────
 
 // Evaluated in order so later entries can reference earlier ones as numvars
@@ -136,7 +165,6 @@ export const fetchDesignations = (): Promise<DesignationSets> =>
 
 // ── Adjacency / coastal data ──────────────────────────────────────────────────
 
-// Keyed by 5-digit JIS code (no check digit), unlike dantai codes elsewhere.
 type AdjacencyJson = Record<string, string[]>
 
 export const fetchCoastal = (): Promise<Set<string>> =>
@@ -164,18 +192,15 @@ const getPrefecture = (code: string) => {
   return { ...prefecture, code }
 }
 
-export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>): BaseItem[] =>
-  (dantai_codes as DantaiCodeEntry[]).map(item => {
-    const code5 = item.code.slice(0, -1)
-    return {
-      code: item.code,
-      kanji: item.kanji,
-      kana: item.kana,
-      prefecture: getPrefecture(item.code),
-      population: popMap.get(code5) ?? popMap.get(item.code) ?? {},
-      area: areaMap.get(code5) ?? NaN,
-    }
-  })
+export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[]): BaseItem[] =>
+  codes.map(item => ({
+    code: item.code,
+    kanji: item.kanji,
+    kana: item.kana,
+    prefecture: getPrefecture(item.code),
+    population: popMap.get(item.code) ?? popMap.get(toCode6(item.code)) ?? {},
+    area: areaMap.get(item.code) ?? NaN,
+  }))
 
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
   const numvars: Record<string, number> = {
@@ -194,7 +219,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     seirei:  designations?.seirei.has(item.code)  ?? false,
     chukaku: designations?.chukaku.has(item.code) ?? false,
     tokurei: designations?.tokurei.has(item.code) ?? false,
-    coastal: coastal?.has(item.code.slice(0, -1)) ?? false,
+    coastal: coastal?.has(item.code) ?? false,
   }
   for (const { name, typed } of derivedDefs) {
     numvars[name] = evaluate(typed, { numvars, strvars, boolvars }) as number

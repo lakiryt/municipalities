@@ -8,13 +8,13 @@
             "source": "https://www.soumu.go.jp/denshijiti/code.html"
         }
     ],
-    "dantai_codes": [
+    "codes": [
         {
-            "name": "全国地方公共団体コード",
-            "agency": "総務省",
-            "as_of": "2024-01-01",
-            "path": "dantai_code_20240101.json",
-            "source": "https://www.soumu.go.jp/denshijiti/code.html"
+            "name": "標準地域コード（都道府県コード及び市区町村コード）",
+            "agency": "総務省 統計局",
+            "as_of": "2023-08-22",
+            "path": "codes/codes20230822.csv",
+            "source": "https://www.soumu.go.jp/toukei_toukatsu/index/seido/9-5.htm"
         }
     ],
     "population": [

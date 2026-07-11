@@ -4,9 +4,9 @@ import { evaluate } from '../lang/evaluate'
 import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import {
-  buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal,
+  buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal, fetchMunicipalityCodes,
   baseItemEnv, areaSources, populationSources,
-  type PopulationRecord, type DesignationSets,
+  type PopulationRecord, type DesignationSets, type CodeEntry,
 } from '../data/municipalities'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
@@ -120,6 +120,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [popMap, setPopMap]             = useState(new Map<string, PopulationRecord>())
   const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
   const [coastal, setCoastal] = useState<Set<string>>(new Set())
+  const [codes, setCodes] = useState<CodeEntry[]>([])
 
   useEffect(() => {
     const src = areaSources.find(s => s.path === selectedAreaPath)
@@ -133,8 +134,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
   useEffect(() => { fetchCoastal().then(setCoastal) }, [])
+  useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
 
-  const activeItems = useMemo(() => buildItems(popMap, areaMap), [popMap, areaMap])
+  const activeItems = useMemo(() => buildItems(popMap, areaMap, codes), [popMap, areaMap, codes])
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
