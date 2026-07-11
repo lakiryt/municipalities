@@ -1,4 +1,6 @@
+/* 大きいデータがあるため、tailwindのスキャン対象をassets以外のsrcに絞らないとhangする */
 @import 'tailwindcss' source('.');
+@source not "./assets/**";
 
 @media (max-width: 768px) {
   input, select, textarea { font-size: 16px; }
