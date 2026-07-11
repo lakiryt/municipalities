@@ -31,7 +31,7 @@ const router = createBrowserRouter([
       <>
         <Canonical />
         <meta name="description" content="市区町村名・都道府県・種別・区分などで絞り込み、人口や面積など様々な統計でソートできます。" />
-        <MuniTable title="自由探索" initialColumns={initialColumns} initialSearchOpen />
+        <MuniTable title="自由探索" initialColumns={initialColumns} initialSearchOpen restrictToOfficial />
       </>
     ),
   },

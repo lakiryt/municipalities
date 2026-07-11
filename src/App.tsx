@@ -7,7 +7,7 @@ function App() {
     <>
       <Canonical />
       <meta name="description" content="表示する列・フィルター・並び順を自由にカスタマイズして市区町村データを探索できます。" />
-      <MuniTable title="自由探索" initialColumns={initialColumns} />
+      <MuniTable title="自由探索" initialColumns={initialColumns} restrictToOfficial />
     </>
   )
 }

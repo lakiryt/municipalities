@@ -1,4 +1,5 @@
 import code_todofuken from '@/assets/code_todofuken_20240101.json'
+import dantai_codes from '@/assets/dantai_code_20240101.json'
 import meta from '@/assets/meta.json'
 import { parseAndTypeCheck } from '../lang/expr'
 import { evaluate, type Env } from '../lang/evaluate'
@@ -104,6 +105,13 @@ const parseCodesCsv = (raw: string): CodeEntry[] =>
 
 export const fetchMunicipalityCodes = (): Promise<CodeEntry[]> =>
   fetch('/codes/codes20230822.csv').then(r => r.text()).then(parseCodesCsv)
+
+// The full CSV also includes designated-city wards and organizational rows
+// (Hokkaido's 振興局, other prefectures' 郡); this is the narrower set of
+// codes that are actual 地方公共団体, used to keep rankings to real
+// municipalities. Names/readings aren't kept here — the CSV above is the
+// source of truth for those now.
+export const officialCodes: Set<string> = new Set(dantai_codes as string[])
 
 // Some population sources (住民基本台帳) still key rows by the legacy 6-digit
 // dantai code (5-digit code + a JIS X0401/0402 check digit) instead of the

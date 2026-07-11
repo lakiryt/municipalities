@@ -8,6 +8,15 @@
             "source": "https://www.soumu.go.jp/denshijiti/code.html"
         }
     ],
+    "official_codes": [
+        {
+            "name": "全国地方公共団体コード（コードのみ。名称等はcodesのCSVを参照）",
+            "agency": "総務省",
+            "as_of": "2024-01-01",
+            "path": "dantai_code_20240101.json",
+            "source": "https://www.soumu.go.jp/denshijiti/code.html"
+        }
+    ],
     "codes": [
         {
             "name": "標準地域コード（都道府県コード及び市区町村コード）",

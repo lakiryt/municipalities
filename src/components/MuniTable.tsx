@@ -5,7 +5,7 @@ import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import {
   buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal, fetchMunicipalityCodes,
-  baseItemEnv, areaSources, populationSources,
+  baseItemEnv, areaSources, populationSources, officialCodes,
   type PopulationRecord, type DesignationSets, type CodeEntry,
 } from '../data/municipalities'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
@@ -28,6 +28,10 @@ type Props = {
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
   initialSearchOpen?: boolean
+  // Rankings only make sense for real municipalities — wards of designated
+  // cities would double-count against their parent city, and organizational
+  // rows (Hokkaido's 振興局, etc.) aren't municipalities at all.
+  restrictToOfficial?: boolean
 }
 
 // Adds or updates a column by stable id, minting a fresh id for a new one.
@@ -45,7 +49,7 @@ function upsertColumn(
   return { cols: next, id: modal.id }
 }
 
-function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false }: Props) {
+function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false, restrictToOfficial = false }: Props) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -157,15 +161,26 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   useEffect(() => { fetchCoastal().then(setCoastal) }, [])
   useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
 
+  // The full, unrestricted base — every downstream view narrows this its
+  // own way, but none of them build items from anything smaller than this.
   const activeItems = useMemo(() => buildItems(popMap, areaMap, codes), [popMap, areaMap, codes])
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
     : null
 
+  // Table view: official municipalities only (when asked), then the user's
+  // filter, then sort. The counts shown in the toolbar are this view's, not
+  // the full base's — a "1918 total" would be a strange thing to show above
+  // a table that only ever displays 1747 rows.
+  const tableBaseItems = useMemo(
+    () => restrictToOfficial ? activeItems.filter(item => officialCodes.has(item.code)) : activeItems,
+    [activeItems, restrictToOfficial]
+  )
+
   const filteredItems = filterExpr !== null
-    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
-    : activeItems
+    ? tableBaseItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
+    : tableBaseItems
 
   const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
@@ -182,6 +197,15 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         return sign * (na - nb)
       })
     : filteredItems
+
+  // Map view: the full base plus the same filter — never restricted to
+  // official municipalities (a designated-city ward has no 地方公共団体 code
+  // of its own but is still a real shape to color) and never sorted, since
+  // "order" isn't a concept a map has. (MapModal narrows this further still,
+  // to whatever codes actually have a drawn path.)
+  const mapItems = filterExpr !== null
+    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
+    : activeItems
 
   const handleColumnSave = (label: string, expression: string) => {
     if (modal === null) return
@@ -321,7 +345,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       {mapColumn && (
         <MapModal
           column={mapColumn}
-          displayItems={displayItems}
+          displayItems={mapItems}
           designations={designations}
           coastal={coastal}
           // Closing drops the reference from the URL rather than navigating
@@ -342,7 +366,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       )}
       {sidebarOpen && (
         <Sidebar
-          totalCount={activeItems.length}
+          totalCount={tableBaseItems.length}
           filteredCount={filteredItems.length}
           filterActive={filterExpr !== null}
           sortState={sortState}
