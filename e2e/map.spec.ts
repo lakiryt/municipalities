@@ -47,6 +47,52 @@ test('switching the colored column changes the legend range', async ({ page }) =
   }).toPass()
 })
 
+test('clicking the legend opens a color scheme picker that recolors the map without changing the data shown', async ({ page }) => {
+  await page.getByRole('button', { name: '地図表示', exact: true }).click()
+  const target = page.locator('svg path:not([fill="#e1e0d9"])').first()
+  await expect(target).toBeVisible()
+
+  const legend = page.getByTestId('map-legend')
+  const legendBefore = await legend.textContent()
+  const fillBefore = await target.getAttribute('fill')
+
+  // The legend bar itself is the trigger — clicking it opens the picker.
+  await legend.click()
+  await page.getByRole('option', { name: 'Magma' }).click()
+
+  await expect(async () => {
+    expect(await target.getAttribute('fill')).not.toBe(fillBefore)
+  }).toPass()
+  // The legend's min/max values are about the data, not the color scheme —
+  // switching schemes must not change what's being measured.
+  expect(await legend.textContent()).toBe(legendBefore)
+})
+
+test('the color scheme picker closes on an outside click without changing the selection', async ({ page }) => {
+  await page.getByRole('button', { name: '地図表示', exact: true }).click()
+  await expect(page.locator('svg path').first()).toBeVisible()
+
+  const legend = page.getByTestId('map-legend')
+  await legend.click()
+  await expect(page.getByRole('listbox')).toBeVisible()
+
+  await page.mouse.click(20, 20)
+  await expect(page.getByRole('listbox')).toBeHidden()
+})
+
+test('the border checkbox toggles path strokes and defaults to off', async ({ page }) => {
+  await page.getByRole('button', { name: '地図表示', exact: true }).click()
+  const path = page.locator('svg path').first()
+  await expect(path).toBeVisible()
+  await expect(path).toHaveAttribute('stroke', 'none')
+
+  await page.getByLabel('境界線').check()
+  await expect(path).toHaveAttribute('stroke', '#fcfcfb')
+
+  await page.getByLabel('境界線').uncheck()
+  await expect(path).toHaveAttribute('stroke', 'none')
+})
+
 test('zoom buttons and reset scale the map, and wheel zoom pins the point under the cursor', async ({ page }) => {
   await page.getByRole('button', { name: '地図表示', exact: true }).click()
   const group = page.locator('svg > g')
@@ -77,6 +123,30 @@ test('zoom buttons and reset scale the map, and wheel zoom pins the point under 
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.wheel(0, -200)
   await expect(async () => expect(await scaleOf()).toBeGreaterThan(1)).toPass()
+})
+
+test('zoom buttons disable at the min/max scale limits', async ({ page }) => {
+  await page.getByRole('button', { name: '地図表示', exact: true }).click()
+  await expect(page.locator('svg path').first()).toBeVisible()
+
+  const zoomIn = page.getByLabel('ズームイン')
+  const zoomOut = page.getByLabel('ズームアウト')
+
+  // At scale 1 (the minimum), zooming out is already disabled.
+  await expect(zoomOut).toBeDisabled()
+  await expect(zoomIn).toBeEnabled()
+
+  // Zoom all the way in until the button disables itself at MAX_SCALE.
+  await expect(async () => {
+    if (await zoomIn.isDisabled()) return
+    await zoomIn.click()
+    expect(await zoomIn.isDisabled()).toBe(true)
+  }).toPass({ timeout: 15000 })
+
+  await expect(zoomOut).toBeEnabled()
+
+  await page.getByLabel('ズームリセット').click()
+  await expect(zoomOut).toBeDisabled()
 })
 
 test('dragging the map pans it (translate changes) without leaving zoom stuck', async ({ page }) => {

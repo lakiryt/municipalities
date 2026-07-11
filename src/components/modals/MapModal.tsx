@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { evaluate } from '@/lang/evaluate'
 import { baseItemEnv, type BaseItem, type DesignationSets } from '@/data/municipalities'
 import type { ColumnState } from '@/types'
-import { fetchMunicipalityPaths, sequentialColor, SEQUENTIAL_RAMP, VIEW_SIZE, type MuniPaths } from '@/lib/topoMap'
+import {
+  fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, VIEW_SIZE,
+  type MuniPaths, type ColorSchemeKey,
+} from '@/lib/topoMap'
 
 type Props = {
   columns: ColumnState[]
@@ -14,7 +17,7 @@ type Props = {
 
 const NO_DATA_FILL = '#e1e0d9'
 const MIN_SCALE = 1
-const MAX_SCALE = 16
+const MAX_SCALE = 40
 const VIEW_CENTER = { x: VIEW_SIZE / 2, y: VIEW_SIZE / 2 }
 
 type View = { scale: number; x: number; y: number }
@@ -36,11 +39,25 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
   const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
   const [view, setView] = useState<View>({ scale: 1, x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
+  const [schemeKey, setSchemeKey] = useState<ColorSchemeKey>('blue')
+  const [showBorders, setShowBorders] = useState(false)
+  const [schemeOpen, setSchemeOpen] = useState(false)
 
   const svgRef = useRef<SVGSVGElement>(null)
+  const schemeRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startClientX: number; startClientY: number; startView: View; unitsPerPixel: number } | null>(null)
 
   useEffect(() => { fetchMunicipalityPaths().then(setPaths) }, [])
+
+  // Closes the color scheme dropdown on an outside click.
+  useEffect(() => {
+    if (!schemeOpen) return
+    const onDocClick = (e: MouseEvent) => {
+      if (schemeRef.current && !schemeRef.current.contains(e.target as Node)) setSchemeOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [schemeOpen])
 
   // Drag-to-pan: tracked on window so a release outside the SVG still ends it.
   useEffect(() => {
@@ -136,10 +153,30 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
           </select>
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 select-none">
+            <input type="checkbox" checked={showBorders} onChange={e => setShowBorders(e.target.checked)} />
+            境界線
+          </label>
           <div className="flex border border-gray-300 rounded overflow-hidden text-sm">
-            <button aria-label="ズームイン" className="px-2 py-1 hover:bg-gray-50 border-r border-gray-300" onClick={() => zoomButton(1.4)}>+</button>
-            <button aria-label="ズームアウト" className="px-2 py-1 hover:bg-gray-50 border-r border-gray-300" onClick={() => zoomButton(1 / 1.4)}>−</button>
-            <button aria-label="ズームリセット" className="px-2 py-1 hover:bg-gray-50 text-xs" onClick={() => setView({ scale: 1, x: 0, y: 0 })}>リセット</button>
+            <button
+              aria-label="ズームイン"
+              className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 border-r border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              disabled={view.scale >= MAX_SCALE}
+              onClick={() => zoomButton(1.4)}
+            >
+              +
+            </button>
+            <button
+              aria-label="ズームアウト"
+              className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 border-r border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+              disabled={view.scale <= MIN_SCALE}
+              onClick={() => zoomButton(1 / 1.4)}
+            >
+              −
+            </button>
+            <button aria-label="ズームリセット" className="px-2 py-1 hover:bg-gray-50 text-xs" onClick={() => setView({ scale: 1, x: 0, y: 0 })}>
+              リセット
+            </button>
           </div>
           <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm" onClick={onClose}>
             閉じる
@@ -160,13 +197,14 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
               <g transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>
                 {[...paths.entries()].map(([code, d]) => {
                   const v = values.get(code)
-                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(max === min ? 0.5 : (v - min) / (max - min))
+                  const ramp = COLOR_SCHEMES[schemeKey].ramp
+                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(max === min ? 0.5 : (v - min) / (max - min), ramp)
                   return (
                     <path
                       key={code}
                       d={d}
                       fill={fill}
-                      stroke="#fcfcfb"
+                      stroke={showBorders ? '#fcfcfb' : 'none'}
                       strokeWidth={0.5}
                       vectorEffect="non-scaling-stroke"
                       onMouseMove={e => {
@@ -194,13 +232,48 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
         </div>
 
         {selectedColumn && (
-          <div data-testid="map-legend" className="flex items-center gap-2 mt-3 text-xs text-gray-500">
-            <span>{min.toLocaleString('ja-JP')}</span>
-            <div
-              className="h-2 flex-1 rounded"
-              style={{ background: `linear-gradient(to right, ${SEQUENTIAL_RAMP.join(', ')})` }}
-            />
-            <span>{max.toLocaleString('ja-JP')}</span>
+          <div className="relative mt-3" ref={schemeRef}>
+            <button
+              type="button"
+              data-testid="map-legend"
+              aria-label="配色"
+              aria-haspopup="listbox"
+              aria-expanded={schemeOpen}
+              title={COLOR_SCHEMES[schemeKey].label}
+              className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400"
+              onClick={() => setSchemeOpen(o => !o)}
+            >
+              <span>{min.toLocaleString('ja-JP')}</span>
+              <span
+                className="h-2 flex-1 rounded-sm block"
+                style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
+              />
+              <span>{max.toLocaleString('ja-JP')}</span>
+              <span className="text-gray-400">▾</span>
+            </button>
+            {schemeOpen && (
+              <div
+                role="listbox"
+                className="absolute z-10 bottom-full mb-2 left-0 bg-white border border-gray-300 rounded shadow-lg py-1 w-44"
+              >
+                {Object.entries(COLOR_SCHEMES).map(([key, scheme]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="option"
+                    aria-selected={schemeKey === key}
+                    className={`flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-50 ${schemeKey === key ? 'bg-gray-50' : ''}`}
+                    onClick={() => { setSchemeKey(key as ColorSchemeKey); setSchemeOpen(false) }}
+                  >
+                    <span
+                      className="w-8 h-3 rounded flex-shrink-0"
+                      style={{ background: `linear-gradient(to right, ${scheme.ramp.join(', ')})` }}
+                    />
+                    {scheme.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

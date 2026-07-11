@@ -117,12 +117,42 @@ export async function fetchMunicipalityPaths(): Promise<MuniPaths> {
   return paths
 }
 
-// ── Sequential color ramp (blue, 100->700 per the palette) ────────────────────
+// ── Sequential color schemes ───────────────────────────────────────────────────
+//
+// A single hue light->dark ramp is safe but all look the same in structure.
+// Viridis/Magma are matplotlib's perceptually-uniform multi-hue alternative
+// (van der Walt & Smith, "A Better Default Colormap for Matplotlib", SciPy
+// 2015): built in a uniform color space so lightness still increases
+// monotonically end to end — reads correctly in grayscale and is
+// colorblind-safe — even though the hue sweeps through several colors, unlike
+// a naive "rainbow"/jet map (see Borland & Taylor, "Rainbow Color Map (Still)
+// Considered Harmful", IEEE CG&A 2007). `blue` is a plain single-hue ramp
+// kept as the minimal/classic option (a ColorBrewer-style sequential scheme).
+export type ColorSchemeKey = 'viridis' | 'magma' | 'blue'
 
-export const SEQUENTIAL_RAMP = [
-  '#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7',
-  '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95', '#104281', '#0d366b',
-]
+export const COLOR_SCHEMES: Record<ColorSchemeKey, { label: string; ramp: string[] }> = {
+  viridis: {
+    label: 'Viridis',
+    ramp: [
+      '#440154', '#48186A', '#472D7B', '#424086', '#3B528B', '#33638D', '#2C728E', '#26828E',
+      '#21918C', '#1FA088', '#28AE80', '#3FBC73', '#5EC962', '#84D44B', '#ADDC30', '#D8E219', '#FDE725',
+    ],
+  },
+  magma: {
+    label: 'Magma',
+    ramp: [
+      '#000004', '#0A0822', '#1D1147', '#36106B', '#51127C', '#6A1C81', '#832681', '#9C2E7F',
+      '#B73779', '#D0416F', '#E75263', '#F56B5C', '#FC8961', '#FEA772', '#FEC488', '#FDE2A3', '#FCFDBF',
+    ],
+  },
+  blue: {
+    label: '青',
+    ramp: [
+      '#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7',
+      '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95', '#104281', '#0d366b',
+    ],
+  },
+}
 
 function hexToRgb(hex: string) {
   const n = parseInt(hex.slice(1), 16)
@@ -137,10 +167,10 @@ function lerpHex(a: string, b: string, t: number): string {
   return `rgb(${r}, ${g}, ${bl})`
 }
 
-// t in [0, 1] -> a color along the sequential ramp.
-export function sequentialColor(t: number): string {
+// t in [0, 1] -> a color along the given ramp.
+export function sequentialColor(t: number, ramp: string[]): string {
   const clamped = Math.max(0, Math.min(1, t))
-  const scaled = clamped * (SEQUENTIAL_RAMP.length - 1)
-  const i = Math.min(Math.floor(scaled), SEQUENTIAL_RAMP.length - 2)
-  return lerpHex(SEQUENTIAL_RAMP[i], SEQUENTIAL_RAMP[i + 1], scaled - i)
+  const scaled = clamped * (ramp.length - 1)
+  const i = Math.min(Math.floor(scaled), ramp.length - 2)
+  return lerpHex(ramp[i], ramp[i + 1], scaled - i)
 }
