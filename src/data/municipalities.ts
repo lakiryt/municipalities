@@ -134,6 +134,18 @@ export const fetchDesignations = (): Promise<DesignationSets> =>
       tokurei: new Set(data.tokurei),
     }))
 
+// ── Adjacency / coastal data ──────────────────────────────────────────────────
+
+// Keyed by 5-digit JIS code (no check digit), unlike dantai codes elsewhere.
+type AdjacencyJson = Record<string, string[]>
+
+export const fetchCoastal = (): Promise<Set<string>> =>
+  fetch('/maps/adjacency.json')
+    .then(r => r.json() as Promise<AdjacencyJson>)
+    .then(data => new Set(
+      Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
+    ))
+
 // ── Kana normalization ────────────────────────────────────────────────────────
 
 // Converts any mix of hiragana / half-width katakana / full-width katakana to
@@ -165,7 +177,7 @@ export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>):
     }
   })
 
-export const baseItemEnv = (item: BaseItem, designations?: DesignationSets): Env => {
+export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
   const numvars: Record<string, number> = {
     ...item.population,
     area: item.area,
@@ -182,6 +194,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets): Env
     seirei:  designations?.seirei.has(item.code)  ?? false,
     chukaku: designations?.chukaku.has(item.code) ?? false,
     tokurei: designations?.tokurei.has(item.code) ?? false,
+    coastal: coastal?.has(item.code.slice(0, -1)) ?? false,
   }
   for (const { name, typed } of derivedDefs) {
     numvars[name] = evaluate(typed, { numvars, strvars, boolvars }) as number

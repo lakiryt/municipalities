@@ -4,7 +4,7 @@ import { evaluate } from '../lang/evaluate'
 import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import {
-  buildItems, fetchArea, fetchPopulation, fetchDesignations,
+  buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal,
   baseItemEnv, areaSources, populationSources,
   type PopulationRecord, type DesignationSets,
 } from '../data/municipalities'
@@ -117,6 +117,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [areaMap, setAreaMap]           = useState(new Map<string, number>())
   const [popMap, setPopMap]             = useState(new Map<string, PopulationRecord>())
   const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
+  const [coastal, setCoastal] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const src = areaSources.find(s => s.path === selectedAreaPath)
@@ -129,6 +130,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   }, [selectedPopPath])
 
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
+  useEffect(() => { fetchCoastal().then(setCoastal) }, [])
 
   const activeItems = useMemo(() => buildItems(popMap, areaMap), [popMap, areaMap])
 
@@ -137,13 +139,13 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     : null
 
   const filteredItems = filterExpr !== null
-    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations), columns: colEnv }) === true)
+    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
     : activeItems
 
   const displayItems = sortState !== null
     ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortState.typed, { ...baseItemEnv(a, designations), columns: colEnv })
-        const vb = evaluate(sortState.typed, { ...baseItemEnv(b, designations), columns: colEnv })
+        const va = evaluate(sortState.typed, { ...baseItemEnv(a, designations, coastal), columns: colEnv })
+        const vb = evaluate(sortState.typed, { ...baseItemEnv(b, designations, coastal), columns: colEnv })
         const sign = sortState.direction === 'asc' ? 1 : -1
         if (sortState.typed.type === 's') {
           return sign * (va as string).localeCompare(vb as string, 'ja')
@@ -294,6 +296,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         columns={columns}
         displayItems={displayItems}
         designations={designations}
+        coastal={coastal}
         onEditColumn={id => setModal({ kind: 'edit', id })}
         onAddColumn={() => setModal({ kind: 'add' })}
       />

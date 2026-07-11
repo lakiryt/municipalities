@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "node scripts/generate-sitemap.mjs && tsc -b && vite build",
     "sitemap": "node scripts/generate-sitemap.mjs",
+    "adjacency": "node scripts/generate-adjacency.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
