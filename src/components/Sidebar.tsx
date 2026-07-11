@@ -9,10 +9,11 @@ type Props = {
   onSortClick: () => void
   onFilterClick: () => void
   onDataClick: () => void
+  onMapClick: () => void
   onClose: () => void
 }
 
-function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onClose }: Props) {
+function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onMapClick, onClose }: Props) {
   const btnBase     = 'w-full px-3 py-2 rounded text-sm border text-left'
   const btnActive   = 'bg-blue-600 text-white border-blue-600'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'
@@ -28,6 +29,7 @@ function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortCli
 
         <div className="md:hidden flex flex-col gap-2 p-4">
           <button className={`${btnBase} ${btnInactive}`} onClick={onDataClick}>データ選択</button>
+          <button className={`${btnBase} ${btnInactive}`} onClick={onMapClick}>地図表示</button>
           <button className={`${btnBase} ${sortState ? btnActive : btnInactive}`} onClick={onSortClick}>並べ替え</button>
           <button className={`${btnBase} ${filterActive ? btnActive : btnInactive}`} onClick={onFilterClick}>
             絞り込み{filterActive ? `（${filteredCount} / ${totalCount}件）` : ''}

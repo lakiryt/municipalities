@@ -10,10 +10,11 @@ type Props = {
   onSortClick: () => void
   onFilterClick: () => void
   onDataClick: () => void
+  onMapClick: () => void
   onMenuClick: () => void
 }
 
-function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onMenuClick }: Props) {
+function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onMapClick, onMenuClick }: Props) {
   const btnBase     = 'px-3 py-1 rounded text-sm border'
   const btnActive   = 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
   const btnInactive = 'border-gray-300 hover:bg-gray-50'
@@ -25,6 +26,7 @@ function FilterBar({ title, totalCount, filteredCount, filterActive, sortState, 
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden md:flex items-center gap-3">
           <button className={`${btnBase} ${btnInactive}`} onClick={onDataClick}>データ選択</button>
+          <button className={`${btnBase} ${btnInactive}`} onClick={onMapClick}>地図表示</button>
           <button className={`${btnBase} ${sortState ? btnActive : btnInactive}`} onClick={onSortClick}>並べ替え</button>
           <button className={`${btnBase} ${filterActive ? btnActive : btnInactive}`} onClick={onFilterClick}>
             絞り込み{filterActive ? `（${filteredCount} / ${totalCount}件）` : ''}

@@ -16,6 +16,7 @@ import ColumnModal from '@/components/modals/ColumnModal'
 import FilterModal from '@/components/modals/FilterModal'
 import SortModal from '@/components/modals/SortModal'
 import DataModal from '@/components/modals/DataModal'
+import MapModal from '@/components/modals/MapModal'
 import SearchModal from '@/components/modals/SearchModal'
 import Sidebar from '@/components/Sidebar'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -105,6 +106,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [filterOpen, setFilterOpen]       = useState(false)
   const [sortOpen, setSortOpen]           = useState(false)
   const [dataOpen, setDataOpen]           = useState(false)
+  const [mapOpen, setMapOpen]             = useState(false)
   const [searchOpen, setSearchOpen]       = useState(initialSearchOpen)
   const [sidebarOpen, setSidebarOpen]     = useState(false)
 
@@ -269,6 +271,15 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       {searchOpen && (
         <SearchModal onApply={handleSearchApply} onClose={() => setSearchOpen(false)} />
       )}
+      {mapOpen && (
+        <MapModal
+          columns={columns}
+          displayItems={displayItems}
+          designations={designations}
+          coastal={coastal}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
       {sidebarOpen && (
         <Sidebar
           totalCount={activeItems.length}
@@ -278,6 +289,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
           onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
           onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
+          onMapClick={() => { setMapOpen(true); setSidebarOpen(false) }}
           onClose={() => setSidebarOpen(false)}
         />
       )}
@@ -290,6 +302,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
         onDataClick={() => setDataOpen(true)}
+        onMapClick={() => setMapOpen(true)}
         onMenuClick={() => setSidebarOpen(true)}
       />
       <DataTable
