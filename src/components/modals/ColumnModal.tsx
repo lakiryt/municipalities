@@ -11,10 +11,13 @@ type Props = {
   // Saves this column (creating it if new) and points the sort at it via
   // `@id`, so the sort stays in sync if the column is edited again later.
   onSetSort?: (label: string, expression: string, typed: TypedExpr) => void
+  // Saves this column (creating it if new) and points the map at it — only
+  // offered when the expression is numeric, since the map colors by value.
+  onSetMap?: (label: string, expression: string, typed: TypedExpr) => void
   onClose: () => void
 }
 
-function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete, onSetSort, onClose }: Props) {
+function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete, onSetSort, onSetMap, onClose }: Props) {
   const [label, setLabel]       = useState(initialLabel)
   const [expression, setExpression] = useState(initialExpression)
   const [validExpr, setValidExpr]   = useState<TypedExpr | null>(() => {
@@ -63,6 +66,16 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
                 onClick={() => { if (canSave && validExpr) onSetSort(label.trim(), expression, validExpr) }}
               >
                 この列で並び替える
+              </button>
+            )}
+            {onSetMap && (
+              <button
+                className="px-3 py-1 text-gray-600 hover:bg-gray-50 border border-gray-300 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={!canSave || validExpr?.type !== 'n'}
+                title={validExpr && validExpr.type !== 'n' ? '数値の列だけ地図に表示できます' : undefined}
+                onClick={() => { if (canSave && validExpr) onSetMap(label.trim(), expression, validExpr) }}
+              >
+                この列を地図に表示
               </button>
             )}
           </div>

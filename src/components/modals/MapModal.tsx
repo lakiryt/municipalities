@@ -8,7 +8,7 @@ import {
 } from '@/lib/topoMap'
 
 type Props = {
-  columns: ColumnState[]
+  column: ColumnState
   displayItems: BaseItem[]
   designations: DesignationSets | undefined
   coastal: Set<string>
@@ -32,9 +32,7 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
   return { scale, x: at.x - scale * worldX, y: at.y - scale * worldY }
 }
 
-function MapModal({ columns, displayItems, designations, coastal, onClose }: Props) {
-  const numericColumns = useMemo(() => columns.filter(c => c.typed.type === 'n'), [columns])
-  const [colId, setColId] = useState<number | null>(numericColumns[0]?.id ?? null)
+function MapModal({ column, displayItems, designations, coastal, onClose }: Props) {
   const [paths, setPaths] = useState<MuniPaths | null>(null)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
   const [view, setView] = useState<View>({ scale: 1, x: 0, y: 0 })
@@ -78,8 +76,6 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
     }
   }, [isDragging])
 
-  const selectedColumn = numericColumns.find(c => c.id === colId) ?? null
-
   // Keyed by 5-digit JIS code, matching the topojson properties.
   const itemByCode = useMemo(() => {
     const m = new Map<string, BaseItem>()
@@ -88,7 +84,7 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
   }, [displayItems])
 
   const values = useMemo(() => {
-    if (!selectedColumn || !paths) return new Map<string, number>()
+    if (!paths) return new Map<string, number>()
     const map = new Map<string, number>()
     for (const [code, item] of itemByCode) {
       // Codes without a drawn path would otherwise skew the color scale
@@ -98,11 +94,11 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
       // than a municipality's, and coloring them by the prefecture's total
       // would be just as misleading as including the total itself.
       if (!paths.has(code) || code.endsWith('000')) continue
-      const v = evaluate(selectedColumn.typed, baseItemEnv(item, designations, coastal)) as number
+      const v = evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number
       if (!isNaN(v)) map.set(code, v)
     }
     return map
-  }, [itemByCode, selectedColumn, designations, coastal, paths])
+  }, [itemByCode, column, designations, coastal, paths])
 
   const [min, max] = useMemo(() => {
     const vs = [...values.values()]
@@ -142,18 +138,8 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
     >
       <div className="bg-white rounded-lg shadow-xl p-4 w-[92vw] h-[88vh] max-w-5xl flex flex-col">
         <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-lg font-bold">地図表示</h3>
-          <select
-            aria-label="表示する列"
-            className="border border-gray-300 rounded px-2 py-1 text-sm ml-auto"
-            value={colId ?? ''}
-            onChange={e => setColId(Number(e.target.value))}
-          >
-            {numericColumns.map(c => (
-              <option key={c.id} value={c.id}>{c.label}</option>
-            ))}
-          </select>
-          <label className="flex items-center gap-1.5 text-sm text-gray-600 select-none">
+          <h3 className="text-lg font-bold">{column.label}の地図</h3>
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 select-none ml-auto">
             <input type="checkbox" checked={showBorders} onChange={e => setShowBorders(e.target.checked)} />
             境界線
           </label>
@@ -231,51 +217,49 @@ function MapModal({ columns, displayItems, designations, coastal, onClose }: Pro
           )}
         </div>
 
-        {selectedColumn && (
-          <div className="relative mt-3" ref={schemeRef}>
-            <button
-              type="button"
-              data-testid="map-legend"
-              aria-label="配色"
-              aria-haspopup="listbox"
-              aria-expanded={schemeOpen}
-              title={COLOR_SCHEMES[schemeKey].label}
-              className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400"
-              onClick={() => setSchemeOpen(o => !o)}
+        <div className="relative mt-3" ref={schemeRef}>
+          <button
+            type="button"
+            data-testid="map-legend"
+            aria-label="配色"
+            aria-haspopup="listbox"
+            aria-expanded={schemeOpen}
+            title={COLOR_SCHEMES[schemeKey].label}
+            className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400"
+            onClick={() => setSchemeOpen(o => !o)}
+          >
+            <span>{min.toLocaleString('ja-JP')}</span>
+            <span
+              className="h-2 flex-1 rounded-sm block"
+              style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
+            />
+            <span>{max.toLocaleString('ja-JP')}</span>
+            <span className="text-gray-400">▾</span>
+          </button>
+          {schemeOpen && (
+            <div
+              role="listbox"
+              className="absolute z-10 bottom-full mb-2 left-0 bg-white border border-gray-300 rounded shadow-lg py-1 w-44"
             >
-              <span>{min.toLocaleString('ja-JP')}</span>
-              <span
-                className="h-2 flex-1 rounded-sm block"
-                style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
-              />
-              <span>{max.toLocaleString('ja-JP')}</span>
-              <span className="text-gray-400">▾</span>
-            </button>
-            {schemeOpen && (
-              <div
-                role="listbox"
-                className="absolute z-10 bottom-full mb-2 left-0 bg-white border border-gray-300 rounded shadow-lg py-1 w-44"
-              >
-                {Object.entries(COLOR_SCHEMES).map(([key, scheme]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    role="option"
-                    aria-selected={schemeKey === key}
-                    className={`flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-50 ${schemeKey === key ? 'bg-gray-50' : ''}`}
-                    onClick={() => { setSchemeKey(key as ColorSchemeKey); setSchemeOpen(false) }}
-                  >
-                    <span
-                      className="w-8 h-3 rounded flex-shrink-0"
-                      style={{ background: `linear-gradient(to right, ${scheme.ramp.join(', ')})` }}
-                    />
-                    {scheme.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+              {Object.entries(COLOR_SCHEMES).map(([key, scheme]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="option"
+                  aria-selected={schemeKey === key}
+                  className={`flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-50 ${schemeKey === key ? 'bg-gray-50' : ''}`}
+                  onClick={() => { setSchemeKey(key as ColorSchemeKey); setSchemeOpen(false) }}
+                >
+                  <span
+                    className="w-8 h-3 rounded flex-shrink-0"
+                    style={{ background: `linear-gradient(to right, ${scheme.ramp.join(', ')})` }}
+                  />
+                  {scheme.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

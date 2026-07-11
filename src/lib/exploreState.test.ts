@@ -9,6 +9,7 @@ const sample: ExploreState = {
   filterExpression: 'LEQ(#totalpop, 100000)',
   sortExpression: '@0',
   sortDirection: 'desc',
+  mapExpression: '@1',
 }
 
 describe('encode/decode round trip', () => {
@@ -22,6 +23,7 @@ describe('encode/decode round trip', () => {
       filterExpression: '',
       sortExpression: '',
       sortDirection: 'asc',
+      mapExpression: '',
     }
     expect(decodeExploreState(encodeExploreState(state))).toEqual(state)
   })
@@ -61,14 +63,20 @@ describe('decodeExploreState with untrusted input', () => {
     expect(decodeExploreState(raw)).toBeNull()
   })
 
-  it('defaults filter/sort fields when absent or the wrong type', () => {
+  it('defaults filter/sort/map fields when absent or the wrong type', () => {
     const raw = JSON.stringify({ columns: [{ id: 0, label: 'x', expression: '#area' }], sortDirection: 'sideways' })
     expect(decodeExploreState(raw)).toEqual({
       columns: [{ id: 0, label: 'x', expression: '#area' }],
       filterExpression: '',
       sortExpression: '',
       sortDirection: 'desc',
+      mapExpression: '',
     })
+  })
+
+  it('keeps a well-formed mapExpression', () => {
+    const raw = JSON.stringify({ columns: [{ id: 0, label: 'x', expression: '#area' }], mapExpression: '@0' })
+    expect(decodeExploreState(raw)?.mapExpression).toBe('@0')
   })
 
   it('accepts an explicit sortDirection of "asc"', () => {

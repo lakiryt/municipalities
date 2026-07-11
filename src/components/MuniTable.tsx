@@ -17,6 +17,7 @@ import FilterModal from '@/components/modals/FilterModal'
 import SortModal from '@/components/modals/SortModal'
 import DataModal from '@/components/modals/DataModal'
 import MapModal from '@/components/modals/MapModal'
+import MapColumnPickerModal from '@/components/modals/MapColumnPickerModal'
 import SearchModal from '@/components/modals/SearchModal'
 import Sidebar from '@/components/Sidebar'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -58,6 +59,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     filterExpression: initialFilter?.expression ?? '',
     sortExpression: initialSort?.expression ?? '',
     sortDirection: initialSort?.direction ?? 'desc',
+    mapExpression: '',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [])
   const effectiveState = decodeExploreState(searchParams.get('s')) ?? defaultState
@@ -99,6 +101,22 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     } catch { return null }
   }, [effectiveState, columnRefs])
 
+  // The map only ever references a single column (never a compound
+  // expression), so unlike filter/sort it resolves straight to a
+  // ColumnState — MapModal needs the column itself (for its label/title),
+  // not just a typed expression to evaluate.
+  const mapState: { expression: string; typed: TypedExpr } | null = useMemo(() => {
+    if (!effectiveState.mapExpression) return null
+    try {
+      const t = parseAndTypeCheck(effectiveState.mapExpression, columnRefs)
+      return t.type === 'n' ? { expression: effectiveState.mapExpression, typed: t } : null
+    } catch { return null }
+  }, [effectiveState, columnRefs])
+  const mapColumnId = effectiveState.mapExpression.match(/^@(\d+)$/)?.[1]
+  const mapColumn = mapState !== null && mapColumnId !== undefined
+    ? columns.find(c => c.id === Number(mapColumnId)) ?? null
+    : null
+
   const commit = (next: ExploreState) => navigate(`/explore?s=${encodeURIComponent(encodeExploreState(next))}`)
 
   const [modal, setModal]                 = useState<ModalState | null>(null)
@@ -106,13 +124,16 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [filterOpen, setFilterOpen]       = useState(false)
   const [sortOpen, setSortOpen]           = useState(false)
   const [dataOpen, setDataOpen]           = useState(false)
-  const [mapOpen, setMapOpen]             = useState(false)
+  const [mapPickerOpen, setMapPickerOpen] = useState(false)
   const [searchOpen, setSearchOpen]       = useState(initialSearchOpen)
   const [sidebarOpen, setSidebarOpen]     = useState(false)
 
   useEffect(() => {
-    if (title) document.title = `${title} — 日本の自治体データ`
-  }, [title])
+    if (!title) return
+    document.title = mapColumn
+      ? `${mapColumn.label}の地図 — ${title} — 日本の自治体データ`
+      : `${title} — 日本の自治体データ`
+  }, [title, mapColumn])
 
   const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
   const [selectedPopPath, setSelectedPopPath]   = useState(populationSources[0].path)
@@ -179,6 +200,17 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     setModal(null)
   }
 
+  // Same idea, but for the map: saves the column and points the map's
+  // `@id` reference at it. The map itself isn't separate React state — it's
+  // however the URL renders — so committing `mapExpression` is what opens
+  // it, immediately, with no picker.
+  const handleSetColumnMap = (label: string, expression: string) => {
+    if (modal === null) return
+    const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
+    commit({ ...effectiveState, columns: cols, mapExpression: `@${id}` })
+    setModal(null)
+  }
+
   // Deleting a column never needs to touch filter/sort: their `@id`
   // references (if any) stay pointed at whatever they pointed at before.
   // A reference to the column that was just deleted becomes a normal
@@ -188,6 +220,10 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     setModal(null)
   }
 
+  // The map isn't checked here: reaching a column's edit modal requires the
+  // map to be closed first (it's a full-screen overlay), and closing it
+  // always clears `mapExpression` — so a column being edited is never the
+  // one the map currently references.
   const columnUsedIn = (id: number): string[] => {
     const usedIn: string[] = []
     if (filterExpr !== null && referencesColumn(filterExpr, id)) usedIn.push('絞り込み')
@@ -206,6 +242,11 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     }
   }
 
+  // Unlike a column's own "show on the map" action, the toolbar button
+  // always asks which column to show — it has no column of its own to be
+  // immediate about, and reusing the last one silently would be surprising.
+  const handleMapClick = () => setMapPickerOpen(true)
+
   const handleSearchApply: Parameters<typeof SearchModal>[0]['onApply'] = (
     { filterExpression: fex, sortExpression, sortDirection, columns: cols }
   ) => {
@@ -214,6 +255,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       filterExpression: fex,
       sortExpression,
       sortDirection,
+      // A fresh search replaces the whole column set, so any `@id` the map
+      // was pointing at is no longer meaningful.
+      mapExpression: '',
     })
     setSearchOpen(false)
   }
@@ -229,6 +273,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onSave={handleColumnSave}
           onDelete={modal.kind === 'edit' ? () => requestColumnDelete(modal.id) : undefined}
           onSetSort={handleSetColumnSort}
+          onSetMap={handleSetColumnMap}
           onClose={() => setModal(null)}
         />
       )}
@@ -273,13 +318,26 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       {searchOpen && (
         <SearchModal onApply={handleSearchApply} onClose={() => setSearchOpen(false)} />
       )}
-      {mapOpen && (
+      {mapColumn && (
         <MapModal
-          columns={columns}
+          column={mapColumn}
           displayItems={displayItems}
           designations={designations}
           coastal={coastal}
-          onClose={() => setMapOpen(false)}
+          // Closing drops the reference from the URL rather than navigating
+          // back, so browser back/forward still lines up: back from here
+          // lands on the "map open" entry and shows it again.
+          onClose={() => commit({ ...effectiveState, mapExpression: '' })}
+        />
+      )}
+      {mapPickerOpen && (
+        <MapColumnPickerModal
+          columns={columnRefs.filter(c => c.type === 'n')}
+          onSelect={id => {
+            commit({ ...effectiveState, mapExpression: `@${id}` })
+            setMapPickerOpen(false)
+          }}
+          onClose={() => setMapPickerOpen(false)}
         />
       )}
       {sidebarOpen && (
@@ -291,7 +349,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
           onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
           onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
-          onMapClick={() => { setMapOpen(true); setSidebarOpen(false) }}
+          onMapClick={() => { handleMapClick(); setSidebarOpen(false) }}
           onClose={() => setSidebarOpen(false)}
         />
       )}
@@ -304,7 +362,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         onSortClick={() => setSortOpen(true)}
         onFilterClick={() => setFilterOpen(true)}
         onDataClick={() => setDataOpen(true)}
-        onMapClick={() => setMapOpen(true)}
+        onMapClick={handleMapClick}
         onMenuClick={() => setSidebarOpen(true)}
       />
       <DataTable
