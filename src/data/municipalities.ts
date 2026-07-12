@@ -18,6 +18,7 @@ export type BaseItem = {
   area: number
   rentInc0: number
   rentExc0: number
+  minWage: number
 }
 
 export type PopulationRecord = Record<string, number>
@@ -204,6 +205,26 @@ export const fetchRent = (): Promise<Map<string, { inc0: number; exc0: number }>
       ])
     ))
 
+// ── Minimum wage data ─────────────────────────────────────────────────────────
+
+// 地域別最低賃金: one row per prefecture, keyed by the same 6-digit dantai
+// code (prefecture code + check digit) as code_todofuken - every municipality
+// in that prefecture shares its value, so lookup only needs the code's
+// 2-digit prefecture prefix.
+type MinWageJson = { code: number; min: number; since: string }[]
+
+export type MinWageMap = Map<string, { min: number; since: string }>
+
+export const fetchMinWages = (): Promise<MinWageMap> =>
+  fetch('/wage/min-wages.json')
+    .then(r => r.json() as Promise<MinWageJson>)
+    .then(data => new Map(
+      data.map((e): [string, { min: number; since: string }] => [
+        String(e.code).padStart(6, '0').slice(0, 2),
+        { min: e.min, since: e.since },
+      ])
+    ))
+
 // ── Kana normalization ────────────────────────────────────────────────────────
 
 // Converts any mix of hiragana / half-width katakana / full-width katakana to
@@ -224,7 +245,8 @@ const getPrefecture = (code: string) => {
 
 export const buildItems = (
   popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[],
-  rentMap: Map<string, { inc0: number; exc0: number }> = new Map()
+  rentMap: Map<string, { inc0: number; exc0: number }> = new Map(),
+  minWageMap: MinWageMap = new Map()
 ): BaseItem[] =>
   codes.map(item => ({
     code: item.code,
@@ -235,6 +257,7 @@ export const buildItems = (
     area: areaMap.get(item.code) ?? NaN,
     rentInc0: rentMap.get(item.code)?.inc0 ?? NaN,
     rentExc0: rentMap.get(item.code)?.exc0 ?? NaN,
+    minWage: minWageMap.get(item.code.slice(0, 2))?.min ?? NaN,
   }))
 
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
@@ -243,6 +266,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     area: item.area,
     rent_inc0: item.rentInc0,
     rent_exc0: item.rentExc0,
+    minwage: item.minWage,
   }
   const strvars: Record<string, string> = {
     code:      item.code,
@@ -284,6 +308,7 @@ const _dummy: BaseItem = {
   area: 0,
   rentInc0: 0,
   rentExc0: 0,
+  minWage: 0,
 }
 
 export const prefectures = code_todofuken

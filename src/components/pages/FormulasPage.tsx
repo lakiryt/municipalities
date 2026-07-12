@@ -34,6 +34,7 @@ const numVars = [
   { name: '#dec_mov_intl', desc: '昨年の転出者数（国外）（住民基本台帳のみ）'},
   { name: '#dec_deaths', desc: '昨年の死亡者数（住民基本台帳のみ）'},
   { name: '#dec_other', desc: '昨年のその他住民票消除数（住民基本台帳のみ）'},
+  { name: '#minwage', desc: '地域別最低賃金（円、都道府県単位）'},
 ]
 
 const strVars = [

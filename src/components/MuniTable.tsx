@@ -5,8 +5,8 @@ import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import {
   buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal, fetchMunicipalityCodes, fetchRent,
-  baseItemEnv, areaSources, populationSources, officialCodes,
-  type PopulationRecord, type DesignationSets, type CodeEntry,
+  fetchMinWages, baseItemEnv, areaSources, populationSources, officialCodes,
+  type PopulationRecord, type DesignationSets, type CodeEntry, type MinWageMap,
 } from '../data/municipalities'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
@@ -165,6 +165,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [coastal, setCoastal] = useState<Set<string>>(new Set())
   const [codes, setCodes] = useState<CodeEntry[]>([])
   const [rentMap, setRentMap] = useState(new Map<string, { inc0: number; exc0: number }>())
+  const [minWageMap, setMinWageMap] = useState<MinWageMap>(new Map())
 
   useEffect(() => {
     const src = areaSources.find(s => s.path === selectedAreaPath)
@@ -180,12 +181,13 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   useEffect(() => { fetchCoastal().then(setCoastal) }, [])
   useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
   useEffect(() => { fetchRent().then(setRentMap) }, [])
+  useEffect(() => { fetchMinWages().then(setMinWageMap) }, [])
 
   // The full, unrestricted base — every downstream view narrows this its
   // own way, but none of them build items from anything smaller than this.
   const activeItems = useMemo(
-    () => buildItems(popMap, areaMap, codes, rentMap),
-    [popMap, areaMap, codes, rentMap]
+    () => buildItems(popMap, areaMap, codes, rentMap, minWageMap),
+    [popMap, areaMap, codes, rentMap, minWageMap]
   )
 
   const editingColumn = modal?.kind === 'edit'

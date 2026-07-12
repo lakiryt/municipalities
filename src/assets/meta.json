@@ -140,4 +140,13 @@
             "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040210062"
         }
     ]
+    ,
+    "wage": [
+        {
+            "name": "地域別最低賃金の全国一覧（都道府県ごとの発効日はデータ内の各行を参照）",
+            "agency": "厚生労働省",
+            "path": "wage/min-wages.json",
+            "source": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/minimumichiran/index.html"
+        }
+    ]
 }
