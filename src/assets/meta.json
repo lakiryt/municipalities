@@ -130,4 +130,14 @@
             "source": "https://www.soumu.go.jp/main_sosiki/jichi_gyousei/bunken/shitei_toshi-ichiran.html"
         }
     ]
+    ,
+    "rent": [
+        {
+            "name": "住宅の所有の関係(4区分)別延べ面積１平方メートル当たり家賃(10区分)別借家(専用住宅)数及び延べ面積１平方メートル当たり家賃－全国、都道府県、市区町村",
+            "agency": "総務省 統計局統計調査部国勢統計課",
+            "as_of": "2024-09-25",
+            "path": "rent/rent20240925.json",
+            "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040210062"
+        }
+    ]
 }

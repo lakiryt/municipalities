@@ -16,6 +16,8 @@ export type BaseItem = {
   }
   population: Record<string, number>
   area: number
+  rentInc0: number
+  rentExc0: number
 }
 
 export type PopulationRecord = Record<string, number>
@@ -182,6 +184,26 @@ export const fetchCoastal = (): Promise<Set<string>> =>
       Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
     ))
 
+// ── Rent data ──────────────────────────────────────────────────────────────────
+
+// 住宅の所有の関係別 延べ面積１m²当たり家賃: keyed by 5-digit code, each value is
+// [家賃0円を含む, 家賃0円を含まない], each of those [総数, 公営, UR・公社, 民営, 給与住宅].
+// Only 総数 (index 0) is surfaced. A category too small to report comes
+// through as -1, same as a code with no entry at all — both become NaN.
+type RentJson = Record<string, [number[], number[]]>
+
+export const suppressedToNaN = (n: number | undefined): number => (n === undefined || n < 0 ? NaN : n)
+
+export const fetchRent = (): Promise<Map<string, { inc0: number; exc0: number }>> =>
+  fetch('/rent/rent20240925.json')
+    .then(r => r.json() as Promise<RentJson>)
+    .then(data => new Map(
+      Object.entries(data).map(([code, [inc0, exc0]]): [string, { inc0: number; exc0: number }] => [
+        code,
+        { inc0: suppressedToNaN(inc0[0]), exc0: suppressedToNaN(exc0[0]) },
+      ])
+    ))
+
 // ── Kana normalization ────────────────────────────────────────────────────────
 
 // Converts any mix of hiragana / half-width katakana / full-width katakana to
@@ -200,7 +222,10 @@ const getPrefecture = (code: string) => {
   return { ...prefecture, code }
 }
 
-export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[]): BaseItem[] =>
+export const buildItems = (
+  popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[],
+  rentMap: Map<string, { inc0: number; exc0: number }> = new Map()
+): BaseItem[] =>
   codes.map(item => ({
     code: item.code,
     kanji: item.kanji,
@@ -208,12 +233,16 @@ export const buildItems = (popMap: PopulationMap, areaMap: Map<string, number>, 
     prefecture: getPrefecture(item.code),
     population: popMap.get(item.code) ?? popMap.get(toCode6(item.code)) ?? {},
     area: areaMap.get(item.code) ?? NaN,
+    rentInc0: rentMap.get(item.code)?.inc0 ?? NaN,
+    rentExc0: rentMap.get(item.code)?.exc0 ?? NaN,
   }))
 
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
   const numvars: Record<string, number> = {
     ...item.population,
     area: item.area,
+    rent_inc0: item.rentInc0,
+    rent_exc0: item.rentExc0,
   }
   const strvars: Record<string, string> = {
     code:      item.code,
@@ -253,6 +282,8 @@ const _dummy: BaseItem = {
     ..._demogSeed,
   },
   area: 0,
+  rentInc0: 0,
+  rentExc0: 0,
 }
 
 export const prefectures = code_todofuken

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeKana } from './municipalities'
+import { normalizeKana, suppressedToNaN } from './municipalities'
 
 describe('normalizeKana', () => {
   it('converts hiragana to full-width katakana', () => {
@@ -20,5 +20,20 @@ describe('normalizeKana', () => {
     // function, so both forms must normalize identically or existing saved
     // filter/sort URLs would silently start matching different rows.
     expect(normalizeKana('よこはましつるみく')).toBe(normalizeKana('ﾖｺﾊﾏｼﾂﾙﾐｸ'))
+  })
+})
+
+describe('suppressedToNaN', () => {
+  it('passes real values through unchanged', () => {
+    expect(suppressedToNaN(1329)).toBe(1329)
+    expect(suppressedToNaN(0)).toBe(0)
+  })
+
+  it('treats a suppressed (-1) value as NaN', () => {
+    expect(suppressedToNaN(-1)).toBeNaN()
+  })
+
+  it('treats a missing value as NaN', () => {
+    expect(suppressedToNaN(undefined)).toBeNaN()
   })
 })
