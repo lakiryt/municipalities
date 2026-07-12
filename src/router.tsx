@@ -13,6 +13,7 @@ import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
 import elderlyRatioConfig from './rankings/elderlyRatio'
 import rentConfig from './rankings/rent'
+import rentLaborDaysConfig from './rankings/rentLaborDays'
 import { initialColumns } from './data/municipalities'
 
 const router = createBrowserRouter([
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
   { path: '/rankings/all/elderly-ratio',        element: <RankingPage config={elderlyRatioConfig} /> },
   { path: '/rankings/all/rent',                  element: <RankingPage config={rentConfig} /> },
+  { path: '/rankings/all/rent-labor-days',       element: <RankingPage config={rentLaborDaysConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/formulas',                           element: <FormulasPage /> },
   {

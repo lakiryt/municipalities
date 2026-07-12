@@ -82,3 +82,20 @@ test('the average rent (20m²) ranking page loads and sorts descending', async (
   const parse = (s: string) => Number(s.replace(/[^0-9.]/g, ''))
   expect(parse(firstRowValue)).toBeGreaterThanOrEqual(parse(secondRowValue))
 })
+
+test('the rent-vs-minimum-wage labor-days ranking page loads with all its columns, and the homepage link opens its map', async ({ page }) => {
+  await page.goto('/rankings/all/rent-labor-days')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+
+  for (const label of ['都道府県', '自治体名', '平均家賃（30㎡）', '最低賃金', '平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数']) {
+    await expect(page.getByRole('columnheader', { name: label, exact: true })).toBeVisible()
+  }
+
+  await page.goto('/')
+  const link = page.getByRole('link', { name: /最低賃金労働日数ランキング/ })
+  await expect(link).toBeVisible()
+  await link.click()
+
+  await expect(page).toHaveURL(/\/rankings\/all\/rent-labor-days\?map=@4/)
+  await expect(page.getByRole('heading', { name: /平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数の地図/ })).toBeVisible()
+})

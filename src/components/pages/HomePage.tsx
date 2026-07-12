@@ -7,21 +7,8 @@ import { densityConfig } from '../../rankings/density'
 import { areaConfig, cityAreaConfig } from '../../rankings/area'
 import elderlyRatioConfig from '../../rankings/elderlyRatio'
 import rentConfig from '../../rankings/rent'
-import { encodeExploreState } from '../../lib/exploreState'
+import rentLaborDaysConfig from '../../rankings/rentLaborDays'
 import Canonical from '../Canonical'
-
-const rentVsMinWageUrl = `/explore?s=${encodeURIComponent(encodeExploreState({
-  columns: [
-    { id: 0, label: '都道府県', expression: '$prefkanji' },
-    { id: 1, label: '自治体名', expression: '$kanji' },
-    { id: 2, label: '平均家賃（30㎡）', expression: 'MULT(30, #rent_exc0)' },
-    { id: 3, label: '最低賃金', expression: '#minwage' },
-    { id: 4, label: '平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数', expression: 'ROUND(MULT(30,#rent_exc0,INV(MULT(#minwage,8))),2)' },
-  ],
-  filterExpression: '',
-  sortExpression: 'MULT(20, #rent_exc0)',
-  sortDirection: 'desc',
-}))}&map=@4`
 
 function HomePage() {
   return (
@@ -59,7 +46,7 @@ function HomePage() {
           <li><Link to="/rankings/all/city-area" className="text-blue-600 hover:underline">{cityAreaConfig(null).title}</Link></li>
           <li><Link to="/rankings/all/elderly-ratio" className="text-blue-600 hover:underline">{elderlyRatioConfig.title}</Link></li>
           <li><Link to="/rankings/all/rent" className="text-blue-600 hover:underline">{rentConfig.title}</Link></li>
-          <li><Link to={rentVsMinWageUrl} className="text-blue-600 hover:underline">全国の自治体の平均家賃（30㎡）を稼ぐのに必要な最低賃金労働日数ランキング</Link></li>
+          <li><Link to="/rankings/all/rent-labor-days?map=@4" className="text-blue-600 hover:underline">{rentLaborDaysConfig.title}</Link></li>
         </ul>
       </section>
 
