@@ -55,22 +55,23 @@ test('the toolbar map button always asks again, even after a column was already 
   await expect(mapHeading(page, '面積')).toBeVisible()
 })
 
-test('the chosen map column is reflected in the URL, and closing clears it', async ({ page }) => {
+test('the chosen map column is reflected in its own `map` URL param, independent of `s=`, and closing clears it', async ({ page }) => {
   await openMapViaPicker(page, '面積')
 
-  const stateOf = () => {
-    const url = new URL(page.url())
-    return JSON.parse(decodeURIComponent(url.searchParams.get('s') ?? '{}'))
-  }
+  const mapParam = () => new URL(page.url()).searchParams.get('map')
+  const sParam = () => new URL(page.url()).searchParams.get('s')
 
-  expect(stateOf().mapExpression).toMatch(/^@\d+$/)
-  const referencedId = Number(stateOf().mapExpression.slice(1))
-  const referencedColumn = stateOf().columns.find((c: { id: number }) => c.id === referencedId)
-  expect(referencedColumn.label).toBe('面積')
+  // Opening via the picker never touched `s=` at all — /explore had no
+  // edits yet, so it's still absent — only `map` was added.
+  expect(mapParam()).toMatch(/^@\d+$/)
+  const sBeforeClose = sParam()
+  expect(sBeforeClose).toBeNull()
 
   await page.getByRole('button', { name: '閉じる', exact: true }).click()
   await expect(mapHeading(page, '面積')).toBeHidden()
-  expect(stateOf().mapExpression).toBe('')
+  expect(mapParam()).toBeNull()
+  // Closing only ever touches `map` — the rest of the URL is untouched.
+  expect(sParam()).toBe(sBeforeClose)
 })
 
 test('browser back after closing the map reopens it', async ({ page }) => {

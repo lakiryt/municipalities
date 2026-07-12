@@ -3,7 +3,6 @@ export type ExploreState = {
   filterExpression: string
   sortExpression: string
   sortDirection: 'asc' | 'desc'
-  mapExpression: string
 }
 
 export function encodeExploreState(state: ExploreState): string {
@@ -30,7 +29,6 @@ export function decodeExploreState(raw: string | null): ExploreState | null {
       filterExpression: typeof parsed.filterExpression === 'string' ? parsed.filterExpression : '',
       sortExpression: typeof parsed.sortExpression === 'string' ? parsed.sortExpression : '',
       sortDirection: parsed.sortDirection === 'asc' ? 'asc' : 'desc',
-      mapExpression: typeof parsed.mapExpression === 'string' ? parsed.mapExpression : '',
     }
   } catch {
     return null

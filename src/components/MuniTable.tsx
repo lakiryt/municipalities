@@ -51,7 +51,7 @@ function upsertColumn(
 
 function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false, restrictToOfficial = false }: Props) {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Columns/filter/sort are derived from the URL when present so that
   // browser back/forward (which only changes searchParams, not the mounted
@@ -63,7 +63,6 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     filterExpression: initialFilter?.expression ?? '',
     sortExpression: initialSort?.expression ?? '',
     sortDirection: initialSort?.direction ?? 'desc',
-    mapExpression: '',
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [])
   const effectiveState = decodeExploreState(searchParams.get('s')) ?? defaultState
@@ -105,23 +104,42 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     } catch { return null }
   }, [effectiveState, columnRefs])
 
+  // The map lives in its own `map` query param rather than inside `s=` —
+  // unlike editing/sorting/filtering, opening or closing it isn't a change
+  // to the explore state itself, so it shouldn't force a page onto /explore
+  // or disturb whatever `s=` (or lack of one) that page already has.
+  const mapExpression = searchParams.get('map') ?? ''
+
   // The map only ever references a single column (never a compound
   // expression), so unlike filter/sort it resolves straight to a
   // ColumnState — MapModal needs the column itself (for its label/title),
   // not just a typed expression to evaluate.
   const mapState: { expression: string; typed: TypedExpr } | null = useMemo(() => {
-    if (!effectiveState.mapExpression) return null
+    if (!mapExpression) return null
     try {
-      const t = parseAndTypeCheck(effectiveState.mapExpression, columnRefs)
-      return t.type === 'n' ? { expression: effectiveState.mapExpression, typed: t } : null
+      const t = parseAndTypeCheck(mapExpression, columnRefs)
+      return t.type === 'n' ? { expression: mapExpression, typed: t } : null
     } catch { return null }
-  }, [effectiveState, columnRefs])
-  const mapColumnId = effectiveState.mapExpression.match(/^@(\d+)$/)?.[1]
+  }, [mapExpression, columnRefs])
+  const mapColumnId = mapExpression.match(/^@(\d+)$/)?.[1]
   const mapColumn = mapState !== null && mapColumnId !== undefined
     ? columns.find(c => c.id === Number(mapColumnId)) ?? null
     : null
 
   const commit = (next: ExploreState) => navigate(`/explore?s=${encodeURIComponent(encodeExploreState(next))}`)
+
+  // Updates just the `map` param on the current URL — same pathname, same
+  // `s=` (if any) — so opening/closing the map never leaves the page it was
+  // opened from, and closing restores the exact URL (title included) from
+  // before it was opened.
+  const setMapExpression = (expression: string) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (expression) next.set('map', expression)
+      else next.delete('map')
+      return next
+    })
+  }
 
   const [modal, setModal]                 = useState<ModalState | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
@@ -224,14 +242,28 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     setModal(null)
   }
 
-  // Same idea, but for the map: saves the column and points the map's
-  // `@id` reference at it. The map itself isn't separate React state — it's
-  // however the URL renders — so committing `mapExpression` is what opens
-  // it, immediately, with no picker.
+  // Same idea, but for the map: points the map's `@id` reference at this
+  // column, immediately, with no picker. Referencing an existing column
+  // as-is never needs to touch `columns`/`s=` at all, so — unlike save/sort,
+  // which always graduate a ranking page to /explore — this stays on the
+  // current page when nothing about the column actually changed. Only an
+  // actual edit (or a brand new column) needs the full commit, since `@id`
+  // can't resolve to something that was never saved anywhere.
   const handleSetColumnMap = (label: string, expression: string) => {
     if (modal === null) return
-    const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
-    commit({ ...effectiveState, columns: cols, mapExpression: `@${id}` })
+    const unchanged = modal.kind === 'edit' && editingColumn !== null &&
+      editingColumn.label === label && editingColumn.expression === expression
+    if (unchanged) {
+      setMapExpression(`@${modal.id}`)
+    } else {
+      // An actual edit still has to graduate to /explore (same as save/sort)
+      // since `@id` can't resolve to a column that was never saved anywhere
+      // — combined into one navigation rather than a commit() followed by a
+      // separate setMapExpression(), which would race against each other.
+      const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
+      const nextState = { ...effectiveState, columns: cols }
+      navigate(`/explore?s=${encodeURIComponent(encodeExploreState(nextState))}&map=@${id}`)
+    }
     setModal(null)
   }
 
@@ -274,14 +306,15 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const handleSearchApply: Parameters<typeof SearchModal>[0]['onApply'] = (
     { filterExpression: fex, sortExpression, sortDirection, columns: cols }
   ) => {
+    // commit() (via navigate) replaces the whole URL with just `?s=...`,
+    // which already drops any `map=` param along with it — a fresh search
+    // replaces the whole column set, so any `@id` the map was pointing at
+    // wouldn't have been meaningful to keep anyway.
     commit({
       columns: cols.map(c => ({ id: c.id, label: c.label, expression: c.expression })),
       filterExpression: fex,
       sortExpression,
       sortDirection,
-      // A fresh search replaces the whole column set, so any `@id` the map
-      // was pointing at is no longer meaningful.
-      mapExpression: '',
     })
     setSearchOpen(false)
   }
@@ -348,17 +381,18 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           displayItems={mapItems}
           designations={designations}
           coastal={coastal}
-          // Closing drops the reference from the URL rather than navigating
-          // back, so browser back/forward still lines up: back from here
-          // lands on the "map open" entry and shows it again.
-          onClose={() => commit({ ...effectiveState, mapExpression: '' })}
+          // Clearing the `map` param (not commit/navigate) drops the
+          // reference without touching the page or its `s=` state — closing
+          // restores the exact URL from before opening, title included, and
+          // pushes a new history entry so browser back still shows it again.
+          onClose={() => setMapExpression('')}
         />
       )}
       {mapPickerOpen && (
         <MapColumnPickerModal
           columns={columnRefs.filter(c => c.type === 'n')}
           onSelect={id => {
-            commit({ ...effectiveState, mapExpression: `@${id}` })
+            setMapExpression(`@${id}`)
             setMapPickerOpen(false)
           }}
           onClose={() => setMapPickerOpen(false)}
@@ -379,7 +413,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       )}
       <FilterBar
         title={title}
-        totalCount={activeItems.length}
+        totalCount={tableBaseItems.length}
         filteredCount={filteredItems.length}
         filterActive={filterExpr !== null}
         sortState={sortState}

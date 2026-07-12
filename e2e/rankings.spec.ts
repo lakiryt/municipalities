@@ -38,3 +38,35 @@ test("/explore's map still colors designated-city wards even though its table is
   expect(total).toBeGreaterThan(1000)
   expect(noData).toBeLessThan(20)
 })
+
+test('opening the map from a ranking page stays on that page instead of jumping to /explore', async ({ page }) => {
+  await page.goto('/list/all/population')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+  const titleBeforeOpening = await page.title()
+
+  await page.getByRole('columnheader', { name: '人口(計)', exact: true }).click()
+  await page.getByRole('button', { name: 'この列を地図に表示' }).click()
+  await expect(page.getByRole('heading', { name: '人口(計)の地図', exact: true })).toBeVisible()
+
+  const url = new URL(page.url())
+  expect(url.pathname).toBe('/list/all/population')
+  expect(url.searchParams.get('map')).toMatch(/^@\d+$/)
+  await expect(page).toHaveTitle(/^人口\(計\)の地図 — /)
+
+  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  const closedUrl = new URL(page.url())
+  expect(closedUrl.pathname).toBe('/list/all/population')
+  expect(closedUrl.searchParams.get('map')).toBeNull()
+  await expect(page).toHaveTitle(titleBeforeOpening)
+})
+
+test('the map picker (toolbar button) also stays on a ranking page', async ({ page }) => {
+  await page.goto('/list/all/population')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+
+  await page.getByRole('button', { name: '地図表示', exact: true }).click()
+  await page.getByRole('button', { name: '人口(計)', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '人口(計)の地図', exact: true })).toBeVisible()
+
+  expect(new URL(page.url()).pathname).toBe('/list/all/population')
+})
