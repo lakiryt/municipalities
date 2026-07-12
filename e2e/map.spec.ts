@@ -156,17 +156,21 @@ test('the color scheme picker closes on an outside click without changing the se
   await expect(page.getByRole('listbox')).toBeHidden()
 })
 
-test('the border checkbox toggles path strokes and defaults to off', async ({ page }) => {
+test('hovering a "no data" municipality still shows a tooltip with its name', async ({ page }) => {
   await openMapViaPicker(page)
-  const path = page.locator('svg path').first()
-  await expect(path).toBeVisible()
-  await expect(path).toHaveAttribute('stroke', 'none')
+  await expect(page.locator('svg path').first()).toBeVisible()
 
-  await page.getByLabel('境界線').check()
-  await expect(path).toHaveAttribute('stroke', '#fcfcfb')
+  // "No data" codes are prefecture-level totals under which a handful of
+  // remote islands are drawn, some as tiny slivers or scattered multi-part
+  // geometries that make real pixel-based hovering flaky to target reliably
+  // (paint order can put a real municipality on top at the same point).
+  // Dispatching the mousemove directly on the element sidesteps that and
+  // tests the thing this test is actually about: that a "no data" path's own
+  // handler still shows its name.
+  const target = page.locator('svg path[fill="#e1e0d9"]').first()
+  await target.dispatchEvent('mousemove', { clientX: 100, clientY: 100, bubbles: true })
 
-  await page.getByLabel('境界線').uncheck()
-  await expect(path).toHaveAttribute('stroke', 'none')
+  await expect(page.getByTestId('map-tooltip')).toHaveText(/.+: データなし/)
 })
 
 test('the histogram button overlays a value histogram at the bottom without hiding the map, and closes it again', async ({ page }) => {

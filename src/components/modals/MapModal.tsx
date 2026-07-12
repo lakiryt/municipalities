@@ -33,11 +33,10 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
 
 function MapModal({ column, displayItems, designations, coastal, onClose }: Props) {
   const [paths, setPaths] = useState<MuniPaths | null>(null)
-  const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number } | null>(null)
+  const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number | undefined } | null>(null)
   const [view, setView] = useState<View>({ scale: 1, x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [schemeKey, setSchemeKey] = useState<ColorSchemeKey>('blue')
-  const [showBorders, setShowBorders] = useState(false)
   const [schemeOpen, setSchemeOpen] = useState(false)
   const [showHistogram, setShowHistogram] = useState(false)
   const [barHover, setBarHover] = useState<{ x: number; y: number; x0: number; x1: number; count: number } | null>(null)
@@ -259,11 +258,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
       <div className="bg-white rounded-lg shadow-xl p-4 w-[92vw] h-[88vh] max-w-5xl flex flex-col">
         <div className="flex items-center gap-3 mb-3">
           <h3 className="text-lg font-bold">{column.label}の地図</h3>
-          <label className="flex items-center gap-1.5 text-sm text-gray-600 select-none ml-auto">
-            <input type="checkbox" checked={showBorders} onChange={e => setShowBorders(e.target.checked)} />
-            境界線
-          </label>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm" onClick={onClose}>
+          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm ml-auto" onClick={onClose}>
             閉じる
           </button>
         </div>
@@ -289,14 +284,19 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
                       key={code}
                       d={d}
                       fill={fill}
-                      stroke={showBorders ? '#fcfcfb' : 'none'}
+                      stroke="none"
                       strokeWidth={0.5}
                       vectorEffect="non-scaling-stroke"
                       onMouseMove={e => {
                         if (isDragging) return
                         const item = itemByCode.get(code)
-                        if (v === undefined || !item) { setHover(null); return }
-                        setHover({ x: e.clientX, y: e.clientY, label: item.kanji, value: v })
+                        if (!item) { setHover(null); return }
+                        // Prefecture-level codes (the remote islands drawn under
+                        // them) have no municipality name of their own in the
+                        // CSV — fall back to the prefecture's name instead of
+                        // showing a blank label.
+                        const label = item.kanji || item.prefecture.kanji || ''
+                        setHover({ x: e.clientX, y: e.clientY, label, value: v })
                       }}
                       onMouseLeave={() => setHover(null)}
                     />
@@ -311,7 +311,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               className="fixed pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 z-50"
               style={{ left: hover.x + 12, top: hover.y + 12 }}
             >
-              {hover.label}: {hover.value.toLocaleString('ja-JP')}
+              {hover.value !== undefined ? `${hover.label}: ${hover.value.toLocaleString('ja-JP')}` : `${hover.label}: データなし`}
             </div>
           )}
 
@@ -321,9 +321,6 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               className="absolute bottom-0 z-10 overflow-hidden rounded-t bg-white/90 shadow-[0_-1px_4px_rgba(0,0,0,0.15)] transition-[height] duration-200 ease-out"
               style={{ left: barRect.left, width: barRect.width, height: showHistogram ? 140 : 0 }}
             >
-              <span className="absolute top-0.5 left-1 text-[9px] text-gray-400 pointer-events-none">
-                {maxCount.toLocaleString('ja-JP')}件
-              </span>
               <svg data-testid="map-histogram" viewBox="0 0 400 200" preserveAspectRatio="none" className="w-full h-full">
                 <line x1={0} y1={190} x2={400} y2={190} stroke="#e5e7eb" strokeWidth={1} />
                 {bins.map((bin, i) => {
