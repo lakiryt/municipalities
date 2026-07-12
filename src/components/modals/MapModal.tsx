@@ -39,9 +39,14 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
   const [schemeKey, setSchemeKey] = useState<ColorSchemeKey>('blue')
   const [showBorders, setShowBorders] = useState(false)
   const [schemeOpen, setSchemeOpen] = useState(false)
+  const [showHistogram, setShowHistogram] = useState(false)
+  const [barHover, setBarHover] = useState<{ x: number; y: number; x0: number; x1: number; count: number } | null>(null)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const schemeRef = useRef<HTMLDivElement>(null)
+  const mapAreaRef = useRef<HTMLDivElement>(null)
+  const gradientRef = useRef<HTMLSpanElement>(null)
+  const [barRect, setBarRect] = useState<{ left: number; width: number } | null>(null)
   const dragRef = useRef<{ startClientX: number; startClientY: number; startView: View; unitsPerPixel: number } | null>(null)
   const touchRef = useRef<
     | { kind: 'pan'; lastClientX: number; lastClientY: number }
@@ -108,6 +113,43 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     const vs = [...values.values()]
     return vs.length ? [Math.min(...vs), Math.max(...vs)] : [0, 1]
   }, [values])
+
+  // Same domain as the map's color scale, so a bar's horizontal position
+  // lines up with where its value falls on the legend gradient below.
+  const BIN_COUNT = 20
+  const bins = useMemo(() => {
+    const vs = [...values.values()]
+    if (vs.length === 0) return []
+    const width = max === min ? 1 : (max - min) / BIN_COUNT
+    const counts = new Array(BIN_COUNT).fill(0)
+    for (const v of vs) {
+      const idx = Math.min(BIN_COUNT - 1, Math.max(0, Math.floor((v - min) / width)))
+      counts[idx]++
+    }
+    return counts.map((count, i) => ({ x0: min + i * width, x1: min + (i + 1) * width, count }))
+  }, [values, min, max])
+
+  const maxCount = Math.max(1, ...bins.map(b => b.count))
+
+  // Keeps the histogram overlay's left/width pinned to the legend's colored
+  // gradient span (not the whole legend bar, which also has min/max labels
+  // and the dropdown arrow), so a bar's x-position lines up with its color
+  // on the legend beneath it.
+  useEffect(() => {
+    const area = mapAreaRef.current
+    const gradient = gradientRef.current
+    if (!area || !gradient) return
+    const measure = () => {
+      const a = area.getBoundingClientRect()
+      const g = gradient.getBoundingClientRect()
+      setBarRect({ left: g.left - a.left, width: g.width })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(area)
+    ro.observe(gradient)
+    return () => ro.disconnect()
+  }, [min, max, schemeKey])
 
   const clientToSvgPoint = (clientX: number, clientY: number) => {
     const svg = svgRef.current
@@ -226,12 +268,13 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
           </button>
         </div>
 
-        <div className="relative flex-1 min-h-0 touch-none">
+        <div className="relative flex-1 min-h-0 touch-none" ref={mapAreaRef}>
           {!paths ? (
             <div className="h-full flex items-center justify-center text-gray-400 text-sm">読み込み中…</div>
           ) : (
             <svg
               ref={svgRef}
+              data-testid="map-svg"
               viewBox={`0 0 ${VIEW_SIZE} ${VIEW_SIZE}`}
               className={`w-full h-full touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
               onMouseDown={handleMouseDown}
@@ -271,6 +314,58 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               {hover.label}: {hover.value.toLocaleString('ja-JP')}
             </div>
           )}
+
+          {barRect && (
+            <div
+              data-testid="map-histogram-panel"
+              className="absolute bottom-0 z-10 overflow-hidden rounded-t bg-white/90 shadow-[0_-1px_4px_rgba(0,0,0,0.15)] transition-[height] duration-200 ease-out"
+              style={{ left: barRect.left, width: barRect.width, height: showHistogram ? 140 : 0 }}
+            >
+              <span className="absolute top-0.5 left-1 text-[9px] text-gray-400 pointer-events-none">
+                {maxCount.toLocaleString('ja-JP')}件
+              </span>
+              <svg data-testid="map-histogram" viewBox="0 0 400 200" preserveAspectRatio="none" className="w-full h-full">
+                <line x1={0} y1={190} x2={400} y2={190} stroke="#e5e7eb" strokeWidth={1} />
+                {bins.map((bin, i) => {
+                  const ramp = COLOR_SCHEMES[schemeKey].ramp
+                  const fill = sequentialColor(max === min ? 0.5 : ((bin.x0 + bin.x1) / 2 - min) / (max - min), ramp)
+                  const barWidth = 400 / BIN_COUNT
+                  const barHeight = (bin.count / maxCount) * 178
+                  return (
+                    <rect
+                      key={i}
+                      x={i * barWidth + 1}
+                      y={190 - barHeight}
+                      width={Math.max(0, barWidth - 2)}
+                      height={barHeight}
+                      rx={1}
+                      fill={bin.count === 0 ? '#f3f2ef' : fill}
+                      onMouseMove={e => setBarHover({ x: e.clientX, y: e.clientY, x0: bin.x0, x1: bin.x1, count: bin.count })}
+                      onMouseLeave={() => setBarHover(null)}
+                    />
+                  )
+                })}
+              </svg>
+            </div>
+          )}
+          {showHistogram && barHover && (
+            <div
+              data-testid="histogram-tooltip"
+              className="fixed pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 z-50"
+              style={{ left: barHover.x + 12, top: barHover.y + 12 }}
+            >
+              {barHover.x0.toLocaleString('ja-JP')} 〜 {barHover.x1.toLocaleString('ja-JP')}: {barHover.count.toLocaleString('ja-JP')}件
+            </div>
+          )}
+
+          {paths && (
+            <button
+              className="absolute bottom-3 right-3 z-20 px-3 py-1 border border-gray-300 rounded bg-white/90 hover:bg-gray-50 text-sm shadow-sm"
+              onClick={() => setShowHistogram(h => !h)}
+            >
+              {showHistogram ? 'ヒストグラムを閉じる' : 'ヒストグラムを見る'}
+            </button>
+          )}
         </div>
 
         <div className="relative mt-3" ref={schemeRef}>
@@ -286,6 +381,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
           >
             <span>{min.toLocaleString('ja-JP')}</span>
             <span
+              ref={gradientRef}
               className="h-2 flex-1 rounded-sm block"
               style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
             />

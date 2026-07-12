@@ -22,7 +22,7 @@ test('a two-finger pinch zooms the map, not the page', async ({ page }) => {
   const consoleMessages: string[] = []
   page.on('console', msg => consoleMessages.push(msg.text()))
 
-  const svg = page.locator('svg')
+  const svg = page.getByTestId('map-svg')
   const box = await svg.boundingBox()
   if (!box) throw new Error('svg not visible')
   const cx = box.x + box.width / 2
@@ -55,7 +55,7 @@ test('a two-finger pinch zooms the map, not the page', async ({ page }) => {
 })
 
 test('a one-finger touch drag pans the map', async ({ page }) => {
-  const svg = page.locator('svg')
+  const svg = page.getByTestId('map-svg')
   const box = await svg.boundingBox()
   if (!box) throw new Error('svg not visible')
   const cx = box.x + box.width / 2

@@ -169,6 +169,38 @@ test('the border checkbox toggles path strokes and defaults to off', async ({ pa
   await expect(path).toHaveAttribute('stroke', 'none')
 })
 
+test('the histogram button overlays a value histogram at the bottom without hiding the map, and closes it again', async ({ page }) => {
+  await openMapViaPicker(page)
+  await expect(page.locator('svg path').first()).toBeVisible()
+
+  const histogram = page.getByTestId('map-histogram-panel')
+  await expect(histogram).toHaveCSS('height', '0px')
+
+  await page.getByRole('button', { name: 'ヒストグラムを見る', exact: true }).click()
+  // The map stays up — this is an overlay, not a view switch.
+  await expect(mapHeading(page, '総人口')).toBeVisible()
+  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(histogram).toHaveCSS('height', '140px')
+
+  const bars = page.locator('svg[data-testid="map-histogram"] rect')
+  await expect(bars.first()).toBeVisible()
+  // 20 bins, always rendered even for empty ones.
+  expect(await bars.count()).toBe(20)
+
+  // Its horizontal span matches the legend's colored gradient, not the
+  // whole legend bar (which also has min/max labels and the dropdown arrow).
+  const gradientBox = await page.getByTestId('map-legend').locator('span.rounded-sm').boundingBox()
+  const histogramBox = await histogram.boundingBox()
+  expect(histogramBox!.x).toBeCloseTo(gradientBox!.x, 0)
+  expect(histogramBox!.width).toBeCloseTo(gradientBox!.width, 0)
+
+  await bars.first().hover()
+  await expect(page.getByTestId('histogram-tooltip')).toBeVisible()
+
+  await page.getByRole('button', { name: 'ヒストグラムを閉じる', exact: true }).click()
+  await expect(histogram).toHaveCSS('height', '0px')
+})
+
 test('wheel zoom pins the point under the cursor and clamps at the minimum scale', async ({ page }) => {
   await openMapViaPicker(page)
   const group = page.locator('svg > g')
@@ -180,7 +212,7 @@ test('wheel zoom pins the point under the cursor and clamps at the minimum scale
     return Number(t?.match(/scale\(([\d.]+)\)/)?.[1])
   }
 
-  const box = await page.locator('svg').boundingBox()
+  const box = await page.getByTestId('map-svg').boundingBox()
   if (!box) throw new Error('svg not visible')
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
 
@@ -208,7 +240,7 @@ test('wheeling over the map does not scroll the table behind it', async ({ page 
   if (!before) throw new Error('row not visible')
 
   await openMapViaPicker(page)
-  const box = await page.locator('svg').boundingBox()
+  const box = await page.getByTestId('map-svg').boundingBox()
   if (!box) throw new Error('svg not visible')
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -200)
@@ -225,7 +257,7 @@ test('dragging the map pans it (translate changes) without leaving zoom stuck', 
   const group = page.locator('svg > g')
   await expect(page.locator('svg path').first()).toBeVisible()
 
-  const box = await page.locator('svg').boundingBox()
+  const box = await page.getByTestId('map-svg').boundingBox()
   if (!box) throw new Error('svg not visible')
   const before = await group.getAttribute('transform')
 
