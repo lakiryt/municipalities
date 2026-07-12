@@ -18,7 +18,6 @@ type Props = {
 const NO_DATA_FILL = '#e1e0d9'
 const MIN_SCALE = 1
 const MAX_SCALE = 40
-const VIEW_CENTER = { x: VIEW_SIZE / 2, y: VIEW_SIZE / 2 }
 
 type View = { scale: number; x: number; y: number }
 
@@ -120,8 +119,6 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     return pt.matrixTransform(ctm.inverse())
   }
 
-  const zoomButton = (factor: number) => setView(v => zoomAt(v, VIEW_CENTER, factor))
-
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault()
     const at = clientToSvgPoint(e.clientX, e.clientY)
@@ -222,27 +219,6 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
             <input type="checkbox" checked={showBorders} onChange={e => setShowBorders(e.target.checked)} />
             境界線
           </label>
-          <div className="flex border border-gray-300 rounded overflow-hidden text-sm">
-            <button
-              aria-label="ズームイン"
-              className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 border-r border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-              disabled={view.scale >= MAX_SCALE}
-              onClick={() => zoomButton(1.4)}
-            >
-              +
-            </button>
-            <button
-              aria-label="ズームアウト"
-              className="w-7 h-7 flex items-center justify-center hover:bg-gray-50 border-r border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-              disabled={view.scale <= MIN_SCALE}
-              onClick={() => zoomButton(1 / 1.4)}
-            >
-              −
-            </button>
-            <button aria-label="ズームリセット" className="px-2 py-1 hover:bg-gray-50 text-xs" onClick={() => setView({ scale: 1, x: 0, y: 0 })}>
-              リセット
-            </button>
-          </div>
           <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm" onClick={onClose}>
             閉じる
           </button>

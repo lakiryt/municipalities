@@ -169,7 +169,7 @@ test('the border checkbox toggles path strokes and defaults to off', async ({ pa
   await expect(path).toHaveAttribute('stroke', 'none')
 })
 
-test('zoom buttons and reset scale the map, and wheel zoom pins the point under the cursor', async ({ page }) => {
+test('wheel zoom pins the point under the cursor and clamps at the minimum scale', async ({ page }) => {
   await openMapViaPicker(page)
   const group = page.locator('svg > g')
   await expect(page.locator('svg path').first()).toBeVisible()
@@ -180,49 +180,24 @@ test('zoom buttons and reset scale the map, and wheel zoom pins the point under 
     return Number(t?.match(/scale\(([\d.]+)\)/)?.[1])
   }
 
-  await page.getByLabel('ズームイン').click()
+  const box = await page.locator('svg').boundingBox()
+  if (!box) throw new Error('svg not visible')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+
+  await page.mouse.wheel(0, -200)
   let zoomedIn = 0
   await expect(async () => {
     zoomedIn = await scaleOf()
     expect(zoomedIn).toBeGreaterThan(1)
   }).toPass()
 
-  await page.getByLabel('ズームアウト').click()
+  await page.mouse.wheel(0, 200)
   await expect(async () => expect(await scaleOf()).toBeLessThan(zoomedIn)).toPass()
 
-  await page.getByLabel('ズームリセット').click()
-  await expect(group).toHaveAttribute('transform', /scale\(1\)/)
-
-  // Wheel-zoom over the map area should also increase the scale.
-  const box = await page.locator('svg').boundingBox()
-  if (!box) throw new Error('svg not visible')
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-  await page.mouse.wheel(0, -200)
-  await expect(async () => expect(await scaleOf()).toBeGreaterThan(1)).toPass()
-})
-
-test('zoom buttons disable at the min/max scale limits', async ({ page }) => {
-  await openMapViaPicker(page)
-  await expect(page.locator('svg path').first()).toBeVisible()
-
-  const zoomIn = page.getByLabel('ズームイン')
-  const zoomOut = page.getByLabel('ズームアウト')
-
-  // At scale 1 (the minimum), zooming out is already disabled.
-  await expect(zoomOut).toBeDisabled()
-  await expect(zoomIn).toBeEnabled()
-
-  // Zoom all the way in until the button disables itself at MAX_SCALE.
-  await expect(async () => {
-    if (await zoomIn.isDisabled()) return
-    await zoomIn.click()
-    expect(await zoomIn.isDisabled()).toBe(true)
-  }).toPass({ timeout: 15000 })
-
-  await expect(zoomOut).toBeEnabled()
-
-  await page.getByLabel('ズームリセット').click()
-  await expect(zoomOut).toBeDisabled()
+  // Zooming out further from here clamps at the minimum instead of going
+  // negative/inverting.
+  for (let i = 0; i < 10; i++) await page.mouse.wheel(0, 200)
+  await expect(async () => expect(await scaleOf()).toBe(1)).toPass()
 })
 
 test('dragging the map pans it (translate changes) without leaving zoom stuck', async ({ page }) => {
