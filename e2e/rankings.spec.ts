@@ -70,3 +70,15 @@ test('the map picker (toolbar button) also stays on a ranking page', async ({ pa
 
   expect(new URL(page.url()).pathname).toBe('/list/all/population')
 })
+
+test('the average rent (20m²) ranking page loads and sorts descending', async ({ page }) => {
+  await page.goto('/rankings/all/rent')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+
+  await expect(page.getByRole('columnheader', { name: '平均家賃（20㎡）', exact: true })).toBeVisible()
+
+  const firstRowValue = await page.locator('tbody tr').first().locator('td').last().innerText()
+  const secondRowValue = await page.locator('tbody tr').nth(1).locator('td').last().innerText()
+  const parse = (s: string) => Number(s.replace(/[^0-9.]/g, ''))
+  expect(parse(firstRowValue)).toBeGreaterThanOrEqual(parse(secondRowValue))
+})

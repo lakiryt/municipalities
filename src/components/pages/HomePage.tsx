@@ -6,6 +6,7 @@ import { cityPopulationConfig } from '../../rankings/cityPopulation'
 import { densityConfig } from '../../rankings/density'
 import { areaConfig, cityAreaConfig } from '../../rankings/area'
 import elderlyRatioConfig from '../../rankings/elderlyRatio'
+import rentConfig from '../../rankings/rent'
 import Canonical from '../Canonical'
 
 function HomePage() {
@@ -43,6 +44,7 @@ function HomePage() {
           <li><Link to="/rankings/all/area" className="text-blue-600 hover:underline">{areaConfig(null).title}</Link></li>
           <li><Link to="/rankings/all/city-area" className="text-blue-600 hover:underline">{cityAreaConfig(null).title}</Link></li>
           <li><Link to="/rankings/all/elderly-ratio" className="text-blue-600 hover:underline">{elderlyRatioConfig.title}</Link></li>
+          <li><Link to="/rankings/all/rent" className="text-blue-600 hover:underline">{rentConfig.title}</Link></li>
         </ul>
       </section>
 

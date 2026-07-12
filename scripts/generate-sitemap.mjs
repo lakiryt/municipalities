@@ -27,6 +27,7 @@ const urls = [
   { path: '/rankings/all/area',                 priority: '0.8', changefreq: 'monthly' },
   { path: '/rankings/all/city-area',            priority: '0.8', changefreq: 'monthly' },
   { path: '/rankings/all/elderly-ratio',        priority: '0.7', changefreq: 'monthly' },
+  { path: '/rankings/all/rent',                  priority: '0.7', changefreq: 'monthly' },
   { path: '/rankings/all/population-over-500k', priority: '0.7', changefreq: 'monthly' },
   { path: '/list/all/population',               priority: '0.7', changefreq: 'monthly' },
   { path: '/explore',                           priority: '0.5', changefreq: 'monthly' },

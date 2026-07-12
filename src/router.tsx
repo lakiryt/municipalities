@@ -12,6 +12,7 @@ import Canonical from './components/Canonical'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
 import elderlyRatioConfig from './rankings/elderlyRatio'
+import rentConfig from './rankings/rent'
 import { initialColumns } from './data/municipalities'
 
 const router = createBrowserRouter([
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
   { path: '/rankings/:pref/city-area',           element: <CityAreaPage /> },
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
   { path: '/rankings/all/elderly-ratio',        element: <RankingPage config={elderlyRatioConfig} /> },
+  { path: '/rankings/all/rent',                  element: <RankingPage config={rentConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/formulas',                           element: <FormulasPage /> },
   {
