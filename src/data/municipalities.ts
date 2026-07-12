@@ -96,12 +96,23 @@ export const fetchPopulation = (src: PopulationSource): Promise<PopulationMap> =
 // data for just render as "no data" — there's no need to tell them apart here.
 export type CodeEntry = { code: string; kanji: string; kana: string }
 
-const parseCodesCsv = (raw: string): CodeEntry[] =>
+// `sityouson_name1`/`name3` double up for two unrelated relationships: a
+// designated city's own name + its ward's name (e.g. 札幌市 + 北区, both real
+// parts of the full name), and a grouping label + the actual municipality's
+// name (e.g. 石狩振興局 + 当別町, or 東津軽郡 + 平内町) where the label isn't
+// part of the municipality's name at all. Only 郡/振興局/支庁 labels are the
+// latter — real parent names all end in 市, so this suffix check tells them
+// apart without needing a separate "is this a grouping row" column.
+const GROUPING_LABEL_SUFFIXES = ['郡', '振興局', '支庁']
+const isGroupingLabel = (name1: string) => GROUPING_LABEL_SUFFIXES.some(suffix => name1.endsWith(suffix))
+
+export const parseCodesCsv = (raw: string): CodeEntry[] =>
   raw.trim().split('\n').map(l => l.replace(/\r$/, '')).slice(1).map(line => {
     const [, , tiiki_code, , name1, name2, name3, yomigana] = line.split(',')
+    const nameParts = isGroupingLabel(name1) ? [name3] : [name1, name2, name3]
     return {
       code: tiiki_code,
-      kanji: [name1, name2, name3].map(s => s.trim()).filter(Boolean).join(''),
+      kanji: nameParts.map(s => s.trim()).filter(Boolean).join(''),
       kana: (yomigana ?? '').trim(),
     }
   })
