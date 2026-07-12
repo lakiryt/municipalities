@@ -119,13 +119,6 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     return pt.matrixTransform(ctm.inverse())
   }
 
-  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
-    e.preventDefault()
-    const at = clientToSvgPoint(e.clientX, e.clientY)
-    if (!at) return
-    setView(v => zoomAt(v, at, e.deltaY < 0 ? 1.2 : 1 / 1.2))
-  }
-
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     const ctm = svgRef.current?.getScreenCTM()
     if (!ctm) return
@@ -133,17 +126,24 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     setIsDragging(true)
   }
 
-  // One finger pans, two fingers pinch-zoom. Registered as native (non-React)
-  // listeners below, not JSX onTouch* props: React attaches its synthetic
-  // touchstart/touchmove listeners as passive, which silently no-ops
-  // preventDefault() — the touch-action: none CSS (below) is what mostly
-  // stops the browser from treating this as a page pinch/scroll instead of
-  // the map's own, but it's inconsistently honored for two-finger gestures
-  // across mobile browsers, so a real preventDefault() is the necessary
-  // backup, and that requires an explicitly non-passive listener.
+  // Wheel-zoom and one-finger-pan/two-finger-pinch, all registered as native
+  // (non-React) listeners below, not JSX onWheel/onTouch* props: React
+  // attaches its synthetic wheel/touchstart/touchmove listeners as passive,
+  // which silently no-ops preventDefault() — without a real preventDefault(),
+  // the page (and the table behind this modal) scrolls/zooms right along
+  // with the map. touch-action: none (below) covers most of the pinch case
+  // on mobile, but wheel scroll on desktop has no CSS equivalent, so a
+  // genuinely non-passive listener is the only fix for both.
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const at = clientToSvgPoint(e.clientX, e.clientY)
+      if (!at) return
+      setView(v => zoomAt(v, at, e.deltaY < 0 ? 1.2 : 1 / 1.2))
+    }
 
     const touchDistance = (touches: TouchList) =>
       Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY)
@@ -195,11 +195,13 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
       }
     }
 
+    svg.addEventListener('wheel', onWheel, { passive: false })
     svg.addEventListener('touchstart', onTouchStart, { passive: false })
     svg.addEventListener('touchmove', onTouchMove, { passive: false })
     svg.addEventListener('touchend', onTouchEnd, { passive: false })
     svg.addEventListener('touchcancel', onTouchEnd, { passive: false })
     return () => {
+      svg.removeEventListener('wheel', onWheel)
       svg.removeEventListener('touchstart', onTouchStart)
       svg.removeEventListener('touchmove', onTouchMove)
       svg.removeEventListener('touchend', onTouchEnd)
@@ -232,7 +234,6 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               ref={svgRef}
               viewBox={`0 0 ${VIEW_SIZE} ${VIEW_SIZE}`}
               className={`w-full h-full touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-              onWheel={handleWheel}
               onMouseDown={handleMouseDown}
             >
               <g transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>

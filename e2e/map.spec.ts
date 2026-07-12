@@ -200,6 +200,26 @@ test('wheel zoom pins the point under the cursor and clamps at the minimum scale
   await expect(async () => expect(await scaleOf()).toBe(1)).toPass()
 })
 
+test('wheeling over the map does not scroll the table behind it', async ({ page }) => {
+  // A row a few screens down, so there's room for the table to have visibly
+  // scrolled if the wheel event leaked through the modal.
+  const trackedRow = page.locator('tbody tr').nth(30)
+  const before = await trackedRow.boundingBox()
+  if (!before) throw new Error('row not visible')
+
+  await openMapViaPicker(page)
+  const box = await page.locator('svg').boundingBox()
+  if (!box) throw new Error('svg not visible')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -200)
+  for (let i = 0; i < 5; i++) await page.mouse.wheel(0, 200)
+
+  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  await expect(trackedRow).toBeVisible()
+  const after = await trackedRow.boundingBox()
+  expect(after?.y).toBe(before.y)
+})
+
 test('dragging the map pans it (translate changes) without leaving zoom stuck', async ({ page }) => {
   await openMapViaPicker(page)
   const group = page.locator('svg > g')
