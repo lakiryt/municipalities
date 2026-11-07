@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
-const SITE_URL = process.env.SITE_URL
+const SITE_URL = process.env.SITE_URL?.replace(/\/+$/, '')
 if (!SITE_URL) {
   console.error('Error: SITE_URL environment variable is not set.')
   console.error('Set it to your site\'s canonical origin, e.g.:')
