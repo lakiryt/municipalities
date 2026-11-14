@@ -72,3 +72,25 @@ test.describe('on a phone', () => {
     expect(after!.x).toBeLessThanOrEqual(before!.x)
   })
 })
+
+test('a data chip opens データの選択 on its own dataset; data the page does not use is folded away', async ({ page }) => {
+  await page.goto('/rankings/all/density')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+
+  await page.getByRole('button', { name: /^面積\s*国土地理院/ }).click()
+  const dialog = page.getByRole('dialog', { name: 'データの選択' })
+  await expect(dialog.getByRole('heading')).toHaveText('データの選択 — 面積')
+  const focused = dialog.locator('[data-focused]')
+  await expect(focused).toHaveCount(1)
+  await expect(focused).toContainText('面積データ')
+  await expect(focused.locator('select')).toBeFocused()
+
+  // Density uses 人口 and 面積 only — 家賃 and 最低賃金 are folded.
+  await expect(dialog.getByText(/このページで使っていないデータ（家賃・最低賃金）/)).toBeVisible()
+  await expect(dialog.getByText('家賃データ')).toBeHidden()
+
+  // The general link opens it without a focus.
+  await dialog.getByRole('button', { name: 'キャンセル' }).click()
+  await page.getByRole('button', { name: 'データの選択', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'データの選択' }).locator('[data-focused]')).toHaveCount(0)
+})

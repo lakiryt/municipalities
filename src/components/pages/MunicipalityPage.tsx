@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   officialCodes, prefectures, selectionFromParams, writeSelectionParams, fetchAdjacency, fetchPopulationSeries,
-  type DataSelection, type SeriesPoint,
+  type DataSelection, type DataKey, type SeriesPoint,
 } from '@/data/datasets'
 import { useMunicipalityData } from '@/data/useMunicipalityData'
 import { metricValues } from '@/data/metrics'
@@ -33,7 +33,8 @@ function MunicipalityPage() {
   const { items, designations, coastal, loaded } = useMunicipalityData(selection)
   const [adjacency, setAdjacency] = useState<Record<string, string[]>>({})
   const [series, setSeries] = useState<SeriesPoint[]>([])
-  const [dataOpen, setDataOpen] = useState(false)
+  // データの選択: open (optionally focused on one dataset, from its chip) or closed.
+  const [dataModal, setDataModal] = useState<{ focus?: DataKey } | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => { fetchAdjacency().then(setAdjacency) }, [])
@@ -96,11 +97,12 @@ function MunicipalityPage() {
       {title && <meta name="description" content={`${title}の人口・世帯数・面積・人口密度・老年人口比率などを、全国と${pref?.kanji ?? '都道府県'}内の順位、人口の推移、年齢構成、隣接自治体とあわせて掲載しています。`} />}
       <AppHeader onMenuClick={() => setMenuOpen(true)} />
       {menuOpen && <Sidebar onClose={() => setMenuOpen(false)} />}
-      {dataOpen && (
+      {dataModal && (
         <DataModal
+          focus={dataModal.focus}
           selection={selection}
-          onApply={(next: DataSelection) => { setSearchParams(prev => writeSelectionParams(new URLSearchParams(prev), next)); setDataOpen(false) }}
-          onClose={() => setDataOpen(false)}
+          onApply={(next: DataSelection) => { setSearchParams(prev => writeSelectionParams(new URLSearchParams(prev), next)); setDataModal(null) }}
+          onClose={() => setDataModal(null)}
         />
       )}
       <main className="pt-11 pb-8">
@@ -114,7 +116,7 @@ function MunicipalityPage() {
           description={[item?.kana, pref?.kanji, kind, `自治体コード ${code}`].filter(Boolean).join('・')}
           used={['pop', 'area', 'rent', 'minwage']}
           selection={selection}
-          onDataClick={() => setDataOpen(true)}
+          onDataClick={k => setDataModal({ focus: k })}
         />
 
         <div className="max-w-5xl mx-auto px-4 space-y-8">

@@ -5,7 +5,7 @@ import { parseAndTypeCheck } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import { baseItemEnv, type BaseItem } from '../data/municipalities'
 import type { Env } from '../lang/evaluate'
-import { officialCodes, selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection } from '../data/datasets'
+import { officialCodes, selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection, type DataKey } from '../data/datasets'
 import { useMunicipalityData } from '../data/useMunicipalityData'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
@@ -184,7 +184,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [filterOpen, setFilterOpen]       = useState(false)
   const [sortOpen, setSortOpen]           = useState(false)
-  const [dataOpen, setDataOpen]           = useState(false)
+  // データの選択: open (optionally focused on one dataset, from its chip) or closed.
+  const [dataModal, setDataModal] = useState<{ focus?: DataKey } | null>(null)
   const [searchOpen, setSearchOpen]       = useState(initialSearchOpen)
   const [sidebarOpen, setSidebarOpen]     = useState(false)
 
@@ -438,14 +439,15 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
           onClose={() => setSortOpen(false)}
         />
       )}
-      {dataOpen && (
+      {dataModal && (
         <DataModal
+          focus={dataModal.focus} used={usedKeys}
           selection={selection}
           onApply={next => {
             setSelection(next)
-            setDataOpen(false)
+            setDataModal(null)
           }}
-          onClose={() => setDataOpen(false)}
+          onClose={() => setDataModal(null)}
         />
       )}
       {searchOpen && (
@@ -457,7 +459,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // Map view: fills the screen below the header — no page scroll, so
         // drags and pinches always go to the map.
         <div className="fixed inset-x-0 top-11 bottom-0 flex flex-col">
-          <PageHeader title={title} used={usedKeys} selection={selection} onDataClick={() => setDataOpen(true)} compact />
+          <PageHeader title={title} used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
           {toolbar}
           <div className="flex-1 min-h-0">
             <MapView
@@ -481,7 +483,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // slide away when a wide table scrolls sideways.
         <main className="fixed inset-x-0 top-11 bottom-0 overflow-auto [container-type:inline-size]">
           <div className="sticky left-0 w-[100cqw]">
-            <PageHeader title={title} description={description} used={usedKeys} selection={selection} onDataClick={() => setDataOpen(true)} />
+            <PageHeader title={title} description={description} used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
           </div>
           <div className="sticky top-0 left-0 z-40 w-[100cqw]">{toolbar}</div>
           <DataTable

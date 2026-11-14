@@ -6,7 +6,8 @@ type Props = {
   // Datasets the columns/filter/sort on screen draw on, in display order.
   used: DataKey[]
   selection: DataSelection
-  onDataClick: () => void
+  // With a key when a data chip was clicked (open that section), without for the general link.
+  onDataClick: (key?: DataKey) => void
   compact?: boolean
 }
 
@@ -27,7 +28,7 @@ function PageHeader({ title, description, used, selection, onDataClick, compact 
             <button
               key={k}
               type="button"
-              onClick={onDataClick}
+              onClick={() => onDataClick(k)}
               className="shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-2.5 py-0.5 hover:border-blue-400 hover:text-blue-700"
               title={`${SELECTABLE[k].title}のデータを選ぶ`}
             >
@@ -38,7 +39,7 @@ function PageHeader({ title, description, used, selection, onDataClick, compact 
             </button>
           )
         })}
-        <button type="button" onClick={onDataClick} className="shrink-0 text-blue-600 hover:underline px-1">
+        <button type="button" onClick={() => onDataClick()} className="shrink-0 text-blue-600 hover:underline px-1">
           データの選択
         </button>
       </div>
