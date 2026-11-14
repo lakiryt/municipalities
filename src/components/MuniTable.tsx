@@ -457,12 +457,12 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         <SearchModal onApply={handleSearchApply} onClose={() => setSearchOpen(false)} />
       )}
       {sidebarOpen && <Sidebar onClose={() => setSidebarOpen(false)} />}
-      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader title={title} onMenuClick={() => setSidebarOpen(true)} />
       {mapColumn ? (
         // Map view: fills the screen below the header — no page scroll, so
         // drags and pinches always go to the map.
         <div className="fixed inset-x-0 top-11 bottom-0 flex flex-col">
-          <PageHeader title={title} used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
+          <PageHeader used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
           {toolbar}
           <div className="flex-1 min-h-0">
             <MapView
@@ -486,7 +486,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // slide away when a wide table scrolls sideways.
         <main className="fixed inset-x-0 top-11 bottom-0 overflow-auto [container-type:inline-size]">
           <div className="sticky left-0 w-[100cqw]">
-            <PageHeader title={title} description={description} used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
+            <PageHeader description={description} used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
           </div>
           <div className="sticky top-0 left-0 z-40 w-[100cqw]">{toolbar}</div>
           <DataTable
