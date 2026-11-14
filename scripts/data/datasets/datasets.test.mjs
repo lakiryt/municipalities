@@ -96,6 +96,14 @@ describe('parseBundle (面積調)', () => {
     ])
   })
 
+  it('reads year-only headers (annual surveys, H26–H30) as October 1', () => {
+    const old = [
+      '標準地域コード,都道府県,郡･支庁･振興局等,市区町村,平成30年面積(k㎡),平成30年備考',
+      '01000,北海道,,,83423.83,',
+    ].join('\n')
+    expect([...parseBundle(old).keys()]).toEqual(['2018-10-01'])
+  })
+
   it('leaves out a municipality that has no value on a date', () => {
     expect(parseBundle(csv).get('2026-04-01').map(r => r.code)).toEqual(['01000', '01100'])
   })

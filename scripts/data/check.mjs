@@ -8,6 +8,8 @@ import { dirname, resolve } from 'node:path'
 import { parseCsv } from './lib/csv.mjs'
 import { readMeta, readManifest } from './lib/meta.mjs'
 import { ASSETS_DIR, PUBLIC_DIR, CHECK_REPORT_PATH } from './lib/paths.mjs'
+import { readCatalog } from './lib/catalog.mjs'
+import { missingEditions } from './lib/editions.mjs'
 
 const readCsvRows = (path) => {
   const [header, ...rows] = parseCsv(readFileSync(path, 'utf-8')).filter(r => r.length > 1 || r[0] !== '')
@@ -20,13 +22,14 @@ const num = (v) => (v === '' || v === undefined ? null : Number(v))
 const MUNICIPAL = { jumin: 'totalpop', kokusei: 'totalpop', area: 'area', rent: 'inc0_total' }
 // Max relative change between consecutive editions before warning.
 const JUMP = { jumin: 0.2, kokusei: 0.2, area: 0.05 }
-// Expected publication rhythm: how old the latest edition can get (days)
-// before a newer one has probably been published.
-const STALE_AFTER_DAYS = { area: 200, jumin: 600, minwage: 400, codes: null, dantai: null, kokusei: null, rent: 365 * 6, designations: 365 * 2, map: 550 }
+// Used only when the publisher hasn't been checked yet (no catalog): how old
+// the latest edition can get (days) before a newer one has probably appeared.
+const STALE_AFTER_DAYS = { area: 200, jumin: 600, minwage: 400, rent: 365 * 6, designations: 365 * 2, map: 550 }
 
 export async function runChecks() {
   const meta = readMeta()
   const manifest = readManifest()
+  const catalog = readCatalog()
   const results = []
   const add = (level, dataset, edition, message) => results.push({ level, dataset, edition, message })
 
@@ -38,19 +41,31 @@ export async function runChecks() {
     const ds = meta.datasets[id]
     if (!ds || !ds.editions?.length) { add('warn', id, null, '未ビルド（meta.json に版がありません）'); continue }
 
-    // Staleness.
-    const latest = ds.editions[0]
-    const limit = STALE_AFTER_DAYS[id]
-    const ref = id === 'designations' ? latest.checked_at : latest.as_of
-    if (limit && ref) {
-      const age = (Date.now() - Date.parse(ref)) / 86400e3
-      if (age > limit) add('warn', id, latest.id, `最新版が ${Math.round(age)} 日前（${ref}）。新しい版が公表されていないか確認してください（${src.page}）`)
+    // The app needs at least one enabled edition of every dataset.
+    const enabled = ds.editions.filter(e => e.enabled !== false)
+    if (enabled.length === 0) add('error', id, null, '有効な版がありません（アプリがこのデータを読めません）')
+
+    // A vs B: what the publisher has that we don't, and vice versa.
+    const cat = catalog.datasets[id]
+    if (cat) {
+      if (cat.error) add('warn', id, null, `配布元の確認に失敗: ${cat.error}`)
+      const newer = missingEditions(id, { newerOnly: true })
+      if (newer.length) add('warn', id, null, `配布元に保持していない新しい版があります: ${newer.map(e => e.id).join(', ')}`)
+      if (src.discover !== 'curated') {
+        const catIds = new Set(cat.editions.filter(e => e.available !== false).map(e => e.id))
+        const gone = ds.editions.filter(e => !catIds.has(e.id)).map(e => e.id)
+        if (gone.length && !cat.error) add('info', id, null, `配布元から無くなった版を保持しています: ${gone.join(', ')}`)
+      }
+    } else {
+      const latest = ds.editions[0]
+      const limit = STALE_AFTER_DAYS[id]
+      const ref = id === 'designations' ? latest.checked_at : latest.as_of
+      if (limit && ref) {
+        const age = (Date.now() - Date.parse(ref)) / 86400e3
+        if (age > limit) add('warn', id, latest.id, `最新版が ${Math.round(age)} 日前（${ref}）。「配布元を確認」してください`)
+      }
     }
     for (const e of ds.editions) if (e.source?.manual && id !== 'designations') add('warn', id, e.id, '手作業で作られた版です（パイプラインで再生成されていません）')
-    if (src.editions && Array.isArray(src.editions)) {
-      const pending = src.editions.filter(e => 'main' in e && (!e.main || !e.age))
-      for (const e of pending) add('warn', id, String(e.year), 'statInfId 未設定のため取得されていません')
-    }
 
     const prevByCode = { map: null }
     // Editions are newest first; walk oldest → newest to compare with the previous one.
@@ -103,6 +118,7 @@ export async function runChecks() {
     generated_at: new Date().toISOString(),
     errors: results.filter(r => r.level === 'error').length,
     warnings: results.filter(r => r.level === 'warn').length,
+    catalog_checked_at: catalog.checked_at ?? null,
     results,
   }
   mkdirSync(dirname(CHECK_REPORT_PATH), { recursive: true })
@@ -145,7 +161,7 @@ function checkMap(e, meta, add) {
 const round = (n) => Math.round(n * 100) / 100
 
 export function printReport(report) {
-  const icon = { ok: '  ok  ', warn: ' WARN ', error: ' ERROR' }
+  const icon = { ok: '  ok  ', info: ' info ', warn: ' WARN ', error: ' ERROR' }
   for (const r of report.results) {
     if (r.level === 'ok' && process.env.CHECK_QUIET) continue
     console.log(`${icon[r.level]} ${r.dataset}${r.edition ? `@${r.edition}` : ''}: ${r.message}`)

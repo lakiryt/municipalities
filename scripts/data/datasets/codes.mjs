@@ -1,16 +1,29 @@
 // 総務省 統計局 標準地域コード: names and readings for every prefecture,
 // municipality, designated-city ward, and grouping row (郡/振興局/支庁).
+// The publisher only offers the latest version.
 import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
 import { decodeText, clean } from '../lib/text.mjs'
 import { parseCsv, writeCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
+import { parseEraDate } from '../lib/era.mjs'
+import { pageHtml, links, stripTags } from '../lib/discover.mjs'
 import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const cacheKey = (url) => `codes/${url.split('/').pop()}`
 
-export async function fetchRaw(src, opts) {
-  for (const e of src.editions) await download(e.url, cacheKey(e.url), opts)
+export async function discover(src, opts) {
+  const html = await pageHtml(src.page, opts)
+  const csv = links(html, src.page).find(l => /\.csv$/i.test(l.url) && l.text.includes('全国'))
+  if (!csv) throw new Error('標準地域コード: 全国 CSV へのリンクが見つかりません')
+  const m = stripTags(html).match(/((?:令和|平成)\s*\S+?年\s*\d+\s*月\s*\d+\s*日)\s*更新/)
+  const asOf = m && parseEraDate(m[1])
+  if (!asOf) throw new Error('標準地域コード: 更新日が読み取れません')
+  return [{ id: asOf, as_of: asOf, label: asOf, ref: { url: csv.url, as_of: asOf } }]
+}
+
+export async function fetchEdition(src, ref, opts) {
+  await download(ref.url, cacheKey(ref.url), opts)
 }
 
 // `sityouson-name1`/`name3` double up for two unrelated relationships: a
@@ -52,13 +65,10 @@ export function parseCodes(text) {
   })
 }
 
-export async function build(src) {
-  const editions = src.editions.map(e => {
-    const key = cacheKey(e.url)
-    const rows = parseCodes(decodeText(readCached(key)))
-    const out = writeCsv(resolve(PUBLIC_DIR, `data/codes/${e.as_of}.csv`),
-      ['code', 'name', 'kana', 'pref_name', 'parent_name', 'group_name'], rows)
-    return { id: e.as_of, as_of: e.as_of, path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(key) }
-  })
-  return { editions }
+export async function buildEdition(src, ref) {
+  const key = cacheKey(ref.url)
+  const rows = parseCodes(decodeText(readCached(key)))
+  const out = writeCsv(resolve(PUBLIC_DIR, `data/codes/${ref.as_of}.csv`),
+    ['code', 'name', 'kana', 'pref_name', 'parent_name', 'group_name'], rows)
+  return { id: ref.as_of, as_of: ref.as_of, path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(key) }
 }

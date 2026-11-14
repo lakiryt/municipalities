@@ -10,30 +10,58 @@
 
 ## 0. 使い方
 
+### 3つの層
+
+| 層 | 意味 | どこにあるか | 操作 |
+|---|---|---|---|
+| A. 配布元 | 公開されている版 | `data/.cache/catalog.json`（「配布元を確認」の結果。キャッシュ扱い） | `discover` |
+| B. リポジトリ | 取得・生成済みの版 | `public/data/`・`src/assets/` と `meta.json` | `get` / `remove` / `update` |
+| C. アプリ | サイトで使う版（B の部分集合） | `meta.json` の各版の `enabled` | `enable` / `disable` |
+
+A の確認方法はデータごとに次の3種類（`sources.json` の `discover`）。
+
+- **自動検出**（codes, dantai, jumin, area, minwage, map）: 配布ページを読んで版を列挙する。
+  新しい版が出たら「配布元を確認」だけで見つかる。
+- **手動登録**（kokusei, rent）: 版を `sources.json` の `editions` に手で書く。
+  「配布元を確認」では、登録済みの版が配布元にまだあるかを調べる。
+- **手管理**（designations）: `data/curated/designations.json` を手で更新して「ビルド」する。
+
+B に一度入った版は、配布元から消えても残る（チェックで「配布元から無くなった版を保持しています」と表示）。
+C はアプリから見える版で、人口・面積は「データの選択」で選べる。それ以外のデータは、有効な版のうち最新を使う
+（最低賃金だけは有効な新しい2版から、都道府県ごとに発効済みの額を使う）。新しく取得した版は有効の状態で入る。
+
+### 管理 UI（`npm run data -- ui` → http://127.0.0.1:5180）
+
+- 「配布元をすべて確認」で A を最新にする（1分弱。住基は1年につき1リクエストのため）。
+- データごとに A と B を突き合わせた版の表を表示する。「配布元」列は あり／新しい版／公開終了、
+  「リポジトリ」列は取得日と行数、「アプリ」列は有効/無効のスイッチ。
+  初期表示は保持中の版と、保持中より新しい版だけ。古い未取得の版は「古い未取得の版も表示」で出る。
+- 版を選んで「取得」（ダウンロード＋生成）、「削除」（生成物を消す。生データのキャッシュは残る）。
+  「新しい版を取得」は保持中より新しい版をまとめて取る。スイッチで C を切り替える（その場で `meta.json` に保存）。
+- 「作り直す」は保持中の版をキャッシュから作り直す（変換処理を直したとき用）。
+- チェック結果（エラー・警告・情報）もデータごとに出る。
+- 127.0.0.1 でのみ待ち受け、変更を伴うリクエストはページ自身からしか受け付けない。
+
+### コマンド
+
 ```
-npm run data -- update all          # 地図以外をすべて取得＋生成（キャッシュ済みのものは再取得しない）
-npm run data -- update area         # 個別に
-npm run data -- update jumin --years 2024-2026
-npm run data -- update map          # 地図（約 800MB の zip。all には含まれない）
-npm run data -- build <dataset>     # 取得済みのキャッシュから生成だけやり直す
-npm run data -- update <dataset> --force   # 配布元から取り直す
-npm run data -- check               # 整合性チェック
-npm run data -- status              # 各データの版・取得日を一覧
-npm run data -- find jumin --year 2027   # 住基の新しい年の statInfId を探す
-npm run data -- ui                  # 管理 UI（http://127.0.0.1:5180）
+npm run data -- discover [dataset...|all]          # A: 配布元を確認
+npm run data -- get <dataset> <版...>              # B に追加（例: get jumin 2019 2018）
+npm run data -- get <dataset> --newer              # 保持中より新しい版をすべて取得
+npm run data -- get <dataset> --missing            # 未取得の版をすべて取得
+npm run data -- get <dataset> <版> --disabled      # 取得するがアプリでは無効にしておく
+npm run data -- remove <dataset> <版...>           # B から削除
+npm run data -- enable|disable <dataset> <版...>   # C の切り替え
+npm run data -- update [dataset...|all] [--force]  # 保持中の版を作り直す（--force で配布元から取り直す。all は地図を除く）
+npm run data -- check                              # 整合性チェック
+npm run data -- status                             # A/B/C の件数と最新時点を一覧
 ```
 
-- **管理 UI**: データセットごとの最新時点・版の一覧・取得日・生成物のサイズ・チェック結果
-  （エラー/警告）を表示し、各データの「取得＋ビルド」「ビルドのみ」「再取得」と
-  チェック再実行をボタンで実行できる。127.0.0.1 でのみ待ち受け、コマンド実行は
-  ページ自身からのリクエストしか受け付けない。
 - **e-Stat API キー**: リポジトリ直下の `.env.local`（gitignore 済み）に
-  `ESTAT_APP_ID=...` と書く。キーはキャッシュや取得ログには残らない。国勢調査の取得に使う。
-- **新しい版が出たとき**: `data/sources.json` の該当データセットに URL や ID を1行足して
-  `update` する（各データセットの `update_note` に手順を書いてある。管理 UI にも表示される）。
-  チェックは「最新版が古くなっている」ことも警告するので、管理 UI を定期的に見れば足りる。
+  `ESTAT_APP_ID=...` と書く。キーはキャッシュや取得ログには残らない。国勢調査の取得と存在確認に使う。
 - **手管理データ**: `data/curated/designations.json`（指定都市等）と
   `data/curated/prefecture-romaji.json`（URL 用ローマ字。変えると URL が変わるので変えない）。
+- 公共団体コード（dantai）と指定都市等（designations）はアプリに組み込む都合で1版のみ保持する（取得すると置き換わる）。
 
 ### ファイル構成（実装後）
 
@@ -41,7 +69,7 @@ npm run data -- ui                  # 管理 UI（http://127.0.0.1:5180）
 |---|---|---|
 | `data/sources.json` | 何をどこから取るか（マニフェスト） | する |
 | `data/curated/` | 手管理データ | する |
-| `data/.cache/` | 生データ・取得ログ（URL・日時・sha256）・チェック結果 | しない |
+| `data/.cache/` | 生データ・取得ログ（URL・日時・sha256）・配布元カタログ・チェック結果 | しない |
 | `scripts/data/` | CLI（`cli.mjs`）、データセットごとの取得・変換（`datasets/`）、チェック、管理 UI（`ui/`） | する |
 | `public/data/<dataset>/<版>.csv` | 生成物（アプリが実行時に読む） | する |
 | `src/assets/meta.json`, `prefectures.json`, `dantai_codes.json` | 生成物（バンドルされる） | する |
@@ -484,7 +512,7 @@ diff で確認してから切り替える。
 - [x] 公共団体コード xlsx: 既存の `dantai_code`（1,747件）・`code_todofuken`（47件）を完全に再現できた。
   都道府県の URL 用ローマ字は xlsx にないので手管理にした。
 - [x] 住基の `statInfId`: e-Stat のファイル一覧ページを年で絞り込めば、表題から自動で見つけられる
-  （`find` コマンド）。2014年まで確認済み。2025年分は人口・動態・年齢階級の全列が手作業版と一致した。
+  （`discover` で 2014〜2026 年を自動検出）。2025年分は人口・動態・年齢階級の全列が手作業版と一致した。
   年によって見出しの結合セルや年齢の表記（「5歳～9歳」と「5～9」）が違うが、見出し文字列で列を特定して吸収している。
 - [x] 厚労省の推移 xlsx: 発効日（Excel の日付値）も入っている。都道府県名は「青　森」のように空白入りなので名前で照合している。
 - [x] N03 の直リンク: `https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2026/N03-20260101_GML.zip`（約 800MB）。

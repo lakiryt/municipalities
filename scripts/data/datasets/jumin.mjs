@@ -12,24 +12,15 @@ import { toCode5 } from '../lib/code.mjs'
 import { clean, toNumber } from '../lib/text.mjs'
 import { readSheet, headerLabels, findColumn } from '../lib/xlsx.mjs'
 import { parseEraDate } from '../lib/era.mjs'
+import { pageHtml } from '../lib/discover.mjs'
 import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const fileUrl = (id) => `https://www.e-stat.go.jp/stat-search/file-download?statInfId=${id}&fileKind=0`
 const cacheKey = (id) => `jumin/${id}.xlsx`
 
-const usable = (e) => e.main && e.age
-
-export async function fetchRaw(src, opts) {
-  for (const e of selectEditions(src, opts)) {
-    await download(fileUrl(e.main), cacheKey(e.main), opts)
-    await download(fileUrl(e.age), cacheKey(e.age), opts)
-  }
-}
-
-function selectEditions(src, opts) {
-  const missing = src.editions.filter(e => !usable(e)).map(e => e.year)
-  if (missing.length) opts.log?.(`  skip    ${missing.join(', ')}: statInfId 未設定（\`npm run data -- find jumin --year YYYY\`）`)
-  return src.editions.filter(usable).filter(e => !opts.years || opts.years.includes(e.year))
+export async function fetchEdition(src, ref, opts) {
+  await download(fileUrl(ref.main), cacheKey(ref.main), opts)
+  await download(fileUrl(ref.age), cacheKey(ref.age), opts)
 }
 
 // The national-total row has no real code ("-" or blank) but 都道府県名 "合計".
@@ -116,28 +107,23 @@ export function parseAge(rows) {
   return { asOf, rows: out, ageKeys: ageCols.map(c => c.key) }
 }
 
-export async function build(src, opts) {
-  const editions = []
-  for (const e of selectEditions(src, opts)) {
-    const main = parseMain(readSheet(readCached(cacheKey(e.main))))
-    const age = parseAge(readSheet(readCached(cacheKey(e.age))))
-    if (main.asOf !== age.asOf) throw new Error(`住基 ${e.year}: main (${main.asOf}) and age (${age.asOf}) tables are for different dates`)
-    if (main.missing.length) opts.log(`  note    ${e.year}: この年の表に無い列 → 空欄: ${main.missing.join(', ')}`)
+export async function buildEdition(src, ref, opts) {
+  const main = parseMain(readSheet(readCached(cacheKey(ref.main))))
+  const age = parseAge(readSheet(readCached(cacheKey(ref.age))))
+  if (main.asOf !== age.asOf) throw new Error(`住基 ${ref.year}: main (${main.asOf}) and age (${age.asOf}) tables are for different dates`)
+  if (main.missing.length) opts.log(`  note    ${ref.year}: この年の表に無い列 → 空欄: ${main.missing.join(', ')}`)
 
-    const ageColumns = ['total', 'male', 'female'].flatMap(s => age.ageKeys.map(k => `${s}${k}`))
-    const columns = ['code', ...Object.keys(MAIN_COLUMNS), ...ageColumns]
-    const codes = [...new Set([...main.rows.keys(), ...age.rows.keys()])].sort()
-    const rows = codes.map(code => ({ code, ...main.rows.get(code), ...age.rows.get(code) }))
+  const ageColumns = ['total', 'male', 'female'].flatMap(s => age.ageKeys.map(k => `${s}${k}`))
+  const columns = ['code', ...Object.keys(MAIN_COLUMNS), ...ageColumns]
+  const codes = [...new Set([...main.rows.keys(), ...age.rows.keys()])].sort()
+  const rows = codes.map(code => ({ code, ...main.rows.get(code), ...age.rows.get(code) }))
 
-    const out = writeCsv(resolve(PUBLIC_DIR, `data/jumin/${e.year}.csv`), columns, rows)
-    editions.push({
-      id: String(e.year), as_of: main.asOf, label: `${e.year}年`,
-      path: out.file.replace(/^public\//, ''), rows: out.rows,
-      source: [provenance(cacheKey(e.main)), provenance(cacheKey(e.age))],
-    })
+  const out = writeCsv(resolve(PUBLIC_DIR, `data/jumin/${ref.year}.csv`), columns, rows)
+  return {
+    id: String(ref.year), as_of: main.asOf, label: `${ref.year}年`,
+    path: out.file.replace(/^public\//, ''), rows: out.rows,
+    source: [provenance(cacheKey(ref.main)), provenance(cacheKey(ref.age))],
   }
-  // Keep editions not rebuilt this run (e.g. --years filter) from being dropped.
-  return { editions, merge: true }
 }
 
 // ── statInfId discovery ──────────────────────────────────────────────────────
@@ -145,20 +131,23 @@ export async function build(src, opts) {
 const LIST_URL = (year) =>
   `https://www.e-stat.go.jp/stat-search/files?page=1&layout=datalist&toukei=00200241&tstat=000001039591&cycle=7&year=${year}0&month=0&tclass1=000001039601&result_page=1`
 
-/** Scrapes e-Stat's file list for a year and returns { main, age } statInfIds. */
-export async function find(src, { year }) {
-  if (!year) throw new Error('--year YYYY を指定してください')
-  const res = await fetch(LIST_URL(year), { headers: { 'User-Agent': 'municipalities-data-pipeline' } })
-  const html = await res.text()
+/** Scrapes e-Stat's file list for a year and returns { main, age } statInfIds (null if absent). */
+export async function findYear(year, opts) {
+  const html = await pageHtml(LIST_URL(year), opts)
   const items = html.split('stat-dataset_list-item').slice(1).map(s => ({
     id: (s.match(/stat_infid=(\d{12})/) ?? [])[1],
     title: s.replace(/<[^>]+>/g, '\n').split('\n').map(x => x.trim()).find(x => x.includes('【')),
   })).filter(x => x.id && x.title)
   const pick = (re) => items.find(x => re.test(x.title))?.id ?? null
-  return {
-    year,
-    main: pick(/【総計】市区町村別人口、人口動態及び世帯数/),
-    age: pick(/【総計】市区町村別年齢階級別人口/),
-    all: items,
+  return { main: pick(/【総計】市区町村別人口、人口動態及び世帯数/), age: pick(/【総計】市区町村別年齢階級別人口/) }
+}
+
+/** One request per year from discover_from to this year (throttled to 1/s). */
+export async function discover(src, opts) {
+  const editions = []
+  for (let year = src.discover_from; year <= new Date().getFullYear(); year++) {
+    const { main, age } = await findYear(year, opts)
+    if (main && age) editions.push({ id: String(year), as_of: `${year}-01-01`, label: `${year}年`, ref: { year, main, age } })
   }
+  return editions
 }

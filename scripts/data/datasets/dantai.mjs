@@ -1,7 +1,7 @@
 // 総務省 全国地方公共団体コード: which codes are actual 地方公共団体 (the
 // narrower set rankings are restricted to), plus prefecture names/readings.
-// Both outputs are bundled into the app (src/assets), so only the latest
-// edition is written.
+// Both outputs are bundled into the app (src/assets), so the repo holds a
+// single edition (`single` in sources.json).
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
@@ -9,12 +9,26 @@ import { writeJson } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { clean } from '../lib/text.mjs'
 import { readSheet } from '../lib/xlsx.mjs'
+import { parseEraDate } from '../lib/era.mjs'
+import { pageHtml, links } from '../lib/discover.mjs'
 import { ASSETS_DIR, CURATED_DIR } from '../lib/paths.mjs'
 
 const cacheKey = (url) => `dantai/${url.split('/').pop()}`
 
-export async function fetchRaw(src, opts) {
-  for (const e of src.editions) await download(e.url, cacheKey(e.url), opts)
+export async function discover(src, opts) {
+  const html = await pageHtml(src.page, opts)
+  // 「都道府県コード及び市区町村コード」（令和6年1月1日更新） … PDF … Excel.
+  // The similarly named 改正一覧表 is followed by 改正一覧表, not （…更新）.
+  const m = html.match(/「都道府県コード及び市区町村コード」(?:\s|<[^>]+>)*[（(]\s*((?:令和|平成)[^）)]*?)更新\s*[）)]/)
+  const asOf = m && parseEraDate(m[1])
+  if (!asOf) throw new Error('公共団体コード: 更新日が読み取れません（ページ構成が変わった可能性）')
+  const xlsx = links(html, src.page).find(l => l.index > m.index && /\.xlsx?$/i.test(l.url))
+  if (!xlsx) throw new Error('公共団体コード: Excel へのリンクが見つかりません')
+  return [{ id: asOf, as_of: asOf, label: asOf, ref: { url: xlsx.url, as_of: asOf } }]
+}
+
+export async function fetchEdition(src, ref, opts) {
+  await download(ref.url, cacheKey(ref.url), opts)
 }
 
 /** Sheet 1 rows: [団体コード(6桁), 都道府県名, 市区町村名, 都道府県カナ, 市区町村カナ]. */
@@ -32,10 +46,8 @@ export function parseDantai(rows) {
   return { prefectures, municipalities }
 }
 
-export async function build(src) {
-  // Only the newest edition feeds the app.
-  const latest = [...src.editions].sort((a, b) => b.as_of.localeCompare(a.as_of))[0]
-  const key = cacheKey(latest.url)
+export async function buildEdition(src, ref) {
+  const key = cacheKey(ref.url)
   const { prefectures, municipalities } = parseDantai(readSheet(readCached(key)))
 
   if (prefectures.length !== 47) throw new Error(`公共団体コード: expected 47 prefectures, got ${prefectures.length}`)
@@ -50,11 +62,9 @@ export async function build(src) {
   const pref = writeJson(resolve(ASSETS_DIR, 'prefectures.json'), withRomaji, { pretty: true })
   const dantai = writeJson(resolve(ASSETS_DIR, 'dantai_codes.json'), municipalities, { pretty: true })
   return {
-    editions: [{
-      id: latest.as_of, as_of: latest.as_of,
-      files: { prefectures: pref.file, municipalities: dantai.file },
-      rows: municipalities.length,
-      source: provenance(key),
-    }],
+    id: ref.as_of, as_of: ref.as_of,
+    files: { prefectures: pref.file, municipalities: dantai.file },
+    rows: municipalities.length,
+    source: provenance(key),
   }
 }

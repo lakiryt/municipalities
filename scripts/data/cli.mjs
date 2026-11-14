@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 // Data pipeline entry point. See DATA_PIPELINE.md.
 //
-//   npm run data -- fetch  <dataset...|all> [--force] [--years 2020-2025]
-//   npm run data -- build  <dataset...|all> [--years ...]
-//   npm run data -- update <dataset...|all> [--force] [--years ...]   (fetch + build)
-//   npm run data -- check
-//   npm run data -- status
-//   npm run data -- find jumin --year 2022
-//   npm run data -- ui [--port 5180]
+//   npm run data -- discover [dataset...|all]        配布元の版を確認（A）
+//   npm run data -- get <dataset> <版...>            版を取得して生成（B に追加）
+//   npm run data -- get <dataset> --missing|--newer  未取得の版をすべて / 保持中より新しい版を取得
+//   npm run data -- remove <dataset> <版...>         生成物を削除（B から外す）
+//   npm run data -- enable|disable <dataset> <版...> アプリで使う版を切り替え（C）
+//   npm run data -- update [dataset...|all] [--force] 保持中の版を作り直す（--force で取り直し）
+//   npm run data -- check | status | ui [--port 5180]
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { ROOT } from './lib/paths.mjs'
-import { readManifest, readMeta, updateMetaDataset } from './lib/meta.mjs'
-import { DATASETS } from './datasets/index.mjs'
+import { readManifest, readMeta, setEnabled } from './lib/meta.mjs'
+import { readCatalog } from './lib/catalog.mjs'
+import { discoverDataset, getEditions, rebuildHeld, removeHeld, missingEditions } from './lib/editions.mjs'
 import { runChecks, printReport } from './check.mjs'
 
 loadEnvLocal()
 
+const VALUE_FLAGS = new Set(['port'])
 const argv = process.argv.slice(2)
 const command = argv[0]
 const flags = {}
@@ -25,33 +27,92 @@ for (let i = 1; i < argv.length; i++) {
   const a = argv[i]
   if (a.startsWith('--')) {
     const [k, v] = a.slice(2).split('=')
-    flags[k] = v ?? (argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true)
+    // Only these take a value as the next argument; the rest are switches.
+    flags[k] = v ?? (VALUE_FLAGS.has(k) && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : true)
   } else positional.push(a)
 }
 
 const log = (...a) => console.log(...a)
-const opts = { force: Boolean(flags.force), log, years: parseYears(flags.years) }
+const opts = { force: Boolean(flags.force), log, enable: !flags.disabled }
 
 try {
+  const manifest = readManifest()
+  const one = () => {
+    const id = positional[0]
+    if (!manifest[id]) throw new Error(`データセットを指定してください: ${Object.keys(manifest).join(', ')}`)
+    return [id, manifest[id]]
+  }
+  const many = (dflt) => {
+    const names = positional.length ? positional : dflt
+    const ids = names.includes('all') ? Object.keys(manifest) : names
+    for (const id of ids) if (!manifest[id]) throw new Error(`不明なデータセット: ${id}`)
+    return ids.map(id => [id, manifest[id]])
+  }
+
   switch (command) {
-    case 'fetch':  await forEachDataset(positional, 'fetch'); break
-    case 'build':  await forEachDataset(positional, 'build'); await reportChecks(); break
-    case 'update': await forEachDataset(positional, 'fetch'); await forEachDataset(positional, 'build'); await reportChecks(); break
+    case 'discover': {
+      let failed = 0
+      for (const [id, src] of many(['all'])) {
+        log(`\n[discover] ${id} — ${src.label}`)
+        try {
+          const eds = await discoverDataset(id, src, opts)
+          const held = new Set((readMeta().datasets[id]?.editions ?? []).map(e => e.id))
+          const missing = missingEditions(id)
+          log(`  配布元 ${eds.length} 版（保持 ${eds.filter(e => held.has(e.id)).length}、未取得 ${missing.length}）${missing.length ? ': ' + missing.map(e => e.id).slice(0, 12).join(', ') + (missing.length > 12 ? ' …' : '') : ''}`)
+        } catch (e) { failed++; log(`  失敗: ${e.message}`) }
+      }
+      if (failed) process.exitCode = 1
+      break
+    }
+    case 'get': {
+      const [id, src] = one()
+      const ids = flags.missing ? missingEditions(id).map(e => e.id)
+        : flags.newer ? missingEditions(id, { newerOnly: true }).map(e => e.id)
+        : positional.slice(1)
+      if (ids.length === 0) { log('取得する版はありません'); break }
+      log(`\n[get] ${id}: ${ids.join(', ')}`)
+      await getEditions(id, src, ids, opts)
+      await reportChecks()
+      break
+    }
+    case 'remove': {
+      const [id, src] = one()
+      const removed = removeHeld(id, src, positional.slice(1))
+      log(`削除: ${id} ${removed.join(', ') || '（該当なし）'}`)
+      break
+    }
+    case 'enable':
+    case 'disable': {
+      const [id] = one()
+      setEnabled(id, positional.slice(1), command === 'enable')
+      log(`${command === 'enable' ? '有効化' : '無効化'}: ${id} ${positional.slice(1).join(', ')}`)
+      break
+    }
+    case 'update': {
+      // `all` skips heavy datasets (the ~800MB map) — name them explicitly.
+      const targets = many(['all']).filter(([id, src]) => positional.includes(id) || !src.heavy)
+      for (const [id, src] of targets) {
+        log(`\n[update] ${id} — ${src.label}`)
+        const ids = await rebuildHeld(id, src, opts)
+        log(`  ${ids.length} 版を生成: ${ids.join(', ')}`)
+      }
+      await reportChecks()
+      break
+    }
     case 'check': {
       const report = await runChecks()
       printReport(report)
       process.exitCode = report.errors > 0 ? 1 : 0
       break
     }
-    case 'status': printStatus(); break
-    case 'find': await find(positional[0]); break
+    case 'status': printStatus(manifest); break
     case 'ui': {
       const { startUi } = await import('./ui/server.mjs')
       await startUi({ port: Number(flags.port) || 5180 })
       break
     }
     default:
-      console.log(readFileSync(new URL(import.meta.url), 'utf-8').split('\n').filter(l => l.startsWith('//')).slice(0, 10).map(l => l.slice(3)).join('\n'))
+      console.log(readFileSync(new URL(import.meta.url), 'utf-8').split('\n').filter(l => l.startsWith('//')).slice(1, 11).map(l => l.slice(3)).join('\n'))
       process.exitCode = command ? 1 : 0
   }
 } catch (e) {
@@ -60,80 +121,21 @@ try {
   process.exitCode = 1
 }
 
-function resolveDatasets(names) {
-  const manifest = readManifest()
-  const all = Object.keys(manifest)
-  if (names.length === 0) throw new Error(`データセットを指定してください: ${all.join(', ')} または all`)
-  // `all` skips heavy datasets (the ~800MB map) — name them explicitly.
-  const picked = names.includes('all') ? all.filter(id => !manifest[id].heavy) : names
-  for (const id of picked) {
-    if (!manifest[id]) throw new Error(`不明なデータセット: ${id}（${all.join(', ')}）`)
-    if (!DATASETS[id]) throw new Error(`${id} の実装がありません（scripts/data/datasets/）`)
-  }
-  // Always run in manifest order: later datasets read earlier outputs
-  // (minwage needs prefectures from dantai, designations needs codes).
-  return all.filter(id => picked.includes(id)).map(id => [id, manifest[id]])
-}
-
-async function forEachDataset(names, step) {
-  for (const [id, src] of resolveDatasets(names)) {
-    log(`\n[${step}] ${id} — ${src.label}`)
-    const mod = DATASETS[id]
-    if (step === 'fetch') {
-      await mod.fetchRaw(src, opts)
-    } else {
-      const result = await mod.build(src, opts)
-      let editions = result.editions
-      if (result.merge) {
-        // Datasets built per-year: keep editions this run didn't touch.
-        const prev = readMeta().datasets[id]?.editions ?? []
-        const rebuilt = new Set(editions.map(e => e.id))
-        editions = [...editions, ...prev.filter(e => !rebuilt.has(e.id))]
-      }
-      updateMetaDataset(id, src, editions)
-      log(`  built   ${editions.length} edition(s): ${editions.map(e => e.id).join(', ')}`)
-    }
-  }
-}
-
 async function reportChecks() {
   log('\n[check]')
-  const report = await runChecks()
-  printReport(report)
+  printReport(await runChecks())
 }
 
-function printStatus() {
-  const meta = readMeta()
-  for (const [id, src] of Object.entries(readManifest())) {
-    const ds = meta.datasets[id]
-    const eds = ds?.editions ?? []
-    const latest = eds[0]
-    const manual = eds.filter(e => e.source?.manual).length
-    console.log(`${id.padEnd(13)} ${String(eds.length).padStart(3)} 版  最新 ${latest?.as_of ?? '-'}  取得 ${latest?.source?.retrieved_at ?? (manual ? '手作業' : '-')}  ${src.label}`)
+function printStatus(manifest) {
+  const meta = readMeta(), catalog = readCatalog()
+  console.log(`配布元の確認: ${catalog.checked_at ? new Date(catalog.checked_at).toLocaleString('ja-JP') : '未確認'}\n`)
+  for (const [id, src] of Object.entries(manifest)) {
+    const held = meta.datasets[id]?.editions ?? []
+    const cat = catalog.datasets[id]?.editions
+    const newestA = cat?.map(e => e.as_of).sort().at(-1) ?? '?'
+    const newestB = held.map(e => e.as_of).sort().at(-1) ?? '-'
+    console.log(`${id.padEnd(13)} 配布元 ${String(cat?.length ?? '?').padStart(3)}  保持 ${String(held.length).padStart(3)}  有効 ${String(held.filter(e => e.enabled !== false).length).padStart(3)}  最新 配布元 ${newestA} / 保持 ${newestB}  ${src.label}`)
   }
-}
-
-async function find(id) {
-  const mod = DATASETS[id]
-  if (!mod?.find) throw new Error(`find は ${Object.entries(DATASETS).filter(([, m]) => m.find).map(([k]) => k).join(', ')} のみ対応`)
-  const r = await mod.find(readManifest()[id], { year: Number(flags.year) })
-  console.log(JSON.stringify({ year: r.year, main: r.main, age: r.age }, null, 2))
-  if (!r.main || !r.age) {
-    console.log('\n見つからなかった表があります。この年の表一覧:')
-    for (const x of r.all) console.log(`  ${x.id}  ${x.title}`)
-  } else {
-    console.log(`\ndata/sources.json の jumin.editions に追加: { "year": ${r.year}, "main": "${r.main}", "age": "${r.age}" }`)
-  }
-}
-
-function parseYears(v) {
-  if (!v || v === true) return null
-  const out = []
-  for (const part of String(v).split(',')) {
-    const [a, b] = part.split('-').map(Number)
-    for (let y = a; y <= (b || a); y++) out.push(y)
-  }
-  return out
 }
 
 function loadEnvLocal() {

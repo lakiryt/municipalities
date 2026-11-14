@@ -1,7 +1,8 @@
 // 厚生労働省 地域別最低賃金改定状況: one xlsx with every 年度 since H14 as
-// (改定額, 発効年月日) column pairs, one row per prefecture. Prefectures are
-// written with spacing ("青　森", "茨　城　"), so they're matched to codes by
-// name against the prefecture list, never by row order.
+// (改定額, 発効年月日) column pairs, one row per prefecture. Discovery finds
+// the xlsx on the publisher's page and lists every 年度 in it. Prefectures
+// are written with spacing ("青　森", "茨　城　"), so they're matched to codes
+// by name against the prefecture list, never by row order.
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
@@ -9,12 +10,23 @@ import { writeCsv } from '../lib/csv.mjs'
 import { clean, toNumber } from '../lib/text.mjs'
 import { readSheet, excelDate } from '../lib/xlsx.mjs'
 import { parseEraDate } from '../lib/era.mjs'
+import { pageHtml, links } from '../lib/discover.mjs'
 import { ASSETS_DIR, PUBLIC_DIR } from '../lib/paths.mjs'
 
 const cacheKey = (url) => `minwage/${url.split('/').pop()}`
+const prefectures = () => JSON.parse(readFileSync(resolve(ASSETS_DIR, 'prefectures.json'), 'utf-8'))
 
-export async function fetchRaw(src, opts) {
-  await download(src.url, cacheKey(src.url), opts)
+export async function discover(src, opts) {
+  const xlsx = links(await pageHtml(src.page, opts), src.page).find(l => /\.xlsx$/i.test(l.url) && l.text.includes('改定状況'))
+  if (!xlsx) throw new Error('最低賃金: 「…改定状況」xlsx へのリンクが見つかりません')
+  const buf = await download(xlsx.url, cacheKey(xlsx.url), { ...opts, force: true })
+  return [...parseMinWage(readSheet(buf), prefectures())].map(([year, rows]) => ({
+    id: String(year), as_of: asOfOf(rows), label: `${year}年度`, ref: { year, url: xlsx.url },
+  }))
+}
+
+export async function fetchEdition(src, ref, opts) {
+  await download(ref.url, cacheKey(ref.url), opts)
 }
 
 const squash = (s) => clean(s).replace(/\s/g, '')
@@ -22,7 +34,10 @@ const squash = (s) => clean(s).replace(/\s/g, '')
 /** "北海道" / "青森県" / "東京都" / "大阪府" → "北海道" / "青森" / "東京" / "大阪". */
 const shortName = (kanji) => kanji === '北海道' ? kanji : kanji.replace(/[都府県]$/, '')
 
-export function parseMinWage(rows, prefectures) {
+// The 年度's edition date: when the last prefecture's new rate took effect.
+const asOfOf = (rows) => rows.map(r => r.since).filter(Boolean).sort().at(-1)
+
+export function parseMinWage(rows, prefs) {
   const yearRow = rows.findIndex(r => squash(r[0]) === '年度')
   if (yearRow === -1) throw new Error('最低賃金 xlsx: 年度 row not found')
   const years = []
@@ -33,7 +48,7 @@ export function parseMinWage(rows, prefectures) {
     if (d) years.push({ year: Number(d.slice(0, 4)), amountIdx: i, sinceIdx: i + 1 })
   })
 
-  const byName = new Map(prefectures.map(p => [shortName(p.kanji), p.code]))
+  const byName = new Map(prefs.map(p => [shortName(p.kanji), p.code]))
   const out = new Map(years.map(y => [y.year, []]))
   for (const r of rows.slice(yearRow + 2)) {
     const code = byName.get(squash(r[0]))
@@ -50,22 +65,14 @@ export function parseMinWage(rows, prefectures) {
   return out
 }
 
-export async function build(src) {
-  const prefectures = JSON.parse(readFileSync(resolve(ASSETS_DIR, 'prefectures.json'), 'utf-8'))
-  const key = cacheKey(src.url)
-  const byYear = parseMinWage(readSheet(readCached(key)), prefectures)
-  const from = src.editions?.from ?? 0
-  const editions = []
-  for (const [year, rows] of byYear) {
-    if (year < from) continue
-    rows.sort((a, b) => a.code.localeCompare(b.code))
-    const out = writeCsv(resolve(PUBLIC_DIR, `data/minwage/${year}.csv`), ['code', 'min', 'since'], rows)
-    // The 年度's edition date: when the last prefecture's new rate took effect.
-    const asOf = rows.map(r => r.since).filter(Boolean).sort().at(-1)
-    editions.push({
-      id: String(year), as_of: asOf, label: `${year}年度`,
-      path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(key),
-    })
+export async function buildEdition(src, ref) {
+  const key = cacheKey(ref.url)
+  const rows = parseMinWage(readSheet(readCached(key)), prefectures()).get(ref.year)
+  if (!rows) throw new Error(`最低賃金: ${ref.url} に ${ref.year}年度がありません`)
+  rows.sort((a, b) => a.code.localeCompare(b.code))
+  const out = writeCsv(resolve(PUBLIC_DIR, `data/minwage/${ref.year}.csv`), ['code', 'min', 'since'], rows)
+  return {
+    id: String(ref.year), as_of: asOfOf(rows), label: `${ref.year}年度`,
+    path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(key),
   }
-  return { editions }
 }

@@ -126,6 +126,19 @@ export async function download(url, cacheKey, { force = false, log = console.log
   return body()
 }
 
+/**
+ * Fetches a page for discovery (not cached — the point is to see what the
+ * publisher has right now). Returns the bytes; decode with decodeText().
+ */
+export async function getPage(url, { log = () => {} } = {}) {
+  await throttle(url)
+  log(`  GET     ${url}`)
+  const res = await httpGet(url, url)
+  const chunks = []
+  for await (const c of res.stream) chunks.push(c)
+  return Buffer.concat(chunks)
+}
+
 /** Reads a previously downloaded file, with a helpful error if `fetch` hasn't run. */
 export function readCached(cacheKey) {
   const path = cachePath(cacheKey)

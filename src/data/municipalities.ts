@@ -35,11 +35,17 @@ export type Edition = {
   label?: string
   path: string
   adjacency?: string
+  enabled?: boolean
 }
 export type DatasetMeta = { label: string; name?: string; agency?: string; page?: string; editions: Edition[] }
 
+// The repo may hold editions that are switched off in the management UI
+// (`enabled: false`); the app never sees those.
 const datasets = (meta as unknown as { datasets: Record<string, DatasetMeta> }).datasets
-export const dataset = (id: string): DatasetMeta => datasets[id] ?? { label: id, editions: [] }
+export const dataset = (id: string): DatasetMeta => {
+  const ds = datasets[id]
+  return ds ? { ...ds, editions: ds.editions.filter(e => e.enabled !== false) } : { label: id, editions: [] }
+}
 const latest = (id: string): Edition | undefined => dataset(id).editions[0]
 
 // Every generated CSV: UTF-8, header row, first column `code` (5-digit),

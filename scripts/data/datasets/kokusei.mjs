@@ -1,21 +1,26 @@
-// 国勢調査 (e-Stat API). Until ESTAT_APP_ID is configured, an edition whose
-// output file already exists is kept as-is (it was made by hand before the
-// pipeline existed) and reported as such in meta.json.
-import { existsSync } from 'node:fs'
+// 国勢調査 (e-Stat API). Editions are registered by hand in sources.json
+// (statsDataId) — the tables differ between censuses, so there's no reliable
+// automatic discovery. `discover` checks each registered table still exists.
 import { resolve } from 'node:path'
 import { writeCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { toNumber } from '../lib/text.mjs'
-import { fetchStatsData, readStatsData, isCached, hasAppId } from '../lib/estat.mjs'
+import { fetchStatsData, readStatsData, statsExists, hasAppId } from '../lib/estat.mjs'
 import { fetchRecord } from '../lib/fetch.mjs'
 import { PUBLIC_DIR, rel } from '../lib/paths.mjs'
 
-export async function fetchRaw(src, opts) {
-  if (!hasAppId()) {
-    opts.log('  skip    ESTAT_APP_ID 未設定のため国勢調査は取得しません')
-    return
+export async function discover(src, opts) {
+  const out = []
+  for (const e of src.editions) {
+    const available = hasAppId() ? await statsExists(e.statsDataId, opts) : null
+    out.push({ id: e.id, as_of: e.as_of, label: e.label, ref: { ...e }, available })
   }
-  for (const e of src.editions) await fetchStatsData(e.statsDataId, opts)
+  return out
+}
+
+export async function fetchEdition(src, ref, opts) {
+  if (!hasAppId()) throw new Error('ESTAT_APP_ID が未設定です（.env.local に ESTAT_APP_ID=... を書く）')
+  await fetchStatsData(ref.statsDataId, opts)
 }
 
 // Which output column a value belongs to, from its classification names.
@@ -51,24 +56,15 @@ export function transform(values) {
   return { rows: [...rows.values()].sort((a, b) => a.code.localeCompare(b.code)), ignored: [...ignored] }
 }
 
-export async function build(src, opts) {
-  const editions = []
-  for (const e of src.editions) {
-    const abs = resolve(PUBLIC_DIR, `data/kokusei/${e.id}.csv`)
-    const base = { id: e.id, as_of: e.as_of, label: e.label, path: rel(abs).replace(/^public\//, '') }
-    if (isCached(e.statsDataId)) {
-      const { rows, ignored } = transform(readStatsData(e.statsDataId))
-      if (ignored.length) opts.log(`  note    ${e.id}: 使わなかった分類: ${ignored.slice(0, 8).join(' | ')}${ignored.length > 8 ? ' …' : ''}`)
-      const columns = ['code', 'totalpop', 'malepop', 'femalepop', ...(rows.some(r => r.setai !== undefined) ? ['setai'] : [])]
-      const out = writeCsv(abs, columns, rows)
-      const rec = fetchRecord(`estat/${e.statsDataId}/page-1.json`)
-      editions.push({ ...base, rows: out.rows, source: { url: `e-Stat API statsDataId=${e.statsDataId}`, retrieved_at: rec?.retrieved_at.slice(0, 10), sha256: rec?.sha256 } })
-    } else if (existsSync(abs)) {
-      opts.log(`  keep    ${e.id}: API 未取得のため既存ファイルをそのまま使います（手作業で作成された版）`)
-      editions.push({ ...base, source: { url: null, manual: true } })
-    } else {
-      opts.log(`  skip    ${e.id}: API 未取得・既存ファイルなし`)
-    }
+export async function buildEdition(src, ref, opts) {
+  const abs = resolve(PUBLIC_DIR, `data/kokusei/${ref.id}.csv`)
+  const { rows, ignored } = transform(readStatsData(ref.statsDataId))
+  if (ignored.length) opts.log(`  note    ${ref.id}: 使わなかった分類: ${ignored.slice(0, 8).join(' | ')}${ignored.length > 8 ? ' …' : ''}`)
+  const columns = ['code', 'totalpop', 'malepop', 'femalepop', ...(rows.some(r => r.setai !== undefined) ? ['setai'] : [])]
+  const out = writeCsv(abs, columns, rows)
+  const rec = fetchRecord(`estat/${ref.statsDataId}/page-1.json`)
+  return {
+    id: ref.id, as_of: ref.as_of, label: ref.label, path: rel(abs).replace(/^public\//, ''), rows: out.rows,
+    source: { url: `e-Stat API statsDataId=${ref.statsDataId}`, retrieved_at: rec?.retrieved_at.slice(0, 10), sha256: rec?.sha256 },
   }
-  return { editions }
 }

@@ -15,7 +15,12 @@
             "url": "https://www.soumu.go.jp/main_content/000323625.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "f7b45e87a909dc98ce5082a4972f71b76ff19e4f70c7632d1c233928381c7fea"
-          }
+          },
+          "ref": {
+            "url": "https://www.soumu.go.jp/main_content/000323625.csv",
+            "as_of": "2023-08-22"
+          },
+          "enabled": true
         }
       ]
     },
@@ -37,7 +42,12 @@
             "url": "https://www.soumu.go.jp/main_content/000925835.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "7d04c8a7f6a6e76a7823a0414a8422bf2b26bb6070766971df76eab58ea6ff78"
-          }
+          },
+          "ref": {
+            "url": "https://www.soumu.go.jp/main_content/000925835.xlsx",
+            "as_of": "2024-01-01"
+          },
+          "enabled": true
         }
       ]
     },
@@ -64,7 +74,13 @@
               "retrieved_at": "2026-11-14",
               "sha256": "1da86f0b0a99faed1f76fa76f18eaef331b4b8c2599dda6e37107e5f55b275e8"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2026,
+            "main": "000040479049",
+            "age": "000040479050"
+          },
+          "enabled": true
         },
         {
           "id": "2025",
@@ -83,7 +99,13 @@
               "retrieved_at": "2026-11-14",
               "sha256": "8b72e4fe5bbb9f49c135c17451afb673388100d7d39d0b75acfd9e4539af867e"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2025,
+            "main": "000040306653",
+            "age": "000040306654"
+          },
+          "enabled": true
         },
         {
           "id": "2024",
@@ -102,7 +124,13 @@
               "retrieved_at": "2026-11-14",
               "sha256": "88f32322cedd97fcc50c0e892f41ffdfe8034f364dd1c1ecd40bfe16c13ec190"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2024,
+            "main": "000040306672",
+            "age": "000040306674"
+          },
+          "enabled": true
         },
         {
           "id": "2023",
@@ -121,7 +149,13 @@
               "retrieved_at": "2026-11-14",
               "sha256": "48a13f8dc5ce8b36c43d3dc21ac7f08960ad913aed45cae9dccb8045051909e9"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2023,
+            "main": "000040306647",
+            "age": "000040306648"
+          },
+          "enabled": true
         },
         {
           "id": "2022",
@@ -140,7 +174,13 @@
               "retrieved_at": "2026-11-14",
               "sha256": "645232460cd9b2dc44887cb520c6acb5933c12a6947d86aa19bcb8cccba1539e"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2022,
+            "main": "000032224636",
+            "age": "000032224637"
+          },
+          "enabled": true
         },
         {
           "id": "2021",
@@ -159,7 +199,13 @@
               "retrieved_at": "2026-11-14",
               "sha256": "af485797942888ae6d6b6bc0d1777e791e8715cba5d83c3b117cec0fc6eac394"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2021,
+            "main": "000040306659",
+            "age": "000040306661"
+          },
+          "enabled": true
         },
         {
           "id": "2020",
@@ -178,13 +224,19 @@
               "retrieved_at": "2026-11-14",
               "sha256": "481c335fe5e5458c7751aec403c289e55cfeb3d0e2a81cc789eb043c00a21c0b"
             }
-          ]
+          ],
+          "ref": {
+            "year": 2020,
+            "main": "000031971203",
+            "age": "000031971230"
+          },
+          "enabled": true
         }
       ]
     },
     "kokusei": {
       "label": "国勢調査",
-      "name": "国勢調査 男女別人口及び世帯総数",
+      "name": "国勢調査 男女別人口",
       "agency": "総務省 統計局 統計調査部 国勢統計課",
       "page": "https://www.e-stat.go.jp/stat-search/database?statdisp_id=0004050397",
       "editions": [
@@ -198,7 +250,14 @@
             "url": "e-Stat API statsDataId=0004050397",
             "retrieved_at": "2026-11-14",
             "sha256": "3c7740e03fb8dc331af91b900cf5b8d97bffc1ade4dcc5e01124134fbeb4fba4"
-          }
+          },
+          "ref": {
+            "id": "2025-sokuho",
+            "as_of": "2025-10-01",
+            "label": "令和7年 速報集計",
+            "statsDataId": "0004050397"
+          },
+          "enabled": true
         }
       ]
     },
@@ -217,7 +276,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2026-07-01"
+          },
+          "enabled": true
         },
         {
           "id": "2026-04-01",
@@ -228,7 +292,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2026-04-01"
+          },
+          "enabled": true
         },
         {
           "id": "2026-01-01",
@@ -239,7 +308,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2026-01-01"
+          },
+          "enabled": true
         },
         {
           "id": "2025-10-01",
@@ -250,7 +324,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-10-01"
+          },
+          "enabled": true
         },
         {
           "id": "2025-07-01",
@@ -261,7 +340,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-07-01"
+          },
+          "enabled": true
         },
         {
           "id": "2025-04-01",
@@ -272,7 +356,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-04-01"
+          },
+          "enabled": true
         },
         {
           "id": "2025-01-01",
@@ -283,7 +372,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-01-01"
+          },
+          "enabled": true
         },
         {
           "id": "2024-10-01",
@@ -294,7 +388,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-10-01"
+          },
+          "enabled": true
         },
         {
           "id": "2024-07-01",
@@ -305,7 +404,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-07-01"
+          },
+          "enabled": true
         },
         {
           "id": "2024-04-01",
@@ -316,7 +420,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-04-01"
+          },
+          "enabled": true
         },
         {
           "id": "2024-01-01",
@@ -327,7 +436,12 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "retrieved_at": "2026-11-14",
             "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
-          }
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-01-01"
+          },
+          "enabled": true
         }
       ]
     },
@@ -351,7 +465,11 @@
           "source": {
             "url": null,
             "manual": true
-          }
+          },
+          "ref": {
+            "as_of": "2023-04-01"
+          },
+          "enabled": true
         }
       ]
     },
@@ -372,7 +490,15 @@
             "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040210062&fileKind=0",
             "retrieved_at": "2026-11-14",
             "sha256": "cf03a809443d4dea9d3bdae7a43fbe2e1238eee10430cc6651bb1eba7d621289"
-          }
+          },
+          "ref": {
+            "id": "2023",
+            "as_of": "2023-10-01",
+            "published": "2024-09-25",
+            "label": "令和5年",
+            "statInfId": "000040210062"
+          },
+          "enabled": true
         }
       ]
     },
@@ -392,7 +518,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2026,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         },
         {
           "id": "2025",
@@ -404,7 +535,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2025,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         },
         {
           "id": "2024",
@@ -416,7 +552,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2024,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         },
         {
           "id": "2023",
@@ -428,7 +569,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2023,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         },
         {
           "id": "2022",
@@ -440,7 +586,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2022,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         },
         {
           "id": "2021",
@@ -452,7 +603,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2021,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         },
         {
           "id": "2020",
@@ -464,7 +620,12 @@
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
             "retrieved_at": "2026-11-14",
             "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
-          }
+          },
+          "ref": {
+            "year": 2020,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
         }
       ]
     },
@@ -485,7 +646,13 @@
             "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2026/N03-20260101_GML.zip",
             "retrieved_at": "2026-11-14",
             "sha256": "1f714fca019e22e6f84012dba420384fc7b49c6ad8bd0a867ab1cfb593a78477"
-          }
+          },
+          "ref": {
+            "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2026/N03-20260101_GML.zip",
+            "as_of": "2026-01-01",
+            "size": "765.94MB"
+          },
+          "enabled": true
         }
       ]
     }

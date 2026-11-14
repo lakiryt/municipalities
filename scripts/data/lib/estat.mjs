@@ -33,6 +33,16 @@ export async function fetchStatsData(statsDataId, opts) {
 
 export const isCached = (statsDataId) => existsSync(cachePath(pageKey(statsDataId, 1)))
 
+/** Whether the table still exists (getMetaInfo returns STATUS 0). */
+export async function statsExists(statsDataId, { log = () => {} } = {}) {
+  const url = `https://api.e-stat.go.jp/rest/3.0/app/json/getMetaInfo?statsDataId=${statsDataId}`
+  log(`  GET     ${url}`)
+  const res = await fetch(`${url}&appId=${process.env.ESTAT_APP_ID}`, { headers: { 'User-Agent': 'municipalities-data-pipeline' } })
+  if (!res.ok) throw new Error(`e-Stat API HTTP ${res.status} (getMetaInfo ${statsDataId})`)
+  const status = (await res.json()).GET_META_INFO?.RESULT?.STATUS
+  return status === 0
+}
+
 /**
  * Reads all cached pages and returns values with every classification
  * resolved to its name: [{ area, time, dims: {tab: '人口', cat01: '男', ...}, value }].
