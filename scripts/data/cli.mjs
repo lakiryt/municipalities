@@ -77,7 +77,7 @@ try {
     }
     case 'remove': {
       const [id, src] = one()
-      const removed = removeHeld(id, src, positional.slice(1))
+      const removed = await removeHeld(id, src, positional.slice(1), opts)
       log(`削除: ${id} ${removed.join(', ') || '（該当なし）'}`)
       break
     }

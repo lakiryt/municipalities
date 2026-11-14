@@ -19,6 +19,11 @@ const prefectures = JSON.parse(
   readFileSync(resolve(root, 'src/assets/prefectures.json'), 'utf-8')
 )
 
+// Every 地方公共団体 has a detail page (/m/:code).
+const municipalities = JSON.parse(
+  readFileSync(resolve(root, 'src/assets/dantai_codes.json'), 'utf-8')
+)
+
 const urls = [
   { path: '/',                                  priority: '1.0', changefreq: 'monthly' },
   { path: '/search',                            priority: '0.8', changefreq: 'monthly' },
@@ -39,6 +44,7 @@ const urls = [
     { path: `/rankings/${p.romanized}/area`,      priority: '0.7', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/city-area`, priority: '0.7', changefreq: 'monthly' },
   ]),
+  ...municipalities.map(code => ({ path: `/m/${code}`, priority: '0.6', changefreq: 'monthly' })),
 ]
 
 const xml = `<?xml version="1.0" encoding="UTF-8"?>

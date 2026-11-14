@@ -7,6 +7,7 @@ import CityPopulationPage from './components/pages/CityPopulationPage'
 import AreaPage from './components/pages/AreaPage'
 import CityAreaPage from './components/pages/CityAreaPage'
 import FormulasPage from './components/pages/FormulasPage'
+import MunicipalityPage from './components/pages/MunicipalityPage'
 import MuniTable from './components/MuniTable'
 import Canonical from './components/Canonical'
 import populationOver500k from './rankings/populationOver500k'
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
   { path: '/rankings/all/rent-labor-days',       element: <RankingPage config={rentLaborDaysConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/formulas',                           element: <FormulasPage /> },
+  { path: '/m/:code',                            element: <MunicipalityPage /> },
   {
     path: '/search',
     element: (

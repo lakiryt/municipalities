@@ -6,7 +6,7 @@ import { existsSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { DATASETS } from '../datasets/index.mjs'
 import { readCatalog, writeCatalogDataset } from './catalog.mjs'
-import { readMeta, upsertEditions, removeEditions } from './meta.mjs'
+import { readMeta, upsertEditions, removeEditions, setExtras } from './meta.mjs'
 import { PUBLIC_DIR, ROOT } from './paths.mjs'
 
 export async function discoverDataset(id, src, opts) {
@@ -59,6 +59,14 @@ export async function getEditions(id, src, editionIds, opts, { from = 'catalog' 
     }
     upsertEditions(id, [{ ...built, ref, ...(isNew && opts.enable === false ? { enabled: false } : {}) }], { single: src.single })
   }
+  await afterChange(id, src, opts)
+}
+
+/** Lets a dataset regenerate files derived from all its held editions. */
+async function afterChange(id, src, opts) {
+  const derive = DATASETS[id].deriveExtras
+  if (!derive) return
+  setExtras(id, await derive(src, heldEditions(id), opts))
 }
 
 /** Rebuilds every held edition (or the given ones) from its stored ref. */
@@ -69,10 +77,11 @@ export async function rebuildHeld(id, src, opts, editionIds = null) {
 }
 
 /** Deletes editions' generated files and their meta.json entries (the raw cache is kept). */
-export function removeHeld(id, src, editionIds) {
+export async function removeHeld(id, src, editionIds, opts) {
   if (src.single) throw new Error(`${id} は1版のみ保持するデータのため削除できません（別の版を取得すると置き換わります）`)
   const removed = removeEditions(id, editionIds)
   for (const e of removed) for (const f of editionFiles(e)) if (existsSync(f)) rmSync(f)
+  await afterChange(id, src, opts)
   return removed.map(e => e.id)
 }
 

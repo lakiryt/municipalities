@@ -56,6 +56,9 @@
       "name": "住民基本台帳に基づく人口、人口動態及び世帯数調査",
       "agency": "総務省 自治行政局 住民制度課",
       "page": "https://www.e-stat.go.jp/stat-search/files?toukei=00200241",
+      "extras": {
+        "series": "data/jumin/series.csv"
+      },
       "editions": [
         {
           "id": "2026",

@@ -69,7 +69,14 @@ const mercator = ([lon, lat]: Point): Point => [
 // shares one code across several geometries, so their paths are concatenated.
 export type MuniPaths = Map<string, string>
 
-export async function fetchMunicipalityPaths(): Promise<MuniPaths> {
+// Decoded once and shared: the map view and the detail page's locator map
+// both need it, and the TopoJSON is ~7MB.
+let pathsPromise: Promise<MuniPaths> | null = null
+export function fetchMunicipalityPaths(): Promise<MuniPaths> {
+  return pathsPromise ??= loadMunicipalityPaths()
+}
+
+async function loadMunicipalityPaths(): Promise<MuniPaths> {
   const path = mapTopojsonPath()
   if (!path) return new Map()
   const topology: Topology = await fetch(`/${path}`).then(r => r.json())

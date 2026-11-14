@@ -1,20 +1,23 @@
 import { evaluate } from '../lang/evaluate'
-import { baseItemEnv, type BaseItem } from '../data/municipalities'
-import type { DesignationSets } from '../data/datasets'
+import type { BaseItem } from '../data/municipalities'
+import type { Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
+import { Link } from 'react-router-dom'
 import { formatValue } from '@/lib/format'
 
 type Props = {
   columns: ColumnState[]
   displayItems: BaseItem[]
-  designations: DesignationSets | undefined
-  coastal: Set<string>
+  // Each row's variables, computed once by the page (see MuniTable).
+  envOf: (item: BaseItem) => Env
   // The column the rows are ordered by (highlighted), and in which direction.
   sortedColumnId: number | null
   sortDirection: 'asc' | 'desc'
   onEditColumn: (id: number) => void
   onAddColumn: () => void
   onSortColumn: (id: number) => void
+  // Where a municipality's name links to (its detail page).
+  linkFor: (code: string) => string
 }
 
 // Header labels wrap (max-w-44) so one long label — "平均家賃30㎡分を稼ぐの
@@ -30,7 +33,7 @@ const TD = 'border-b border-r border-gray-200 px-3 py-1.5'
 // page — the municipality name stay put while the rest scrolls sideways,
 // so a row is always identifiable on a narrow screen.
 function DataTable({
-  columns, displayItems, designations, coastal, sortedColumnId, sortDirection, onEditColumn, onAddColumn, onSortColumn,
+  columns, displayItems, envOf, sortedColumnId, sortDirection, onEditColumn, onAddColumn, onSortColumn, linkFor,
 }: Props) {
   const stickyName = columns[0]?.expression === '$kanji'
 
@@ -77,7 +80,7 @@ function DataTable({
         </thead>
         <tbody>
           {displayItems.map((item, i) => {
-            const env = baseItemEnv(item, designations, coastal)
+            const env = envOf(item)
             return (
               <tr key={item.code} className="group">
                 <td className={`${TD} sticky left-0 z-10 bg-white group-hover:bg-gray-50 w-12 min-w-12 max-w-12 !px-2 text-right text-gray-400 tabular-nums text-xs`}>{i + 1}</td>
@@ -90,7 +93,9 @@ function DataTable({
                       key={col.id}
                       className={`${TD} whitespace-nowrap ${numeric ? 'text-right tabular-nums' : ''} ${sticky ? 'sticky left-12 z-10 font-medium' : ''} ${sorted ? 'bg-blue-50/60' : sticky ? 'bg-white' : ''} group-hover:bg-gray-50`}
                     >
-                      {formatValue(evaluate(col.typed, env))}
+                      {col.expression === '$kanji'
+                        ? <Link to={linkFor(item.code)} className="text-blue-700 hover:underline">{formatValue(evaluate(col.typed, env))}</Link>
+                        : formatValue(evaluate(col.typed, env))}
                     </td>
                   )
                 })}

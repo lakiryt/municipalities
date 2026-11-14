@@ -17,7 +17,12 @@ export type Edition = {
   adjacency?: string
   enabled?: boolean
 }
-export type DatasetMeta = { label: string; name?: string; agency?: string; page?: string; editions: Edition[] }
+export type DatasetMeta = {
+  label: string; name?: string; agency?: string; page?: string
+  editions: Edition[]
+  // Files derived from all editions together, e.g. jumin's { series }.
+  extras?: Record<string, string>
+}
 
 // The repo may hold editions that are switched off in the management UI
 // (`enabled: false`); the app never sees those.
@@ -248,15 +253,42 @@ export const fetchDesignations = (): Promise<DesignationSets> => {
   })
 }
 
-/** Codes whose boundary touches the sea (pseudo-neighbor "coast" in the adjacency data). */
-export const fetchCoastal = (): Promise<Set<string>> => {
+// code → neighboring codes, plus the pseudo-neighbor "coast" for codes whose
+// boundary touches the sea. Shared by &coastal and the detail page, so it's
+// fetched once.
+let adjacencyPromise: Promise<Record<string, string[]>> | null = null
+export const fetchAdjacency = (): Promise<Record<string, string[]>> => {
   const path = latest('map')?.adjacency
-  if (!path) return Promise.resolve(new Set())
-  return fetch(`/${path}`)
-    .then(r => r.json() as Promise<Record<string, string[]>>)
-    .then(data => new Set(
-      Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
-    ))
+  if (!path) return Promise.resolve({})
+  return adjacencyPromise ??= fetch(`/${path}`).then(r => r.json() as Promise<Record<string, string[]>>)
+}
+
+/** Codes whose boundary touches the sea. */
+export const fetchCoastal = (): Promise<Set<string>> =>
+  fetchAdjacency().then(data => new Set(
+    Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
+  ))
+
+// ── Population series (detail page) ───────────────────────────────────────────
+
+export type SeriesPoint = { id: string; as_of: string; totalpop: number; setai: number }
+
+/**
+ * One municipality's 住民基本台帳 population for every enabled year, oldest
+ * first — from the pipeline's derived series file, not the yearly files.
+ */
+export const fetchPopulationSeries = (code: string): Promise<SeriesPoint[]> => {
+  const path = dataset('jumin').extras?.series
+  if (!path) return Promise.resolve([])
+  const years = dataset('jumin').editions
+  return fetchCsv(path).then(rows => {
+    const r = rows.find(x => x.code === code)
+    if (!r) return []
+    return years
+      .map(e => ({ id: e.id, as_of: e.as_of, totalpop: toNum(r[`totalpop_${e.id}`]), setai: toNum(r[`setai_${e.id}`]) }))
+      .filter(p => !Number.isNaN(p.totalpop))
+      .sort((a, b) => a.as_of.localeCompare(b.as_of))
+  })
 }
 
 /** The boundary TopoJSON the map draws (newest enabled edition). */

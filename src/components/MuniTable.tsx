@@ -1,14 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { evaluate } from '../lang/evaluate'
-import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
+import { parseAndTypeCheck } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
-import { buildItems, baseItemEnv } from '../data/municipalities'
-import {
-  fetchArea, fetchPopulation, fetchRent, fetchMinWages, fetchDesignations, fetchCoastal, fetchMunicipalityCodes,
-  officialCodes, selectionFromParams, writeSelectionParams, DATA_KEYS,
-  type PopulationMap, type RentMap, type MinWageMap, type DesignationSets, type CodeEntry, type DataSelection,
-} from '../data/datasets'
+import { baseItemEnv, type BaseItem } from '../data/municipalities'
+import type { Env } from '../lang/evaluate'
+import { officialCodes, selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection } from '../data/datasets'
+import { useMunicipalityData } from '../data/useMunicipalityData'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import { usedData } from '@/lib/usedData'
@@ -89,6 +87,13 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [])
   const effectiveState = decodeExploreState(searchParams.get('s')) ?? defaultState
+
+  // Navigations render in a transition, so for a moment after an edit the
+  // rendered state lags behind the URL. Every edit builds on the URL — the
+  // latest state — so a quick second edit (sort, then delete a column) never
+  // undoes the first or misses what it changed.
+  const latestState = (): ExploreState =>
+    decodeExploreState(new URLSearchParams(window.location.search).get('s')) ?? defaultState
 
   // Columns can never reference `@id` themselves (only filter/sort can), so
   // they're parsed with no column context at all — that's what guarantees
@@ -190,30 +195,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
       : `${title} — 日本の自治体データ`
   }, [title, mapColumn])
 
-  const [areaMap, setAreaMap]           = useState(new Map<string, number>())
-  const [popMap, setPopMap]             = useState<PopulationMap>(new Map())
-  const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
-  const [coastal, setCoastal]           = useState<Set<string>>(new Set())
-  const [codes, setCodes]               = useState<CodeEntry[]>([])
-  const [rentMap, setRentMap]           = useState<RentMap>(new Map())
-  const [minWageMap, setMinWageMap]     = useState<MinWageMap>(new Map())
-
-  // The selectable datasets reload whenever データの選択 picks another edition.
-  useEffect(() => { fetchPopulation(selection.pop).then(setPopMap) }, [selection.pop])
-  useEffect(() => { fetchArea(selection.area).then(setAreaMap) }, [selection.area])
-  useEffect(() => { fetchRent(selection.rent).then(setRentMap) }, [selection.rent])
-  useEffect(() => { fetchMinWages(selection.minwage).then(setMinWageMap) }, [selection.minwage])
-
-  useEffect(() => { fetchDesignations().then(setDesignations) }, [])
-  useEffect(() => { fetchCoastal().then(setCoastal) }, [])
-  useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
-
-  // The full, unrestricted base — every downstream view narrows this its
-  // own way, but none of them build items from anything smaller than this.
-  const activeItems = useMemo(
-    () => buildItems(popMap, areaMap, codes, rentMap, minWageMap),
-    [popMap, areaMap, codes, rentMap, minWageMap]
-  )
+  const { items: activeItems, designations, coastal } = useMunicipalityData(selection)
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
@@ -228,39 +210,53 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
     [activeItems, restrictToOfficial]
   )
 
-  const filteredItems = filterExpr !== null
-    ? tableBaseItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
-    : tableBaseItems
+  // Each municipality's variables (incl. ~15 derived ones) are computed once
+  // per data change and shared by the filter, the sort and the table cells —
+  // recomputing them inside the sort comparator made every sort ~1s.
+  const envs = useMemo(
+    () => new Map(activeItems.map(item => [item.code, baseItemEnv(item, designations, coastal)])),
+    [activeItems, designations, coastal]
+  )
+  const envOf = useMemo(
+    () => (item: BaseItem): Env => ({ ...envs.get(item.code)!, columns: colEnv }),
+    [envs, colEnv]
+  )
 
-  const displayItems = sortState !== null
-    ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortState.typed, { ...baseItemEnv(a, designations, coastal), columns: colEnv })
-        const vb = evaluate(sortState.typed, { ...baseItemEnv(b, designations, coastal), columns: colEnv })
-        const sign = sortState.direction === 'asc' ? 1 : -1
-        if (sortState.typed.type === 's') {
-          return sign * (va as string).localeCompare(vb as string, 'ja')
-        }
-        const na = va as number, nb = vb as number
-        if (isNaN(na) && isNaN(nb)) return 0
-        if (isNaN(na)) return 1
-        if (isNaN(nb)) return -1
-        return sign * (na - nb)
-      })
-    : filteredItems
+  const filteredItems = useMemo(
+    () => filterExpr !== null ? tableBaseItems.filter(item => evaluate(filterExpr, envOf(item)) === true) : tableBaseItems,
+    [tableBaseItems, filterExpr, envOf]
+  )
+
+  // Sort key evaluated once per row, then a plain sort on the keys.
+  const displayItems = useMemo(() => {
+    if (sortState === null) return filteredItems
+    const sign = sortState.direction === 'asc' ? 1 : -1
+    const keyed = filteredItems.map(item => ({ item, v: evaluate(sortState.typed, envOf(item)) }))
+    keyed.sort((a, b) => {
+      if (sortState.typed.type === 's') return sign * (a.v as string).localeCompare(b.v as string, 'ja')
+      const na = a.v as number, nb = b.v as number
+      if (isNaN(na) && isNaN(nb)) return 0
+      if (isNaN(na)) return 1
+      if (isNaN(nb)) return -1
+      return sign * (na - nb)
+    })
+    return keyed.map(k => k.item)
+  }, [filteredItems, sortState, envOf])
 
   // Map view: the full base plus the same filter — never restricted to
   // official municipalities (a designated-city ward has no 地方公共団体 code
   // of its own but is still a real shape to color) and never sorted, since
   // "order" isn't a concept a map has. (MapView narrows this further still,
   // to whatever codes actually have a drawn path.)
-  const mapItems = filterExpr !== null
-    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
-    : activeItems
+  const mapItems = useMemo(
+    () => filterExpr !== null ? activeItems.filter(item => evaluate(filterExpr, envOf(item)) === true) : activeItems,
+    [activeItems, filterExpr, envOf]
+  )
 
   const handleColumnSave = (label: string, expression: string) => {
     if (modal === null) return
-    const { cols } = upsertColumn(effectiveState.columns, modal, label, expression)
-    commit({ ...effectiveState, columns: cols })
+    const { cols } = upsertColumn(latestState().columns, modal, label, expression)
+    commit({ ...latestState(), columns: cols })
     setModal(null)
   }
 
@@ -269,8 +265,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   // freezing today's expression text.
   const handleSetColumnSort = (label: string, expression: string) => {
     if (modal === null) return
-    const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
-    commit({ ...effectiveState, columns: cols, sortExpression: `@${id}`, sortDirection: 'desc' })
+    const { cols, id } = upsertColumn(latestState().columns, modal, label, expression)
+    commit({ ...latestState(), columns: cols, sortExpression: `@${id}`, sortDirection: 'desc' })
     setModal(null)
   }
 
@@ -292,8 +288,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
       // since `@id` can't resolve to a column that was never saved anywhere
       // — combined into one navigation rather than a commit() followed by a
       // separate setMapExpression(), which would race against each other.
-      const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
-      const nextState = { ...effectiveState, columns: cols }
+      const { cols, id } = upsertColumn(latestState().columns, modal, label, expression)
+      const nextState = { ...latestState(), columns: cols }
       navigate(exploreUrl(nextState, { map: `@${id}` }))
     }
     setModal(null)
@@ -304,7 +300,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   // A reference to the column that was just deleted becomes a normal
   // "column not found" type-check error, same as any other invalid edit.
   const handleColumnDelete = (id: number) => {
-    commit({ ...effectiveState, columns: effectiveState.columns.filter(c => c.id !== id) })
+    const state = latestState()
+    commit({ ...state, columns: state.columns.filter(c => c.id !== id) })
     setModal(null)
   }
 
@@ -312,10 +309,14 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   // modal) only exist in the table view, and switching to it clears
   // `mapExpression` — so a column being edited is never the one the map
   // currently references.
+  // `@id` is the only way an expression refers to a column, so a textual
+  // check on the latest filter/sort is exact.
   const columnUsedIn = (id: number): string[] => {
+    const { filterExpression: f, sortExpression: so } = latestState()
+    const ref = new RegExp(`@${id}(?![0-9])`)
     const usedIn: string[] = []
-    if (filterExpr !== null && referencesColumn(filterExpr, id)) usedIn.push('絞り込み')
-    if (sortState !== null && referencesColumn(sortState.typed, id)) usedIn.push('並べ替え')
+    if (ref.test(f)) usedIn.push('絞り込み')
+    if (ref.test(so)) usedIn.push('並べ替え')
     return usedIn
   }
 
@@ -350,7 +351,13 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
     const direction = sortedColumn?.id === id
       ? (sortState?.direction === 'desc' ? 'asc' : 'desc')
       : (col.typed.type === 'n' ? 'desc' : 'asc')
-    commit({ ...effectiveState, sortExpression: `@${id}`, sortDirection: direction })
+    commit({ ...latestState(), sortExpression: `@${id}`, sortDirection: direction })
+  }
+
+  // A municipality's detail page, carrying the current データの選択 along.
+  const detailLink = (code: string) => {
+    const q = writeSelectionParams(new URLSearchParams(), selection).toString()
+    return `/m/${code}${q ? `?${q}` : ''}`
   }
 
   const used = usedData([
@@ -416,8 +423,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         <FilterModal
           initialExpression={filterExpression}
           columns={columnRefs}
-          onApply={(expression) => { commit({ ...effectiveState, filterExpression: expression }); setFilterOpen(false) }}
-          onClear={() => { commit({ ...effectiveState, filterExpression: '' }); setFilterOpen(false) }}
+          onApply={(expression) => { commit({ ...latestState(), filterExpression: expression }); setFilterOpen(false) }}
+          onClear={() => { commit({ ...latestState(), filterExpression: '' }); setFilterOpen(false) }}
           onClose={() => setFilterOpen(false)}
         />
       )}
@@ -426,8 +433,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
           initialExpression={sortState?.expression ?? ''}
           initialDirection={sortState?.direction ?? 'desc'}
           columns={columnRefs}
-          onApply={(expression, _typed, direction) => { commit({ ...effectiveState, sortExpression: expression, sortDirection: direction }); setSortOpen(false) }}
-          onClear={() => { commit({ ...effectiveState, sortExpression: '', sortDirection: 'desc' }); setSortOpen(false) }}
+          onApply={(expression, _typed, direction) => { commit({ ...latestState(), sortExpression: expression, sortDirection: direction }); setSortOpen(false) }}
+          onClear={() => { commit({ ...latestState(), sortExpression: '', sortDirection: 'desc' }); setSortOpen(false) }}
           onClose={() => setSortOpen(false)}
         />
       )}
@@ -461,6 +468,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
               designations={designations}
               coastal={coastal}
               fitToItems={filterExpr !== null}
+              linkFor={detailLink}
             />
           </div>
           <SourceNote used={usedKeys} selection={selection} designations={used.designations} map compact />
@@ -479,13 +487,13 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
           <DataTable
             columns={columns}
             displayItems={displayItems}
-            designations={designations}
-            coastal={coastal}
             sortedColumnId={sortedColumn?.id ?? null}
             sortDirection={sortState?.direction ?? 'desc'}
             onEditColumn={id => setModal({ kind: 'edit', id })}
             onAddColumn={() => setModal({ kind: 'add' })}
             onSortColumn={handleSortColumn}
+            linkFor={detailLink}
+            envOf={envOf}
           />
           <div className="sticky left-0 w-[100cqw]">
             <SourceNote used={usedKeys} selection={selection} designations={used.designations} map={used.coastal} />

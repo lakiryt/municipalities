@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { evaluate } from '@/lang/evaluate'
 import { baseItemEnv, type BaseItem } from '@/data/municipalities'
 import type { DesignationSets } from '@/data/datasets'
@@ -22,6 +22,7 @@ type Props = {
   coastal: Set<string>
   // When the rows are filtered (e.g. to one prefecture), zoom to them.
   fitToItems?: boolean
+  linkFor?: (code: string) => string
 }
 
 // Legend values are scale positions, not data: 3 significant figures
@@ -50,7 +51,7 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
 // The map view: fills the content area below the toolbar (not a modal), so
 // "表 ｜ 地図" switches between two views of the same rows. Desktop hovers
 // for a tooltip; a click/tap pins a card (phones have no hover).
-function MapView({ column, columnOptions, onSelectColumn, displayItems, designations, coastal, fitToItems = false }: Props) {
+function MapView({ column, columnOptions, onSelectColumn, displayItems, designations, coastal, fitToItems = false, linkFor }: Props) {
   // The color scale (自動/線形/対数/順位) and outlier clipping are per map
   // and kept in the URL (?scale=log&clip=1), like the map column itself.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -394,6 +395,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
                   <div className="text-gray-600 tabular-nums">
                     {column.label}: {picked.value !== undefined ? formatValue(picked.value) : 'データなし'}
                   </div>
+                  {linkFor && picked.pref && <Link to={linkFor(picked.code)} className="text-xs text-blue-600 hover:underline">詳細を見る →</Link>}
                 </div>
                 <button aria-label="閉じる" className="text-gray-400 hover:text-gray-700 leading-none" onClick={() => setPicked(null)}>✕</button>
               </div>
