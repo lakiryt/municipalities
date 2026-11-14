@@ -499,6 +499,70 @@
             "as_of": "2024-01-01"
           },
           "enabled": true
+        },
+        {
+          "id": "2023-10-01",
+          "as_of": "2023-10-01",
+          "path": "data/area/2023-10-01.csv",
+          "rows": 2294,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "f47b6d8eef144b86f8e1acae33716aad88052af98cf2a785c447a92dc5d2c3da"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "as_of": "2023-10-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2022-10-01",
+          "as_of": "2022-10-01",
+          "path": "data/area/2022-10-01.csv",
+          "rows": 2294,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "f47b6d8eef144b86f8e1acae33716aad88052af98cf2a785c447a92dc5d2c3da"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "as_of": "2022-10-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2021-10-01",
+          "as_of": "2021-10-01",
+          "path": "data/area/2021-10-01.csv",
+          "rows": 2294,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "f47b6d8eef144b86f8e1acae33716aad88052af98cf2a785c447a92dc5d2c3da"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "as_of": "2021-10-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2020-10-01",
+          "as_of": "2020-10-01",
+          "path": "data/area/2020-10-01.csv",
+          "rows": 2294,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "f47b6d8eef144b86f8e1acae33716aad88052af98cf2a785c447a92dc5d2c3da"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
+            "as_of": "2020-10-01"
+          },
+          "enabled": true
         }
       ]
     },
