@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>データ管理</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --text: #1f1f1c; --muted: #6b6b66; --line: #e3e2dc;
+    --ok: #2f7d4f; --ok-bg: #e6f3eb; --warn: #9a6200; --warn-bg: #fdf1dc; --err: #b3261e; --err-bg: #fbe5e3;
+    --accent: #2858c9; --accent-bg: #e8eefc; --chip: #f0efea; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161614; --panel: #1f1f1d; --text: #ecebe6; --muted: #9b9a93; --line: #34332f;
+      --ok: #6fcf97; --ok-bg: #1d3326; --warn: #f2b84b; --warn-bg: #3a2e14; --err: #f28b82; --err-bg: #3d1f1d;
+      --accent: #8ab4f8; --accent-bg: #1f2a40; --chip: #2a2a27;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+  header { padding: 20px 24px 12px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .summary { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; background: var(--chip); white-space: nowrap; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill.err { background: var(--err-bg); color: var(--err); }
+  button { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { color: #fff; filter: brightness(1.08); }
+  button:disabled { opacity: .45; cursor: default; }
+  main { padding: 0 24px 24px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); }
+  body.logopen main { padding-bottom: 290px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .card-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .card h2 { font-size: 15px; margin: 0; }
+  .id { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .fact .k { font-size: 11px; color: var(--muted); }
+  .fact .v { font-variant-numeric: tabular-nums; font-weight: 600; overflow-wrap: anywhere; }
+  .editions { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ed { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--chip); }
+  .ed.latest { background: var(--accent-bg); color: var(--accent); }
+  .ed.manual { outline: 1px dashed var(--warn); }
+  .ed.pending { background: transparent; outline: 1px dashed var(--line); color: var(--muted); }
+  ul.issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  ul.issues li { font-size: 12px; padding: 4px 8px; border-radius: 6px; overflow-wrap: anywhere; }
+  ul.issues li.warn { background: var(--warn-bg); color: var(--warn); }
+  ul.issues li.error { background: var(--err-bg); color: var(--err); }
+  details.oks summary { font-size: 12px; color: var(--ok); cursor: pointer; }
+  details.oks li { font-size: 12px; color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); }
+  .note a { color: var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+  #logwrap { position: fixed; left: 0; right: 0; bottom: 0; background: #111; border-top: 1px solid #333; }
+  #logwrap[hidden] { display: none; }
+  #logbar { display: flex; justify-content: space-between; align-items: center; padding: 6px 24px; color: #999; font-size: 12px; border-bottom: 1px solid #2a2a2a; }
+  #logbar button { background: transparent; color: #bbb; border-color: #444; }
+  #log { margin: 0; height: 220px; color: #d8d8d0; font: 12px/1.45 var(--mono); padding: 10px 24px; overflow: auto; white-space: pre-wrap; }
+  @media (max-width: 560px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #log { padding: 10px 16px; height: 180px; }
+    #logbar { padding: 6px 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>データ管理</h1>
+    <div class="sub" id="sub">読み込み中…</div>
+  </div>
+  <div class="summary" id="summary"></div>
+</header>
+<main id="cards"></main>
+<div id="logwrap" hidden>
+  <div id="logbar"><span id="logtitle">出力</span><button id="logclose" type="button">閉じる</button></div>
+  <pre id="log"></pre>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const linkify = (s) => esc(s).replace(/https?:\/\/[^\s)）]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`)
+const kb = (n) => n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
+let busy = false
+let last = null
+
+async function load() {
+  const r = await fetch('/api/status')
+  last = await r.json()
+  busy = Boolean(last.running)
+  render(last)
+}
+
+function render(s) {
+  const { manifest, meta, report, env } = s
+  $('#sub').textContent = `チェック ${new Date(report.generated_at).toLocaleString('ja-JP')} ・ 生データキャッシュ ${kb(s.cacheBytes)}（data/.cache）`
+  $('#summary').innerHTML = `
+    <span class="pill ${report.errors ? 'err' : 'ok'}">エラー ${report.errors}</span>
+    <span class="pill ${report.warnings ? 'warn' : 'ok'}">警告 ${report.warnings}</span>
+    <span class="pill ${env.estatAppId ? 'ok' : 'warn'}">e-Stat APIキー ${env.estatAppId ? '設定済み' : '未設定'}</span>
+    <button data-cmd="check">チェック再実行</button>
+    <button class="primary" data-cmd="update" data-ds="all">すべて更新（地図以外）</button>`
+
+  $('#cards').innerHTML = Object.entries(manifest).map(([id, src]) => {
+    const ds = meta.datasets[id]
+    const eds = ds?.editions ?? []
+    const latest = eds[0]
+    const results = report.results.filter(r => r.dataset === id)
+    const issues = results.filter(r => r.level !== 'ok')
+    const oks = results.filter(r => r.level === 'ok')
+    const level = !ds ? 'warn' : issues.some(r => r.level === 'error') ? 'err' : issues.length ? 'warn' : 'ok'
+    const badge = !ds ? '未ビルド' : level === 'err' ? 'エラー' : level === 'warn' ? `警告 ${issues.length}` : 'OK'
+    const retrieved = latest?.source && !Array.isArray(latest.source) ? latest.source.retrieved_at
+      : Array.isArray(latest?.source) ? latest.source[0]?.retrieved_at : null
+    const pending = Array.isArray(src.editions) ? src.editions.filter(e => 'main' in e && (!e.main || !e.age)).map(e => e.year) : []
+    const totalBytes = eds.reduce((n, e) => n + (e.bytes || 0), 0)
+    const tags = [src.curated ? '<span class="pill">手管理</span>' : '', src.heavy ? '<span class="pill">重い（all に含まれない）</span>' : ''].join('')
+    return `
+    <section class="card">
+      <div class="card-head">
+        <div><h2>${esc(src.label)}</h2><div class="id">${esc(id)} ・ ${esc(src.agency)}</div></div>
+        <div class="summary">${tags}<span class="pill ${level}">${badge}</span></div>
+      </div>
+      <div class="facts">
+        <div class="fact"><div class="k">最新の時点</div><div class="v">${esc(latest?.as_of ?? '—')}</div></div>
+        <div class="fact"><div class="k">版の数</div><div class="v">${eds.length}</div></div>
+        <div class="fact"><div class="k">取得日</div><div class="v">${esc(retrieved ?? (latest?.source?.manual ? '手作業' : '—'))}</div></div>
+        <div class="fact"><div class="k">生成物</div><div class="v">${totalBytes ? kb(totalBytes) : '—'}</div></div>
+      </div>
+      <div class="editions">
+        ${eds.map((e, i) => `<span class="ed ${i === 0 ? 'latest' : ''} ${e.source?.manual && !src.curated ? 'manual' : ''}" title="${esc(e.path ?? '')}${e.rows ? ` ・ ${e.rows} 行` : ''}">${esc(e.label ?? e.id)}</span>`).join('')}
+        ${pending.map(y => `<span class="ed pending" title="statInfId 未設定">${y}</span>`).join('')}
+      </div>
+      ${issues.length ? `<ul class="issues">${issues.map(r => `<li class="${r.level}">${r.edition ? `<b>${esc(r.edition)}</b> ` : ''}${linkify(r.message)}</li>`).join('')}</ul>` : ''}
+      ${oks.length ? `<details class="oks"><summary>OK のチェック ${oks.length} 件</summary><ul class="issues">${oks.map(r => `<li>${r.edition ? `<b>${esc(r.edition)}</b> ` : ''}${esc(r.message)}</li>`).join('')}</ul></details>` : ''}
+      <div class="note">${esc(src.update_note ?? '')} ・ <a href="${esc(src.page)}" target="_blank" rel="noopener">配布ページ</a></div>
+      <div class="actions">
+        ${src.curated ? '' : `<button class="primary" data-cmd="update" data-ds="${id}">取得＋ビルド</button>`}
+        <button data-cmd="build" data-ds="${id}">ビルドのみ</button>
+        ${src.curated ? '' : `<button data-cmd="update" data-ds="${id}" data-force="1" title="キャッシュを無視して配布元から取り直す">再取得</button>`}
+      </div>
+    </section>`
+  }).join('')
+  setBusy(busy)
+}
+
+function setBusy(b) {
+  busy = b
+  document.querySelectorAll('button[data-cmd]').forEach(el => { el.disabled = b })
+}
+
+async function runCommand(command, ds, force) {
+  if (busy) return
+  if (force && !confirm(`${ds} を配布元から取り直します。よろしいですか？`)) return
+  setBusy(true)
+  const log = $('#log')
+  log.textContent = ''
+  $('#logwrap').hidden = false
+  document.body.classList.add('logopen')
+  $('#logtitle').textContent = `実行中: ${command} ${ds ?? ''}`
+  try {
+    const res = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Pipeline-UI': '1' },
+      body: JSON.stringify({ command, datasets: ds ? [ds] : [], force }),
+    })
+    if (!res.ok) { log.textContent = (await res.json()).error; return }
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      log.textContent += dec.decode(value, { stream: true })
+      log.scrollTop = log.scrollHeight
+    }
+  } catch (e) {
+    log.textContent += `\n${e.message}`
+  } finally {
+    $('#logtitle').textContent = `完了: ${command} ${ds ?? ''}`
+    await load()
+  }
+}
+
+$('#logclose').addEventListener('click', () => {
+  if (busy) return
+  $('#logwrap').hidden = true
+  document.body.classList.remove('logopen')
+})
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-cmd]')
+  if (b) runCommand(b.dataset.cmd, b.dataset.ds, Boolean(b.dataset.force))
+})
+
+load().catch(e => { $('#sub').textContent = `読み込みに失敗しました: ${e.message}` })
+</script>
+</body>
+</html>

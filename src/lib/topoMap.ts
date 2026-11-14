@@ -1,7 +1,7 @@
 // Decodes the N03 municipality boundaries TopoJSON into per-code SVG paths,
 // projected with a plain spherical Mercator (no external geo library).
 
-const TOPOJSON_PATH = '/maps/N03-20260101.1%25.code.topojson'
+import { mapTopojsonPath } from '@/data/municipalities'
 
 export const VIEW_SIZE = 960
 
@@ -70,7 +70,9 @@ const mercator = ([lon, lat]: Point): Point => [
 export type MuniPaths = Map<string, string>
 
 export async function fetchMunicipalityPaths(): Promise<MuniPaths> {
-  const topology: Topology = await fetch(TOPOJSON_PATH).then(r => r.json())
+  const path = mapTopojsonPath()
+  if (!path) return new Map()
+  const topology: Topology = await fetch(`/${path}`).then(r => r.json())
   const arcs = topology.arcs.map(raw => decodeArc(raw, topology.transform))
   const objectKey = Object.keys(topology.objects)[0]
   // Alongside real Polygon/MultiPolygon shapes, the dataset carries many

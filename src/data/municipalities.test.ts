@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeKana, suppressedToNaN, parseCodesCsv } from './municipalities'
+import { normalizeKana, parseCsv, toNum, parseCodesCsv, pickEffectiveMinWages } from './municipalities'
 
 describe('normalizeKana', () => {
   it('converts hiragana to full-width katakana', () => {
@@ -23,46 +23,41 @@ describe('normalizeKana', () => {
   })
 })
 
-describe('suppressedToNaN', () => {
-  it('passes real values through unchanged', () => {
-    expect(suppressedToNaN(1329)).toBe(1329)
-    expect(suppressedToNaN(0)).toBe(0)
+describe('parseCsv / toNum', () => {
+  it('reads the pipeline CSV format, with empty cells as missing values', () => {
+    const rows = parseCsv('code,inc0_total,exc0_total\n01101,1380,\n')
+    expect(rows).toEqual([{ code: '01101', inc0_total: '1380', exc0_total: '' }])
+    expect(toNum(rows[0].inc0_total)).toBe(1380)
+    expect(toNum(rows[0].exc0_total)).toBeNaN()
   })
 
-  it('treats a suppressed (-1) value as NaN', () => {
-    expect(suppressedToNaN(-1)).toBeNaN()
-  })
-
-  it('treats a missing value as NaN', () => {
-    expect(suppressedToNaN(undefined)).toBeNaN()
+  it('keeps leading zeros in codes and handles quoted fields', () => {
+    expect(parseCsv('code,name\r\n01000,"a,b"\r\n')).toEqual([{ code: '01000', name: 'a,b' }])
   })
 })
 
 describe('parseCodesCsv', () => {
-  const header = 'ken_code,sityouson_code,tiiki_code,ken_name,sityouson_name1,sityouson_name2,sityouson_name3,yomigana'
-
-  it('joins a designated city and its ward into one name', () => {
-    const csv = `${header}\n01,101,01101,北海道,札幌市,,中央区,ちゅうおうく`
-    expect(parseCodesCsv(csv)).toEqual([{ code: '01101', kanji: '札幌市中央区', kana: 'ちゅうおうく' }])
-  })
-
-  it('drops a 郡 grouping label instead of prefixing the municipality name with it', () => {
-    const csv = `${header}\n02,301,02301,青森県,東津軽郡,,平内町,ひらないまち`
-    expect(parseCodesCsv(csv)).toEqual([{ code: '02301', kanji: '平内町', kana: 'ひらないまち' }])
-  })
-
-  it('drops a Hokkaido 振興局/総合振興局 grouping label the same way', () => {
-    const csv = `${header}\n01,303,01303,北海道,石狩振興局,,当別町,とうべつちょう`
+  it('uses the display name the pipeline already resolved', () => {
+    const csv = 'code,name,kana,pref_name,parent_name,group_name\n01303,当別町,とうべつちょう,北海道,,石狩振興局'
     expect(parseCodesCsv(csv)).toEqual([{ code: '01303', kanji: '当別町', kana: 'とうべつちょう' }])
   })
+})
 
-  it('drops a Tokyo remote-island 支庁 grouping label the same way', () => {
-    const csv = `${header}\n13,421,13421,東京都,小笠原支庁,,小笠原村,おがさわらむら`
-    expect(parseCodesCsv(csv)).toEqual([{ code: '13421', kanji: '小笠原村', kana: 'おがさわらむら' }])
+describe('pickEffectiveMinWages', () => {
+  const newer = [
+    { code: '01000', min: 1131, since: '2026-10-01' },
+    { code: '05000', min: 1100, since: '2027-03-31' },
+  ]
+  const older = [
+    { code: '01000', min: 1075, since: '2025-10-04' },
+    { code: '05000', min: 1031, since: '2026-03-31' },
+  ]
+
+  it('takes the new 年度 rate once it has taken effect', () => {
+    expect(pickEffectiveMinWages([newer, older], '2026-11-14').get('01')).toEqual({ min: 1131, since: '2026-10-01' })
   })
 
-  it('leaves a plain city with no ward as just its own name', () => {
-    const csv = `${header}\n01,215,01215,北海道,,,美唄市,びばいし`
-    expect(parseCodesCsv(csv)).toEqual([{ code: '01215', kanji: '美唄市', kana: 'びばいし' }])
+  it('keeps the previous rate for a prefecture whose new rate starts later', () => {
+    expect(pickEffectiveMinWages([newer, older], '2026-11-14').get('05')).toEqual({ min: 1031, since: '2026-03-31' })
   })
 })

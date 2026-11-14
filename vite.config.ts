@@ -22,7 +22,7 @@ export default defineConfig(({ command }) => {
       __SITE_URL__: JSON.stringify(siteUrl),
     },
     test: {
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     },
   }
 })

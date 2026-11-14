@@ -28,3 +28,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Raw downloads for the data pipeline (re-fetchable; see DATA_PIPELINE.md)
+/data/.cache
