@@ -1,21 +1,50 @@
-// 国勢調査 (e-Stat API). Editions are registered by hand in sources.json
-// (statsDataId) — the tables differ between censuses, so there's no reliable
-// automatic discovery. `discover` checks each registered table still exists.
+// 国勢調査 (e-Stat API). Discovery searches the census's tables
+// (getStatsList, 政府統計コード 00200521) for the municipal 男女別人口 table
+// of each census, in two flavours:
+//   速報: 人口速報集計 「男女別人口－全国，都道府県，市区町村」          → "<year>-sokuho"
+//   確定: 人口等基本集計 「…男女別人口－全国，都道府県，市区町村（2000年…）」 → "<year>"
+// (参考表 / 不詳補完値 tables share the title and are excluded.) Censuses
+// before 2020 name their tables differently; add those to `editions` in
+// sources.json by hand if wanted.
 import { resolve } from 'node:path'
 import { writeCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { toNumber } from '../lib/text.mjs'
-import { fetchStatsData, readStatsData, statsExists, hasAppId } from '../lib/estat.mjs'
+import { fetchStatsData, readStatsData, statsList, hasAppId } from '../lib/estat.mjs'
 import { fetchRecord } from '../lib/fetch.mjs'
 import { PUBLIC_DIR, rel } from '../lib/paths.mjs'
 
-export async function discover(src, opts) {
+const CENSUS = '00200521'
+const eraYear = (y) => y >= 2019 ? `令和${y - 2018 === 1 ? '元' : y - 2018}年` : `平成${y - 1988}年`
+
+/** Picks the 速報/確定 男女別人口 tables out of a getStatsList result. Exported for tests. */
+export function pickCensusTables(tables) {
   const out = []
-  for (const e of src.editions) {
-    const available = hasAppId() ? await statsExists(e.statsDataId, opts) : null
-    out.push({ id: e.id, as_of: e.as_of, label: e.label, ref: { ...e }, available })
+  for (const t of tables) {
+    const title = t.title.normalize('NFKC').replace(/、/g, ',')
+    const year = Number(t.surveyDate.slice(0, 4))
+    if (!year || /参考表|不詳補完/.test(t.statsName)) continue
+    if (/人口速報集計/.test(t.statsName) && /^男女別人口-全国,都道府県,市区町村$/.test(title)) {
+      out.push({ id: `${year}-sokuho`, as_of: `${year}-10-01`, label: `${eraYear(year)} 速報集計`, ref: { id: `${year}-sokuho`, as_of: `${year}-10-01`, label: `${eraYear(year)} 速報集計`, statsDataId: t.id } })
+    } else if (/人口等基本集計/.test(t.statsName) && /男女別人口-全国,都道府県,市区町村\(2000年/.test(title)) {
+      out.push({ id: String(year), as_of: `${year}-10-01`, label: `${eraYear(year)} 確定（人口等基本集計）`, ref: { id: String(year), as_of: `${year}-10-01`, label: `${eraYear(year)} 確定（人口等基本集計）`, statsDataId: t.id } })
+    }
   }
   return out
+}
+
+export async function discover(src, opts) {
+  if (!hasAppId()) throw new Error('ESTAT_APP_ID が未設定のため確認できません')
+  const tables = [
+    ...await statsList({ statsCode: CENSUS, searchWord: '速報集計 AND 男女別人口' }, opts),
+    ...await statsList({ statsCode: CENSUS, searchWord: '人口等基本集計 AND 男女別人口' }, opts),
+  ]
+  const found = pickCensusTables(tables)
+  // Hand-registered extras (e.g. older censuses) — never override a found one.
+  for (const e of src.editions ?? []) {
+    if (!found.some(f => f.id === e.id)) found.push({ id: e.id, as_of: e.as_of, label: e.label, ref: { ...e } })
+  }
+  return found
 }
 
 export async function fetchEdition(src, ref, opts) {
@@ -43,6 +72,9 @@ export function transform(values) {
   const ignored = new Set()
   for (const v of values) {
     if (latest && v.time !== latest) continue
+    // 確定 tables also carry the 2000-era municipalities as "（旧：厚田村）";
+    // they no longer exist and are left out.
+    if (/^[（(]旧/.test(v.dims.area ?? '')) continue
     const code = toCode5(v.area)
     if (!code) continue
     const names = Object.entries(v.dims).filter(([k]) => k !== 'area' && k !== 'time').map(([, n]) => n)

@@ -142,7 +142,7 @@ function rowsOf(id) {
   const newestHeld = held.map(e => e.as_of).sort().at(-1) ?? ''
   return [...rows.values()]
     .map(r => ({ ...r, newer: !r.held && r.a === 'ok' && (r.as_of ?? '') > newestHeld }))
-    .sort((x, y) => (y.as_of ?? '').localeCompare(x.as_of ?? '') || y.id.localeCompare(x.id))
+    .sort((x, y) => (y.as_of ?? '').localeCompare(x.as_of ?? '') || x.id.length - y.id.length || y.id.localeCompare(x.id))
 }
 
 function render() {

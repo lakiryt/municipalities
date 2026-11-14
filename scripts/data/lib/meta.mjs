@@ -17,7 +17,8 @@ export function readMeta() {
 
 const ATTRIBUTION_KEYS = ['label', 'name', 'agency', 'page', 'license']
 const indexOr = (arr, v) => { const i = arr.indexOf(v); return i === -1 ? Infinity : i }
-const byNewest = (a, b) => (b.as_of ?? '').localeCompare(a.as_of ?? '') || b.id.localeCompare(a.id)
+// Same date: the plain edition before its variants ("2025" before "2025-sokuho").
+const byNewest = (a, b) => (b.as_of ?? '').localeCompare(a.as_of ?? '') || a.id.length - b.id.length || b.id.localeCompare(a.id)
 
 function writeMeta(meta) {
   const manifest = readManifest()

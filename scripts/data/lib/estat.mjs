@@ -33,6 +33,33 @@ export async function fetchStatsData(statsDataId, opts) {
 
 export const isCached = (statsDataId) => existsSync(cachePath(pageKey(statsDataId, 1)))
 
+/**
+ * getStatsList: every table matching the params (pages through NEXT_KEY).
+ * Returns [{ id, statsName, title, surveyDate, openDate }].
+ */
+export async function statsList(params, { log = () => {} } = {}) {
+  const out = []
+  let start = 1
+  for (;;) {
+    const qs = new URLSearchParams({ ...params, limit: '1000', startPosition: String(start) })
+    const url = `https://api.e-stat.go.jp/rest/3.0/app/json/getStatsList?${qs}`
+    log(`  GET     ${url}`)
+    const res = await fetch(`${url}&appId=${process.env.ESTAT_APP_ID}`, { headers: { 'User-Agent': 'municipalities-data-pipeline' } })
+    if (!res.ok) throw new Error(`e-Stat API HTTP ${res.status} (getStatsList)`)
+    const body = (await res.json()).GET_STATS_LIST
+    if (body?.RESULT?.STATUS >= 100) throw new Error(`e-Stat API error ${body.RESULT.STATUS}: ${body.RESULT.ERROR_MSG}`)
+    const text = (v) => String(typeof v === 'object' && v !== null ? v.$ : v ?? '')
+    // A table is listed once per 集計地域区分 (全国/都道府県/市区町村); keep one.
+    for (const t of [body.DATALIST_INF?.TABLE_INF ?? []].flat()) {
+      if (out.some(o => o.id === t['@id'])) continue
+      out.push({ id: t['@id'], statsName: text(t.STATISTICS_NAME), title: text(t.TITLE), surveyDate: String(t.SURVEY_DATE), openDate: t.OPEN_DATE })
+    }
+    const next = body.DATALIST_INF?.RESULT_INF?.NEXT_KEY
+    if (!next) return out
+    start = next
+  }
+}
+
 /** Whether the table still exists (getMetaInfo returns STATUS 0). */
 export async function statsExists(statsDataId, { log = () => {} } = {}) {
   const url = `https://api.e-stat.go.jp/rest/3.0/app/json/getMetaInfo?statsDataId=${statsDataId}`

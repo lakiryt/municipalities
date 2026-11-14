@@ -8,7 +8,7 @@ type Props = {
   onClose: () => void
 }
 
-type Source = { label: string; as_of: string; path: string }
+type Source = { label: string; name: string; as_of: string; path: string }
 
 function groupByLabel(sources: Source[]): [string, Source[]][] {
   const map = new Map<string, Source[]>()
@@ -57,7 +57,7 @@ function SourceSection({ radioName, sources, selectedPath, onChange }: {
               onChange={e => onChange(e.target.value)}
             >
               {srcs.map(src => (
-                <option key={src.path} value={src.path}>{src.as_of}</option>
+                <option key={src.path} value={src.path}>{src.name}</option>
               ))}
             </select>
           </label>

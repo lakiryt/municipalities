@@ -32,13 +32,11 @@
     "label": "国勢調査",
     "name": "国勢調査 男女別人口",
     "agency": "総務省 統計局 統計調査部 国勢統計課",
-    "page": "https://www.e-stat.go.jp/stat-search/database?statdisp_id=0004050397",
-    "discover": "manual",
+    "page": "https://www.e-stat.go.jp/stat-search/database?toukei=00200521",
+    "discover": "auto",
     "usage": "select",
-    "note": "e-Stat API（ESTAT_APP_ID が必要）。版は editions に statsDataId（e-Stat の DB 表示 ID）を手で登録する",
-    "editions": [
-      { "id": "2025-sokuho", "as_of": "2025-10-01", "label": "令和7年 速報集計", "statsDataId": "0004050397" }
-    ]
+    "note": "e-Stat API（ESTAT_APP_ID が必要）で 2020年以降の速報・確定の男女別人口表を検索する。それ以前の回は editions に statsDataId を手で登録すれば扱える",
+    "editions": []
   },
   "area": {
     "label": "国土地理院 面積調査",

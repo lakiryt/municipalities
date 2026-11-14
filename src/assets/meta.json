@@ -238,8 +238,27 @@
       "label": "国勢調査",
       "name": "国勢調査 男女別人口",
       "agency": "総務省 統計局 統計調査部 国勢統計課",
-      "page": "https://www.e-stat.go.jp/stat-search/database?statdisp_id=0004050397",
+      "page": "https://www.e-stat.go.jp/stat-search/database?toukei=00200521",
       "editions": [
+        {
+          "id": "2025",
+          "as_of": "2025-10-01",
+          "label": "令和7年 確定（人口等基本集計）",
+          "path": "data/kokusei/2025.csv",
+          "rows": 1961,
+          "source": {
+            "url": "e-Stat API statsDataId=0004065881",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1b926856ecee8c6d53ea2afd04bc97fa86abf8c2d0cb4ed911e09850620f7b5e"
+          },
+          "ref": {
+            "id": "2025",
+            "as_of": "2025-10-01",
+            "label": "令和7年 確定（人口等基本集計）",
+            "statsDataId": "0004065881"
+          },
+          "enabled": true
+        },
         {
           "id": "2025-sokuho",
           "as_of": "2025-10-01",
@@ -256,6 +275,44 @@
             "as_of": "2025-10-01",
             "label": "令和7年 速報集計",
             "statsDataId": "0004050397"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2020",
+          "as_of": "2020-10-01",
+          "label": "令和2年 確定（人口等基本集計）",
+          "path": "data/kokusei/2020.csv",
+          "rows": 1965,
+          "source": {
+            "url": "e-Stat API statsDataId=0003445078",
+            "retrieved_at": "2026-11-14",
+            "sha256": "ad529d32e3e2740398da03c5788bbcc840a660d18b82a8f5cfbba3a25a86e714"
+          },
+          "ref": {
+            "id": "2020",
+            "as_of": "2020-10-01",
+            "label": "令和2年 確定（人口等基本集計）",
+            "statsDataId": "0003445078"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2020-sokuho",
+          "as_of": "2020-10-01",
+          "label": "令和2年 速報集計",
+          "path": "data/kokusei/2020-sokuho.csv",
+          "rows": 1965,
+          "source": {
+            "url": "e-Stat API statsDataId=0003433219",
+            "retrieved_at": "2026-11-14",
+            "sha256": "c4a38685f256311a6527c09c228d066d5656cd00a72c9263badb8a09ad904c3f"
+          },
+          "ref": {
+            "id": "2020-sokuho",
+            "as_of": "2020-10-01",
+            "label": "令和2年 速報集計",
+            "statsDataId": "0003433219"
           },
           "enabled": true
         }

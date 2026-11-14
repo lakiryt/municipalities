@@ -78,10 +78,18 @@ const fetchCsv = (path: string) => fetch(`/${path}`).then(r => r.text()).then(pa
 
 // ── Area data ─────────────────────────────────────────────────────────────────
 
-export type Source = { label: string; as_of: string; path: string }
+// `label` is the dataset (住民基本台帳, 国勢調査, …); `name` tells its editions
+// apart — usually the date, but e.g. 国勢調査 has a 速報 and a 確定 edition
+// for the same date.
+export type Source = { label: string; name: string; as_of: string; path: string }
 
 const sourcesOf = (id: string): Source[] =>
-  dataset(id).editions.map(e => ({ label: dataset(id).label, as_of: e.as_of, path: e.path }))
+  dataset(id).editions.map(e => ({
+    label: dataset(id).label,
+    name: id === 'kokusei' ? (e.label ?? e.as_of) : e.as_of,
+    as_of: e.as_of,
+    path: e.path,
+  }))
 
 export const areaSources: Source[] = sourcesOf('area')
 
