@@ -1,41 +1,42 @@
 import { test, expect } from '@playwright/test'
 
-test('ranking pages restrict to official municipalities, excluding designated-city wards', async ({ page }) => {
+test('rankings start with a visible &official filter, so designated-city wards are not counted twice', async ({ page }) => {
   await page.goto('/list/all/population')
   await expect(page.locator('tbody tr').first()).toBeVisible()
-
-  // 横浜市鶴見区 is a real row in the full CSV (it's on the map), but it's a
-  // ward of a designated city, not its own 地方公共団体 — rankings should
-  // never show it.
-  await expect(page.getByRole('cell', { name: '横浜市鶴見区', exact: true })).toHaveCount(0)
-  // The parent city itself is a real municipality and should still appear.
-  await expect(page.getByRole('cell', { name: '横浜市', exact: true })).toBeVisible()
-})
-
-test("/explore's table is also restricted to official municipalities", async ({ page }) => {
-  await page.goto('/explore')
-  await expect(page.locator('tbody tr').first()).toBeVisible()
-
+  await expect(page.getByRole('button', { name: '絞り込み' })).toHaveText('絞り込み：政令市の区を除く')
   await expect(page.getByRole('cell', { name: '横浜市鶴見区', exact: true })).toHaveCount(0)
   await expect(page.getByRole('cell', { name: '横浜市', exact: true })).toBeVisible()
 })
 
-test("/explore's map still colors designated-city wards even though its table is restricted", async ({ page }) => {
+test("/explore starts the same way, and clearing the filter brings the wards in", async ({ page }) => {
   await page.goto('/explore')
   await expect(page.locator('tbody tr').first()).toBeVisible()
+  await expect(page.getByRole('cell', { name: '横浜市鶴見区', exact: true })).toHaveCount(0)
 
-  // Open the map for 総人口 via a column's own action, since it's not one of
-  // the table's rows anymore.
+  await page.getByRole('button', { name: '絞り込み' }).click()
+  await page.getByRole('button', { name: 'クリア' }).click()
+  await expect(page.getByRole('button', { name: '絞り込み' })).toHaveText('絞り込み')
+  await expect(page.getByRole('cell', { name: '横浜市鶴見区', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('cell', { name: '横浜市', exact: true })).toBeVisible()
+})
+
+test("on the map, a designated city shown without its wards is drawn over its wards' shapes", async ({ page }) => {
+  await page.goto('/explore')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
   await page.getByRole('tab', { name: '地図', exact: true }).click()
   await page.waitForSelector('svg path')
 
-  // If wards had been dropped along with the table's restriction, almost all
-  // ~170 of their paths would render as "no data" gray — instead only the
-  // handful of prefecture-coded islands should.
+  // Wards aren't rows here (&official), but their shapes still carry 横浜市's
+  // value — only the handful of prefecture-coded islands are "no data".
   const total = await page.locator('svg path').count()
   const noData = await page.locator('svg path[fill="#e1e0d9"]').count()
   expect(total).toBeGreaterThan(1000)
   expect(noData).toBeLessThan(20)
+  const tsurumi = page.locator('svg path[data-code="14101"]')
+  const naka = page.locator('svg path[data-code="14104"]')
+  expect(await tsurumi.getAttribute('fill')).toBe(await naka.getAttribute('fill'))
+  await tsurumi.hover({ force: true })
+  await expect(page.getByTestId('map-tooltip')).toContainText('横浜市:')
 })
 
 test('opening the map from a ranking page stays on that page instead of jumping to /explore', async ({ page }) => {

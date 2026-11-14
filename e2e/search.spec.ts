@@ -16,14 +16,17 @@ test('kana search (hiragana input) filters to the matching municipality', async 
   expect(await page.locator('tbody tr').count()).toBe(1)
 })
 
-test('kana search does not surface designated-city wards — /search is restricted to official municipalities', async ({ page }) => {
-  // Ward readings aren't prefixed with the parent city's reading (the CSV's
-  // yomigana column is per-row), so if wards were included this would match
-  // several designated cities' same-named wards. /search only ever shows
-  // real 地方公共団体, so none of them should appear.
+test('kana search also finds designated-city wards (they have rows of their own); 種別 narrows them out', async ({ page }) => {
   await page.getByPlaceholder('かな（前方一致）').fill('つるみく')
   await page.getByRole('button', { name: '適用' }).click()
+  await expect(page.getByRole('cell', { name: '横浜市鶴見区', exact: true })).toBeVisible()
 
+  await page.getByRole('button', { name: '絞り込み' }).click()
+  await page.getByRole('button', { name: 'クリア' }).click()
+  await page.goto('/search')
+  await page.getByPlaceholder('かな（前方一致）').fill('つるみく')
+  await page.getByRole('checkbox', { name: '市', exact: true }).check()
+  await page.getByRole('button', { name: '適用' }).click()
   await expect(page.locator('table')).toBeVisible()
   expect(await page.locator('tbody tr').count()).toBe(0)
 })

@@ -1,30 +1,39 @@
 // How map values become colors. Data differs: population, area and density
 // span several orders of magnitude (a linear scale paints all of Japan the
 // palest color and a few wards the darkest), while an aging rate or a rent
-// is spread evenly. So the scale is chosen per map — automatically from the
-// data's spread, or explicitly — instead of one rule for everything.
+// is spread evenly, and a change (増減率, 増減数) has a sign. So the scale is
+// chosen per map — automatically from the data, or explicitly — and every
+// scale follows the same rules whatever the column is.
 //
+// Unsigned data (light → dark):
 //   linear — position between min and max
 //   log    — position between log(min) and log(max) of the positive values;
 //            a few zeros (e.g. the uninhabited Northern Territories villages)
 //            are allowed and painted in the lowest color
 //   rank   — percentile rank (robust to any distribution; equal color areas)
-//   diverging — for data with a sign (増減率, 増減数): 0 is the neutral
-//            middle, negatives run one way and positives the other, each
-//            side stretched to its own extreme (growth and decline differ in
-//            size: almost every municipality shrinks). Outliers are clipped by
-//            default here, since a single small town's +81% would otherwise
-//            wash out every other growth.
+// Signed data (0 is the neutral middle; negatives one way, positives the
+// other, each side stretched to its own extreme):
+//   diverging — linear on each side
+//   symlog    — the signed counterpart of log: asinh(v / c), linear for
+//               |v| up to about c (the median |v|) and logarithmic beyond, so
+//               a few large values don't wash out the rest
 //
-// `clip` drops the lowest/highest 2% from the scale's range ("outliers"):
-// they're still drawn, in the end colors, and the legend says ≤ / ≥.
+// Automatic: log for positive data whose spread (95th / 5th percentile) is
+// more than 10×; for data with both signs, symlog when |v| spreads that
+// much, diverging otherwise; linear for the rest.
+//
+// `clipPercent` (0 = off) takes the lowest and highest p% of the values out of
+// the scale's range: they're still drawn, in the end colors, and the legend
+// says ≤ / ≥. Same meaning on every scale (not applicable to rank).
 
-export type ScaleKind = 'linear' | 'log' | 'rank' | 'diverging'
+export type ScaleKind = 'linear' | 'log' | 'rank' | 'diverging' | 'symlog'
 export type ScaleChoice = ScaleKind | 'auto'
 
-export const SCALE_LABELS: Record<ScaleKind, string> = { linear: '線形', log: '対数', rank: '順位', diverging: '増減' }
+export const SCALE_LABELS: Record<ScaleKind, string> = {
+  linear: '線形', log: '対数', rank: '順位', diverging: '増減・線形', symlog: '増減・対称対数',
+}
 
-export const CLIP_PERCENT = 2
+export const isSigned = (kind: ScaleKind) => kind === 'diverging' || kind === 'symlog'
 
 export type ColorScale = {
   kind: ScaleKind
@@ -49,6 +58,8 @@ export function quantile(sorted: number[], q: number): number {
 
 // Log is offered when at least this share of the values is positive.
 const LOG_MIN_POSITIVE_SHARE = 0.95
+// "Spans orders of magnitude": 95th / 5th percentile above this.
+const WIDE_SPREAD = 10
 
 /** Whether log is possible: (almost) all values positive. */
 export function canLog(values: number[]): boolean {
@@ -61,25 +72,24 @@ export function canDiverge(values: number[]): boolean {
   return values.some(v => v < 0) && values.some(v => v > 0)
 }
 
-/**
- * The automatic choice: diverging for data on both sides of 0; log when log is possible and the positive values
- * span more than an order of magnitude between their 5th and 95th
- * percentiles (population, area, density); linear otherwise (rates, rents,
- * wages).
- */
-export function suggestScale(values: number[]): ScaleKind {
-  if (canDiverge(values)) return 'diverging'
-  if (!canLog(values)) return 'linear'
-  const positive = values.filter(v => v > 0).sort((a, b) => a - b)
-  return quantile(positive, 0.95) / quantile(positive, 0.05) > 10 ? 'log' : 'linear'
+const wideSpread = (positive: number[]) => {
+  const s = [...positive].sort((a, b) => a - b)
+  return quantile(s, 0.95) / quantile(s, 0.05) > WIDE_SPREAD
 }
 
-export function makeScale(values: number[], choice: ScaleChoice, clip: boolean): ColorScale {
+export function suggestScale(values: number[]): ScaleKind {
+  if (canDiverge(values)) return wideSpread(values.filter(v => v !== 0).map(Math.abs)) ? 'symlog' : 'diverging'
+  if (!canLog(values)) return 'linear'
+  return wideSpread(values.filter(v => v > 0)) ? 'log' : 'linear'
+}
+
+export function makeScale(values: number[], choice: ScaleChoice, clipPercent = 0): ColorScale {
   const sorted = [...values].sort((a, b) => a - b)
   let kind: ScaleKind = choice === 'auto' ? suggestScale(sorted) : choice
   if (kind === 'log' && !canLog(sorted)) kind = 'linear'
-  if (kind === 'diverging' && !canDiverge(sorted)) kind = 'linear'
+  if (isSigned(kind) && !canDiverge(sorted)) kind = 'linear'
   const min = sorted[0] ?? 0, max = sorted.at(-1) ?? 1
+  const p = Math.max(0, Math.min(49, clipPercent)) / 100
 
   if (kind === 'rank') {
     // Rank of v = share of values below it (ties share the midpoint).
@@ -98,29 +108,35 @@ export function makeScale(values: number[], choice: ScaleChoice, clip: boolean):
     }
   }
 
-  if (kind === 'diverging') {
-    // Two slopes meeting at 0: lo..0 → 0..0.5 and 0..hi → 0.5..1. Each side
-    // is clipped on its own, so a side with few values (growth, here) keeps
-    // its colors instead of being clipped away by the other side's quantiles.
-    const neg = sorted.filter(v => v < 0), pos = sorted.filter(v => v > 0)
-    const lo = Math.min(0, clip && neg.length ? quantile(neg, CLIP_PERCENT / 100) : min)
-    const hi = Math.max(0, clip && pos.length ? quantile(pos, 1 - CLIP_PERCENT / 100) : max)
+  if (isSigned(kind)) {
+    // Two slopes meeting at 0: lo..0 → 0..0.5 and 0..hi → 0.5..1, through f
+    // (identity, or asinh for symlog). Clipping takes the same p% off each
+    // end as on any scale; if that cuts past 0, the whole side is "outside"
+    // and drawn in its end color.
+    const qLo = p > 0 ? quantile(sorted, p) : min
+    const qHi = p > 0 ? quantile(sorted, 1 - p) : max
+    const lo = Math.min(0, qLo), hi = Math.max(0, qHi)
+    const absSorted = sorted.filter(v => v !== 0).map(Math.abs).sort((a, b) => a - b)
+    const c = kind === 'symlog' ? quantile(absSorted, 0.5) || 1 : 1
+    const f = kind === 'symlog' ? (v: number) => Math.asinh(v / c) : (v: number) => v
+    const fInv = kind === 'symlog' ? (y: number) => c * Math.sinh(y) : (y: number) => y
+    const fLo = f(lo), fHi = f(hi)
     return {
       kind, lo, hi,
       clippedLow: min < lo,
       clippedHigh: max > hi,
-      t: v => v < 0
-        ? (lo < 0 ? 0.5 - 0.5 * Math.min(1, v / lo) : 0.5)
-        : (hi > 0 ? 0.5 + 0.5 * Math.min(1, v / hi) : 0.5),
-      valueAt: t => (t < 0.5 ? lo * (0.5 - t) * 2 : hi * (t - 0.5) * 2),
+      t: v => v < 0 ? (fLo < 0 ? 0.5 - 0.5 * Math.min(1, f(v) / fLo) : 0)
+        : v > 0 ? (fHi > 0 ? 0.5 + 0.5 * Math.min(1, f(v) / fHi) : 1)
+        : 0.5,
+      valueAt: t => (t < 0.5 ? fInv(fLo * (0.5 - t) * 2) : fInv(fHi * (t - 0.5) * 2)),
     }
   }
 
   // Log spans the positive values only; anything ≤ 0 clamps to the low end.
   const domain = kind === 'log' ? sorted.filter(v => v > 0) : sorted
   const dMin = domain[0] ?? min, dMax = domain.at(-1) ?? max
-  const lo = clip ? quantile(domain, CLIP_PERCENT / 100) : dMin
-  const hi = clip ? quantile(domain, 1 - CLIP_PERCENT / 100) : dMax
+  const lo = p > 0 ? quantile(domain, p) : dMin
+  const hi = p > 0 ? quantile(domain, 1 - p) : dMax
   const f = kind === 'log' ? Math.log : (x: number) => x
   const fInv = kind === 'log' ? Math.exp : (x: number) => x
   const a = f(lo), b = f(hi)

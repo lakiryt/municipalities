@@ -66,13 +66,15 @@ export const DEFAULT_SORT_KEY = 'totalpop'
 
 // ── Filter ────────────────────────────────────────────────────────────────────
 
-export type MuniType = 'shi' | 'cho' | 'son' | 'ku'
+export type MuniType = 'shi' | 'cho' | 'son' | 'ku' | 'ward'
 
-export const MUNI_TYPES: { key: MuniType; label: string; char: string }[] = [
-  { key: 'shi', label: '市', char: '市' },
-  { key: 'cho', label: '町', char: '町' },
-  { key: 'son', label: '村', char: '村' },
-  { key: 'ku',  label: '区', char: '区' },
+// Values of $kind.
+export const MUNI_TYPES: { key: MuniType; label: string }[] = [
+  { key: 'shi',  label: '市' },
+  { key: 'cho',  label: '町' },
+  { key: 'son',  label: '村' },
+  { key: 'ku',   label: '特別区' },
+  { key: 'ward', label: '政令市の区' },
 ]
 
 export type KubunKey = 'seirei' | 'chukaku' | 'tokurei'
@@ -93,7 +95,7 @@ export type FilterState = {
 export const DEFAULT_FILTER_STATE: FilterState = {
   kana: '',
   pref: '',
-  types: { shi: false, cho: false, son: false, ku: false },
+  types: { shi: false, cho: false, son: false, ku: false, ward: false },
   kubun: { seirei: false, chukaku: false, tokurei: false },
 }
 
@@ -105,7 +107,7 @@ export function buildFilterExpr(state: FilterState): string | null {
   if (pref) parts.push(`EQ($prefkanji, "${pref}")`)
   const activeTypes = MUNI_TYPES.filter(t => types[t.key])
   if (activeTypes.length > 0 && activeTypes.length < MUNI_TYPES.length) {
-    const exprs = activeTypes.map(t => `EQ(SUBSTR($kanji, NEG(1)), "${t.char}")`)
+    const exprs = activeTypes.map(t => `EQ($kind, "${t.label}")`)
     parts.push(exprs.length === 1 ? exprs[0] : `OR(${exprs.join(', ')})`)
   }
   const activeKubun = KUBUN_OPTS.filter(o => kubun[o.key])

@@ -6,7 +6,7 @@ import type { DesignationSets } from '@/data/datasets'
 import type { ColumnState, ColumnRef } from '@/types'
 import { formatValue } from '@/lib/format'
 import { fitBounds, type Box } from '@/lib/mapFit'
-import { makeScale, canLog, canDiverge, suggestScale, SCALE_LABELS, CLIP_PERCENT, type ScaleChoice } from '@/lib/colorScale'
+import { makeScale, canLog, canDiverge, suggestScale, isSigned, SCALE_LABELS, type ScaleChoice } from '@/lib/colorScale'
 import {
   fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP, VIEW_SIZE,
   type MuniPaths, type ColorSchemeKey,
@@ -18,6 +18,9 @@ type Props = {
   columnOptions: ColumnRef[]
   onSelectColumn: (id: number) => void
   displayItems: BaseItem[]
+  // Every row, shown or not: names any shape on hover, and tells which wards
+  // belong to a designated city (which has no shape of its own).
+  allItems?: BaseItem[]
   designations: DesignationSets | undefined
   coastal: Set<string>
   // When the rows are filtered (e.g. to one prefecture), zoom to them.
@@ -51,15 +54,18 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
 // The map view: fills the content area below the toolbar (not a modal), so
 // "表 ｜ 地図" switches between two views of the same rows. Desktop hovers
 // for a tooltip; a click/tap pins a card (phones have no hover).
-function MapView({ column, columnOptions, onSelectColumn, displayItems, designations, coastal, fitToItems = false, linkFor }: Props) {
-  // The color scale (自動/線形/対数/順位) and outlier clipping are per map
-  // and kept in the URL (?scale=log&clip=1), like the map column itself.
+function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems = [], designations, coastal, fitToItems = false, linkFor }: Props) {
+  // The color scale and outlier clipping (a percentage, 0 = none) are per
+  // map and kept in the URL (?scale=log&clip=2), like the map column itself.
   const [searchParams, setSearchParams] = useSearchParams()
   const scaleParam = searchParams.get('scale')
   const scaleChoice: ScaleChoice =
-    scaleParam === 'linear' || scaleParam === 'log' || scaleParam === 'rank' || scaleParam === 'diverging' ? scaleParam : 'auto'
-  // ?clip=1 / ?clip=0 override the default (on for diverging, off otherwise).
-  const clipParam = searchParams.get('clip')
+    scaleParam === 'linear' || scaleParam === 'log' || scaleParam === 'rank' || scaleParam === 'diverging' || scaleParam === 'symlog'
+      ? scaleParam : 'auto'
+  const clipParam = Number(searchParams.get('clip') ?? 0)
+  const clipPercent = clipParam >= 0 && clipParam <= 49 ? clipParam : 0
+  // The input's own text, so it can be briefly empty or mid-edit.
+  const [clipText, setClipText] = useState(String(clipPercent))
   const setParam = (key: string, value: string | null) => setSearchParams(prev => {
     const next = new URLSearchParams(prev)
     if (value === null) next.delete(key); else next.set(key, value)
@@ -130,6 +136,29 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
     return m
   }, [displayItems])
 
+  const allByCode = useMemo(() => new Map(allItems.map(i => [i.code, i])), [allItems])
+  const wardsOf = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const i of allItems) if (i.parent) m.set(i.parent, [...(m.get(i.parent) ?? []), i.code])
+    return m
+  }, [allItems])
+
+  // Which row each shape shows: its own, or — for a designated city shown
+  // without its wards (e.g. filtered by &official) — the city's, so the
+  // city is drawn over its wards' shapes. A ward shown itself wins.
+  const owner = useMemo(() => {
+    const m = new Map<string, string>()
+    if (!paths) return m
+    for (const code of itemByCode.keys()) if (paths.has(code)) m.set(code, code)
+    for (const code of itemByCode.keys()) {
+      if (paths.has(code)) continue
+      for (const w of wardsOf.get(code) ?? []) if (paths.has(w) && !m.has(w)) m.set(w, code)
+    }
+    return m
+  }, [paths, itemByCode, wardsOf])
+  const drawn = useMemo(() => new Set(owner.values()), [owner])
+
+  // One value per shown row (a city drawn over its wards counts once).
   const values = useMemo(() => {
     if (!paths) return new Map<string, number>()
     const map = new Map<string, number>()
@@ -140,21 +169,19 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
       // small islands are drawn under their prefecture's own code rather
       // than a municipality's, and coloring them by the prefecture's total
       // would be just as misleading as including the total itself.
-      if (!paths.has(code) || code.endsWith('000')) continue
+      if (!drawn.has(code) || code.endsWith('000')) continue
       const v = evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number
       if (!isNaN(v)) map.set(code, v)
     }
     return map
-  }, [itemByCode, column, designations, coastal, paths])
+  }, [itemByCode, column, designations, coastal, paths, drawn])
 
   const valueList = useMemo(() => [...values.values()], [values])
   const logPossible = useMemo(() => canLog(valueList), [valueList])
   const divergePossible = useMemo(() => canDiverge(valueList), [valueList])
   const autoKind = useMemo(() => suggestScale(valueList), [valueList])
-  const clipDefault = (scaleChoice === 'auto' ? autoKind : scaleChoice) === 'diverging' && divergePossible
-  const clip = clipParam === '1' || (clipParam !== '0' && clipDefault)
-  const scale = useMemo(() => makeScale(valueList, scaleChoice, clip), [valueList, scaleChoice, clip])
-  const diverging = scale.kind === 'diverging'
+  const scale = useMemo(() => makeScale(valueList, scaleChoice, clipPercent), [valueList, scaleChoice, clipPercent])
+  const diverging = isSigned(scale.kind)
   const ramp = diverging ? DIVERGING_RAMP : COLOR_SCHEMES[schemeKey].ramp
 
   // Bins are equal steps along the color scale (not the raw values), so a
@@ -199,12 +226,14 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
     if (!paths || !svg) return
     // Measured after the shapes are laid out (next frame), then applied.
     const frame = requestAnimationFrame(() => {
-      if (!fitKey) { setView({ scale: 1, x: 0, y: 0 }); return }
+      // Nothing filtered — or a filter that keeps (nearly) every shape —
+      // shows the whole country rather than zooming to it.
+      if (!fitKey || owner.size >= 0.9 * paths.size) { setView({ scale: 1, x: 0, y: 0 }); return }
       // One box per municipality (a municipality may be several paths).
       const boxes = new Map<string, Box>()
       svg.querySelectorAll<SVGPathElement>('path[data-code]').forEach(el => {
         const code = el.dataset.code!
-        if (!itemByCode.has(code)) return
+        if (!owner.has(code)) return
         const bb = el.getBBox()
         const prev = boxes.get(code)
         boxes.set(code, prev
@@ -321,9 +350,11 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
     }
   }, [paths])
 
-  const pick = (code: string) => {
+  const pick = (shape: string) => {
     if (movedRef.current > 5) return
-    const item = itemByCode.get(code)
+    const code = owner.get(shape) ?? shape
+    // A shape outside the shown rows still says what it is (データなし).
+    const item = itemByCode.get(code) ?? allByCode.get(code)
     if (!item) { setPicked(null); return }
     setPicked({ code, label: item.kanji || item.prefecture.kanji || '', pref: item.kanji ? item.prefecture.kanji ?? '' : '', value: values.get(code) })
   }
@@ -359,20 +390,21 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
               onMouseDown={handleMouseDown}
             >
               <g transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>
-                {[...paths.entries()].map(([code, d]) => {
+                {[...paths.entries()].map(([shape, d]) => {
+                  const code = owner.get(shape) ?? shape
                   const v = values.get(code)
                   const fill = v === undefined ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
                   return (
                     <path
-                      key={code}
-                      data-code={code}
+                      key={shape}
+                      data-code={shape}
                       d={d}
                       fill={fill}
                       strokeWidth={picked?.code === code ? 1.5 : 0.5}
                       vectorEffect="non-scaling-stroke"
                       onMouseMove={e => {
                         if (isDragging) return
-                        const item = itemByCode.get(code)
+                        const item = itemByCode.get(code) ?? allByCode.get(code)
                         if (!item) { setHover(null); return }
                         // Prefecture-level codes (the remote islands drawn under
                         // them) have no municipality name of their own in the
@@ -382,7 +414,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
                         setHover({ x: e.clientX, y: e.clientY, label, value: v })
                       }}
                       onMouseLeave={() => setHover(null)}
-                      onClick={() => pick(code)}
+                      onClick={() => pick(shape)}
                       stroke={picked?.code === code ? '#111827' : 'none'}
                     />
                   )
@@ -526,17 +558,28 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
               <option value="linear">線形</option>
               <option value="log" disabled={!logPossible}>対数{logPossible ? '' : '（0以下の値が多いため不可）'}</option>
               <option value="rank">順位（パーセンタイル）</option>
-              <option value="diverging" disabled={!divergePossible}>増減（0を中央に）{divergePossible ? '' : '（正と負の値がないため不可）'}</option>
+              <option value="diverging" disabled={!divergePossible}>{SCALE_LABELS.diverging}{divergePossible ? '' : '（正と負の値がないため不可）'}</option>
+              <option value="symlog" disabled={!divergePossible}>{SCALE_LABELS.symlog}{divergePossible ? '' : '（正と負の値がないため不可）'}</option>
             </select>
           </label>
-          <label className={`flex items-center gap-1.5 ${scale.kind === 'rank' ? 'opacity-40' : ''}`} title="極端に大きい・小さい値に色の範囲が引っ張られないよう、上下の値を両端の色でまとめて塗ります">
+          <label className={`flex items-center gap-1.5 ${scale.kind === 'rank' ? 'opacity-40' : ''}`} title="上下それぞれ指定した割合の値を色の範囲から外し、両端の色で塗ります（0 で外さない）">
+            外れ値を除く 上下
             <input
-              type="checkbox"
-              checked={clip && scale.kind !== 'rank'}
+              type="number"
+              aria-label="外れ値として除く割合（%）"
+              min={0}
+              max={49}
+              step={0.5}
+              className="w-14 border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-900 tabular-nums disabled:bg-gray-50"
+              value={clipText}
               disabled={scale.kind === 'rank'}
-              onChange={e => setParam('clip', e.target.checked === clipDefault ? null : e.target.checked ? '1' : '0')}
+              onChange={e => {
+                setClipText(e.target.value)
+                const v = Number(e.target.value)
+                if (e.target.value !== '' && v >= 0 && v <= 49) setParam('clip', v > 0 ? String(v) : null)
+              }}
             />
-            外れ値を色の範囲から除く（上下{CLIP_PERCENT}%）
+            %
           </label>
           {scale.kind !== 'linear' && (
             <span className="text-gray-400 tabular-nums">中央の色 ≒ {legendValue(scale.valueAt(0.5))}</span>

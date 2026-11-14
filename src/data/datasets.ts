@@ -262,10 +262,11 @@ export const fetchMinWages = (path: string): Promise<MinWageMap> => {
 // data for just render as "no data" — there's no need to tell them apart here.
 // The pipeline has already resolved display names (ward → "札幌市中央区",
 // town → "当別町" without its 郡/振興局 label; see scripts/data/datasets/codes.mjs).
-export type CodeEntry = { code: string; kanji: string; kana: string }
+// `parent`: a designated-city ward's city name (from the CSV's parent_name).
+export type CodeEntry = { code: string; kanji: string; kana: string; parent: string }
 
 export const parseCodesCsv = (raw: string): CodeEntry[] =>
-  parseCsv(raw).map(r => ({ code: r.code, kanji: r.name, kana: r.kana }))
+  parseCsv(raw).map(r => ({ code: r.code, kanji: r.name, kana: r.kana, parent: r.parent_name ?? '' }))
 
 export const fetchMunicipalityCodes = (): Promise<CodeEntry[]> => {
   const e = latest('codes')

@@ -51,9 +51,11 @@ const strVars = [
   { name: '$prefcode',  desc: '都道府県コード' },
   { name: '$prefkanji', desc: '都道府県名（漢字）' },
   { name: '$prefkana',  desc: '都道府県名（仮名）' },
+  { name: '$kind',      desc: '種別：市・町・村・特別区・政令市の区' },
 ]
 
 const boolVars = [
+  { name: '&official', desc: '地方公共団体（市町村・特別区）。政令市の区は偽' },
   { name: '&seirei',  desc: '政令指定都市' },
   { name: '&chukaku', desc: '中核市' },
   { name: '&tokurei', desc: '施行時特例市' },

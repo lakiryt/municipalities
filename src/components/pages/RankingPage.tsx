@@ -30,7 +30,6 @@ function RankingPage({ config }: Props) {
         initialColumns={columns}
         initialFilter={initialFilter}
         initialSort={initialSort}
-        restrictToOfficial
       />
     </>
   )

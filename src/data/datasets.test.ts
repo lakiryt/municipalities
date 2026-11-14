@@ -17,7 +17,12 @@ describe('parseCsv / toNum', () => {
 describe('parseCodesCsv', () => {
   it('uses the display name the pipeline already resolved', () => {
     const csv = 'code,name,kana,pref_name,parent_name,group_name\n01303,当別町,とうべつちょう,北海道,,石狩振興局'
-    expect(parseCodesCsv(csv)).toEqual([{ code: '01303', kanji: '当別町', kana: 'とうべつちょう' }])
+    expect(parseCodesCsv(csv)).toEqual([{ code: '01303', kanji: '当別町', kana: 'とうべつちょう', parent: '' }])
+  })
+
+  it('keeps a designated-city ward\'s city name', () => {
+    const csv = 'code,name,kana,pref_name,parent_name,group_name\n14131,川崎市川崎区,かわさきく,神奈川県,川崎市,'
+    expect(parseCodesCsv(csv)[0].parent).toBe('川崎市')
   })
 })
 

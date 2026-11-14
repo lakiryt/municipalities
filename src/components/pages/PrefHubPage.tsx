@@ -12,7 +12,7 @@ import SiteFooter from '@/components/SiteFooter'
 
 const NAVY = '#13294b'
 const KINDS: { kind: CensusRow['kind']; label: string }[] = [
-  { kind: '市', label: '市' }, { kind: '区', label: '特別区' }, { kind: '町', label: '町' }, { kind: '村', label: '村' },
+  { kind: '市', label: '市' }, { kind: '特別区', label: '特別区' }, { kind: '町', label: '町' }, { kind: '村', label: '村' },
 ]
 
 function RateBadge({ rate }: { rate: number }) {

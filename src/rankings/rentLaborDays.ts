@@ -12,6 +12,7 @@ const rentLaborDaysConfig: RankingConfig = {
   ],
   // The ranking is by working days, not by rent: the minimum wage differs
   // by prefecture, so the two orders differ.
+  filterExpression: '&official',
   sortExpression: 'MULT(30,#rent_exc0,INV(MULT(#minwage,8)))',
   sortDirection: 'desc',
 }

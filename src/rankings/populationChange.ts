@@ -1,4 +1,5 @@
 import type { RankingConfig } from '../types'
+import { OFFICIAL, inPref, allOf } from './filters'
 import { selectedSource, defaultDataSelection, type DataSelection } from '../data/datasets'
 
 type Pref = { kanji: string }
@@ -31,7 +32,7 @@ export function populationChangeConfig(pref: Pref | null, order: 'growth' | 'dec
       { id: 4, label: `人口（${y0}年）`, expression: '#pop_from' },
       ...(pref ? [] : [{ id: 5, label: '都道府県', expression: '$prefkanji' }]),
     ],
-    filterExpression: pref ? `AND(${hasRate}, EQ($prefkanji, "${pref.kanji}"))` : hasRate,
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref), hasRate),
     sortExpression: '#pop_change_rate',
     sortDirection: order === 'growth' ? 'desc' : 'asc',
   }

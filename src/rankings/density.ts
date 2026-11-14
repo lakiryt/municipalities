@@ -1,4 +1,5 @@
 import type { RankingConfig } from '../types'
+import { OFFICIAL, inPref, allOf } from './filters'
 
 type Pref = { kanji: string }
 
@@ -14,7 +15,7 @@ export function densityConfig(pref: Pref | null): RankingConfig {
       { id: 1, label: '人口',             expression: '#totalpop' },
       { id: 2, label: '面積(km²)',        expression: '#area' },
     ],
-    filterExpression: pref ? `EQ($prefkanji, "${pref.kanji}")` : undefined,
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
     sortExpression: 'MULT(#totalpop, INV(#area))',
     sortDirection: 'desc',
   }

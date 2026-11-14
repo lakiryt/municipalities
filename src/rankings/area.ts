@@ -1,4 +1,5 @@
 import type { RankingConfig } from '../types'
+import { OFFICIAL, inPref, ofKind, allOf } from './filters'
 
 type Pref = { kanji: string }
 
@@ -12,18 +13,13 @@ export function areaConfig(pref: Pref | null): RankingConfig {
       { label: '自治体名',   expression: '$kanji' },
       { label: '面積(km²)', expression: '#area' },
     ],
-    filterExpression: pref ? `EQ($prefkanji, "${pref.kanji}")` : undefined,
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
     sortExpression: '#area',
     sortDirection: 'desc',
   }
 }
 
 export function cityAreaConfig(pref: Pref | null): RankingConfig {
-  const cityFilter = 'EQ(SUBSTR($kanji, NEG(1)), "市")'
-  const filterExpression = pref
-    ? `AND(${cityFilter}, EQ($prefkanji, "${pref.kanji}"))`
-    : cityFilter
-
   return {
     title: pref ? `${pref.kanji}の市の面積ランキング` : '全国の市の面積ランキング',
     description: pref
@@ -34,7 +30,7 @@ export function cityAreaConfig(pref: Pref | null): RankingConfig {
       { id: 2, label: '面積(km²)', expression: '#area' },
       { id: 0, label: '都道府県', expression: '$prefkanji' },
     ],
-    filterExpression,
+    filterExpression: allOf(ofKind('市'), pref && inPref(pref)),
     sortExpression: '#area',
     sortDirection: 'desc',
   }

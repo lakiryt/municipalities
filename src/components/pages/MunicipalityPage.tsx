@@ -17,11 +17,6 @@ import TrendChart from '@/components/detail/TrendChart'
 import AgePyramid from '@/components/detail/AgePyramid'
 import LocatorMap from '@/components/detail/LocatorMap'
 
-// A designated city's wards share its first three digits (札幌市 01100 →
-// 中央区 01101 …) and aren't 地方公共団体 themselves.
-const isWardOf = (ward: string, city: string) =>
-  ward !== city && !officialCodes.has(ward) && ward.slice(0, 3) === city.slice(0, 3) && city.endsWith('00')
-
 // /m/:code — one municipality: its figures with national and in-prefecture
 // ranks, its population over the years, its age structure, and where it is
 // (with links to its neighbors). Uses the same データの選択 as the tables.
@@ -43,7 +38,7 @@ function MunicipalityPage() {
   const byCode = useMemo(() => new Map(items.map(i => [i.code, i])), [items])
   const item = byCode.get(code)
   const official = officialCodes.has(code)
-  const parentCity = !official ? [...officialCodes].find(c => isWardOf(code, c)) : undefined
+  const parentCity = item?.parent || undefined
   const pref = prefectures.find(p => p.code.slice(0, 2) === code.slice(0, 2))
   const name = item?.kanji || ''
   const nameOf = (c: string) => byCode.get(c)?.kanji || c
@@ -51,11 +46,11 @@ function MunicipalityPage() {
   const kind = designations?.seirei.has(code) ? '政令指定都市'
     : designations?.chukaku.has(code) ? '中核市'
     : designations?.tokurei.has(code) ? '施行時特例市'
-    : code.startsWith('131') && official ? '特別区'
-    : parentCity ? `${nameOf(parentCity).replace(/市$/, '')}市の区` : ''
+    : item?.kind === '特別区' ? '特別区'
+    : parentCity ? `${nameOf(parentCity)}の区` : ''
 
   // Shapes: the code itself, or (for a designated city) all of its wards.
-  const wards = useMemo(() => items.filter(i => isWardOf(i.code, code)).map(i => i.code), [items, code])
+  const wards = useMemo(() => items.filter(i => i.parent === code).map(i => i.code), [items, code])
   const targets = useMemo(() => (adjacency[code] ? [code] : wards), [adjacency, code, wards])
   const neighbors = useMemo(() => {
     const own = new Set(targets)

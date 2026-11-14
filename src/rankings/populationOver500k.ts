@@ -9,7 +9,7 @@ const populationOver500k: RankingConfig = {
     { id: 1, label: '都道府県', expression: '$prefkanji' },
     { id: 0, label: '自治体コード',   expression: '$code' },
   ],
-  filterExpression: 'LEQ(500000, #totalpop)',
+  filterExpression: 'AND(&official, LEQ(500000, #totalpop))',
   sortExpression: '#totalpop',
   sortDirection: 'desc',
 }

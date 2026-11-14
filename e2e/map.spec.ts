@@ -294,15 +294,16 @@ test('the color scale is automatic per map (log for density), switchable, and ke
   await expect(page).toHaveURL(/scale=linear/)
   await expect(legend).not.toContainText('≥')
 
-  // The checkbox reflects the URL, which updates a moment after the click.
-  await page.getByLabel(/外れ値を色の範囲から除く/).click()
-  await expect(page.getByLabel(/外れ値を色の範囲から除く/)).toBeChecked()
-  await expect(page).toHaveURL(/clip=1/)
+  // Outliers: any percentage, kept in the URL; 0 (the default) clips nothing.
+  const clip = page.getByRole('spinbutton', { name: '外れ値として除く割合（%）' })
+  await expect(clip).toHaveValue('0')
+  await clip.fill('5')
+  await expect(page).toHaveURL(/clip=5/)
   await expect(legend).toContainText('≥')
 
   await page.reload()
   await expect(scaleSelect.locator('option:checked')).toHaveText('線形')
-  await expect(page.getByLabel(/外れ値を色の範囲から除く/)).toBeChecked()
+  await expect(page.getByRole('spinbutton', { name: '外れ値として除く割合（%）' })).toHaveValue('5')
 })
 
 test('evenly spread data (aging rate) gets a linear automatic scale', async ({ page }) => {

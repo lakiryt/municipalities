@@ -8,6 +8,7 @@ const rentConfig: RankingConfig = {
     { id: 2, label: '平均家賃（20㎡）', expression: 'MULT(20, #rent_exc0)' },
     { id: 0, label: '都道府県', expression: '$prefkanji' },
   ],
+  filterExpression: '&official',
   sortExpression: 'MULT(20, #rent_exc0)',
   sortDirection: 'desc',
 }

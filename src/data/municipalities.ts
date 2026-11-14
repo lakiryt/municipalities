@@ -2,7 +2,7 @@ import { parseAndTypeCheck } from '../lang/expr'
 import { evaluate, type Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
 import {
-  prefectures, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets, type ChangeMap,
+  prefectures, officialCodes, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets, type ChangeMap,
 } from './datasets'
 
 // One row of the table/map: a 標準地域コード entry joined with the selected
@@ -12,6 +12,13 @@ export type BaseItem = {
   code: string
   kanji: string
   kana: string
+  // 市 / 町 / 村 / 特別区 / 政令市の区 / 都道府県, or '' for grouping rows (郡・振興局)
+  kind: string
+  // An actual 地方公共団体 (総務省 全国地方公共団体コード): 市町村 and 特別区,
+  // not a designated city's wards.
+  official: boolean
+  // A designated-city ward's city (its code); '' otherwise.
+  parent: string
   prefecture: {
     code: string
     kanji?: string
@@ -70,16 +77,31 @@ const getPrefecture = (code: string) => {
   return { ...prefecture, code }
 }
 
+/** What kind of place a 標準地域コード row is. */
+export function kindOf(entry: { code: string; kanji: string; parent: string }): string {
+  if (entry.code.endsWith('000')) return '都道府県'
+  if (officialCodes.has(entry.code)) {
+    const last = entry.kanji.slice(-1)
+    return last === '区' ? '特別区' : last
+  }
+  return entry.parent ? '政令市の区' : ''
+}
+
 export const buildItems = (
   popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[],
   rentMap: RentMap = new Map(),
   minWageMap: MinWageMap = new Map(),
   changeMap: ChangeMap = new Map()
-): BaseItem[] =>
-  codes.map(item => ({
+): BaseItem[] => {
+  // ward → its city's code, by the city's name within the prefecture
+  const cityCode = new Map(codes.filter(c => officialCodes.has(c.code)).map(c => [`${c.code.slice(0, 2)}:${c.kanji}`, c.code]))
+  return codes.map(item => ({
     code: item.code,
     kanji: item.kanji,
     kana: item.kana,
+    kind: kindOf(item),
+    official: officialCodes.has(item.code),
+    parent: item.parent ? cityCode.get(`${item.code.slice(0, 2)}:${item.parent}`) ?? '' : '',
     prefecture: getPrefecture(item.code),
     population: popMap.get(item.code) ?? {},
     area: areaMap.get(item.code) ?? NaN,
@@ -89,6 +111,7 @@ export const buildItems = (
     popFrom: changeMap.get(item.code)?.from ?? NaN,
     popTo: changeMap.get(item.code)?.to ?? NaN,
   }))
+}
 
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
   const numvars: Record<string, number> = {
@@ -107,12 +130,14 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     prefcode:  item.prefecture.code,
     prefkanji: item.prefecture.kanji ?? '',
     prefkana:  item.prefecture.kana ?? '',
+    kind:      item.kind,
   }
   const boolvars: Record<string, boolean> = {
     seirei:  designations?.seirei.has(item.code)  ?? false,
     chukaku: designations?.chukaku.has(item.code) ?? false,
     tokurei: designations?.tokurei.has(item.code) ?? false,
     coastal: coastal?.has(item.code) ?? false,
+    official: item.official,
   }
   for (const { name, typed } of derivedDefs) {
     numvars[name] = evaluate(typed, { numvars, strvars, boolvars }) as number
@@ -129,7 +154,7 @@ const _demogSeed = Object.fromEntries([
   ..._ageSuffixes.map(s => [`male${s}`, 0]),
 ])
 const _dummy: BaseItem = {
-  code: '', kanji: '', kana: '',
+  code: '', kanji: '', kana: '', kind: '', official: false, parent: '',
   prefecture: { code: '' },
   population: {
     totalpop: 0, malepop: 0, femalepop: 0, setai: 0,

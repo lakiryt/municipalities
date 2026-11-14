@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { kindOf } from './municipalities'
 import {
   fetchPopulationChange, fetchMunicipalityCodes, officialCodes, prefectures, defaultDataSelection,
   type ChangeMap, type CodeEntry,
@@ -9,15 +10,10 @@ export type CensusRow = {
   name: string
   prefCode: string        // 2 digits
   prefName: string
-  kind: '市' | '区' | '町' | '村' | ''
+  kind: string            // $kind: 市 / 町 / 村 / 特別区 / 政令市の区 / 都道府県
   prev: number
   latest: number
   rate: number            // percent; NaN when the earlier count is missing or 0
-}
-
-const kindOf = (name: string): CensusRow['kind'] => {
-  const last = name.slice(-1)
-  return last === '市' || last === '区' || last === '町' || last === '村' ? last : ''
 }
 
 // The light-weight data behind the home page and the prefecture pages: names
@@ -31,11 +27,11 @@ export function useCensusOverview() {
 
   return useMemo(() => {
     const prefName = new Map(prefectures.map(p => [p.code.slice(0, 2), p.kanji]))
-    const row = (code: string, name: string): CensusRow => {
+    const row = (code: string, name: string, parent = ''): CensusRow => {
       const c = census.get(code)
       const prev = c?.from ?? NaN, latest = c?.to ?? NaN
       return {
-        code, name, kind: kindOf(name),
+        code, name, kind: kindOf({ code, kanji: name, parent }),
         prefCode: code.slice(0, 2), prefName: prefName.get(code.slice(0, 2)) ?? '',
         prev, latest,
         rate: prev > 0 ? (latest / prev - 1) * 100 : NaN,
@@ -44,8 +40,8 @@ export function useCensusOverview() {
     // Municipalities and designated-city wards (both have a page); not
     // prefectures or grouping rows (郡・振興局).
     const places = codes
-      .filter(c => !c.code.endsWith('000') && (officialCodes.has(c.code) || /市.+区$/.test(c.kanji)))
-      .map(c => ({ ...row(c.code, c.kanji), kana: c.kana }))
+      .filter(c => !c.code.endsWith('000') && (officialCodes.has(c.code) || c.parent))
+      .map(c => ({ ...row(c.code, c.kanji, c.parent), kana: c.kana }))
     // Rankings keep to actual 地方公共団体.
     const municipalities = places.filter(p => officialCodes.has(p.code))
     const prefs = prefectures.map(p => row(p.code, p.kanji))

@@ -43,20 +43,17 @@ test('town and village rankings keep to their kind', async ({ page }) => {
   expect(names.every(n => n.endsWith('村'))).toBe(true)
 })
 
-test('a change rate maps on a diverging scale around 0, with outliers clipped by default', async ({ page }) => {
+test('a change rate maps around 0 (symmetric log, as its values span orders of magnitude) with nothing clipped by default', async ({ page }) => {
   await page.goto('/rankings/all/population-change?map=@1')
   await page.waitForSelector('svg path[data-code]')
   const scaleSelect = page.getByRole('combobox', { name: '目盛り' })
-  await expect(scaleSelect.locator('option:checked')).toHaveText('自動（増減）')
-  const clip = page.getByRole('checkbox', { name: /外れ値/ })
-  await expect(clip).toBeChecked()
+  await expect(scaleSelect.locator('option:checked')).toHaveText('自動（増減・対称対数）')
+  await expect(page.getByRole('spinbutton', { name: '外れ値として除く割合（%）' })).toHaveValue('0')
+  await expect(page.getByTestId('map-legend')).not.toContainText('≥')
   await expect(page.getByText('中央の色 ≒ 0')).toBeVisible()
 
-  // Turning clipping off is remembered as an explicit choice (the checkbox
-  // reflects the URL, which updates a moment after the click).
-  await clip.click()
-  await expect(page).toHaveURL(/clip=0/)
-  await expect(clip).not.toBeChecked()
+  await scaleSelect.selectOption('diverging')
+  await expect(page).toHaveURL(/scale=diverging/)
 })
 
 test('人口増減 is chosen in データの選択: switching to 住民基本台帳 retitles the ranking and its columns', async ({ page }) => {

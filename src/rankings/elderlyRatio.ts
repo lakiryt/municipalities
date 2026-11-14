@@ -10,6 +10,7 @@ const elderlyRatioConfig: RankingConfig = {
     { id: 2, label: '総人口',          expression: '#totalpop' },
     { id: 0, label: '都道府県',        expression: '$prefkanji' },
   ],
+  filterExpression: '&official',
   sortExpression: 'MULT(#elderly_total, INV(#totalpop))',
   sortDirection: 'desc',
 }

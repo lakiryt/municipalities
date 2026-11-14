@@ -5,11 +5,12 @@ import { parseAndTypeCheck } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import { baseItemEnv, type BaseItem } from '../data/municipalities'
 import type { Env } from '../lang/evaluate'
-import { officialCodes, selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection, type DataKey } from '../data/datasets'
+import { selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection, type DataKey } from '../data/datasets'
 import { useMunicipalityData } from '../data/useMunicipalityData'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import { usedData } from '@/lib/usedData'
+import { describeFilter } from '@/lib/filterLabel'
 import { pageTitle } from '@/lib/brand'
 import AppHeader from '@/components/AppHeader'
 import PageHeader from '@/components/PageHeader'
@@ -30,10 +31,6 @@ type Props = {
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
   initialSearchOpen?: boolean
-  // Rankings only make sense for real municipalities — wards of designated
-  // cities would double-count against their parent city, and organizational
-  // rows (Hokkaido's 振興局, etc.) aren't municipalities at all.
-  restrictToOfficial?: boolean
 }
 
 // Adds or updates a column by stable id, minting a fresh id for a new one.
@@ -63,13 +60,7 @@ function sortedColumnOf(sort: SortState | null, columns: ColumnState[]): ColumnS
   return columns.find(c => norm(c.expression) === target) ?? columns.find(c => norm(c.expression).includes(target)) ?? null
 }
 
-// A short, human description of the filter for its toolbar chip.
-function describeFilter(expression: string): string {
-  const pref = expression.match(/^EQ\(\$prefkanji,\s*"([^"]+)"\)$/)
-  return pref ? pref[1] : '条件あり'
-}
-
-function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false, restrictToOfficial = false }: Props) {
+function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false }: Props) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -213,13 +204,14 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     ? columns.find(c => c.id === modal.id) ?? null
     : null
 
-  // Table view: official municipalities only (when asked), then the user's
-  // filter, then sort. The counts shown in the toolbar are this view's, not
-  // the full base's — a "1918 total" would be a strange thing to show above
-  // a table that only ever displays 1747 rows.
+  // Table rows: every municipality and designated-city ward (each has its
+  // own figures and page); not prefectures or grouping rows (郡・振興局).
+  // Which of them to show is up to the filter — rankings start with
+  // &official so a city and its wards aren't counted twice, but that's a
+  // visible, removable condition. The toolbar counts are of these rows.
   const tableBaseItems = useMemo(
-    () => restrictToOfficial ? activeItems.filter(item => officialCodes.has(item.code)) : activeItems,
-    [activeItems, restrictToOfficial]
+    () => activeItems.filter(item => item.kind !== '' && item.kind !== '都道府県'),
+    [activeItems]
   )
 
   // Each municipality's variables (incl. ~15 derived ones) are computed once
@@ -472,6 +464,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
               columnOptions={numericColumns}
               onSelectColumn={id => setMapExpression(`@${id}`)}
               displayItems={mapItems}
+              allItems={activeItems}
               designations={designations}
               coastal={coastal}
               fitToItems={filterExpr !== null}
