@@ -3,6 +3,8 @@ import { parseCodes } from './codes.mjs'
 import { parseBundle } from './area.mjs'
 import { ageKey } from './jumin.mjs'
 import { pickCensusTables, transform } from './kokusei.mjs'
+import { parseRent } from './rent.mjs'
+import { parseMinWage } from './minwage.mjs'
 import { toCode5, checkDigit } from '../lib/code.mjs'
 import { parseEraDate } from '../lib/era.mjs'
 import { headerLabels } from '../lib/xlsx.mjs'
@@ -132,6 +134,51 @@ describe('kokusei', () => {
       v('01305', '（旧：厚田村）', '総数', '1500'),
     ])
     expect(rows).toEqual([{ code: '01100', totalpop: 1961996, malepop: 900000, femalepop: 1061996 }])
+  })
+})
+
+describe('parseRent (住宅・土地統計調査)', () => {
+  const items = ['00_総数', '01_0円', '1_家賃０円を含む', '2_家賃０円を含まない']
+  const expected = [
+    { code: '13101', inc0_total: 3297, exc0_total: 3466, inc0_public: 1252, exc0_public: null },
+  ]
+
+  it('reads the 2023 layout (labels in column 2, single-digit tenure codes)', () => {
+    const rows = [
+      [null, null, '項目名', ...items],
+      ['3', '13101_千代田区', '0_総数', 100, 0, 3297, 3466],
+      ['3', '13101_千代田区', '1_公営の借家', 10, 0, 1252, '-'],
+    ]
+    expect(parseRent(rows)).toEqual(expected)
+  })
+
+  it('reads the 2018 layout (extra leading columns, two-digit tenure codes)', () => {
+    const rows = [
+      [8, 'J', null, null, null, null, null, null, ...items],
+      [11, 'D', null, null, '3', '13101_千代田区', 1, '00_総数', 100, 0, 3297, 3466],
+      [12, 'D', null, null, '3', '13101_千代田区', 1, '10_公営の借家', 10, 0, 1252, '-'],
+    ]
+    expect(parseRent(rows)).toEqual(expected)
+  })
+})
+
+describe('parseMinWage (地域別最低賃金)', () => {
+  const prefs = [{ code: '02000', kanji: '青森県' }, { code: '13000', kanji: '東京都' }]
+  const rows = [
+    ['年度', '令和７年度', null, '令和８年度', null],
+    ['都道府県名', '改定額(円)', '発効年月日', '改定額(円)', '発効年月日'],
+    ['青　森', 1029, 45982, 1090, 46324],
+    ['東　京', 1226, 45933, 1280, 46296],
+    ['全国加重平均額', 1121, '-', 1177, '-'],
+  ]
+
+  it('splits 年度 column pairs, matches spaced prefecture names, and skips the average row', () => {
+    const byYear = parseMinWage(rows, prefs)
+    expect([...byYear.keys()]).toEqual([2025, 2026])
+    expect(byYear.get(2026)).toEqual([
+      { code: '02000', min: 1090, since: '2026-10-29' },
+      { code: '13000', min: 1280, since: '2026-10-01' },
+    ])
   })
 })
 

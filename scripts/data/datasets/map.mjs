@@ -9,10 +9,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { download, cachePath, provenance } from '../lib/fetch.mjs'
-import { writeJson } from '../lib/csv.mjs'
+import { writeDataJson, dataPath } from '../lib/csv.mjs'
 import { computeAdjacency } from '../lib/adjacency.mjs'
 import { pageHtml } from '../lib/discover.mjs'
-import { PUBLIC_DIR, rel } from '../lib/paths.mjs'
+import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const cacheKey = (url) => `map/${url.split('/').pop()}`
 const DATALIST = (year) => `https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-${year}.html`
@@ -64,7 +64,8 @@ export async function buildEdition(src, ref, opts) {
   if (!existsSync(zip)) throw new Error(`Not in cache: ${cacheKey(ref.url)}`)
   const shp = extractShapefile(zip, cachePath(`map/${ref.as_of}`), opts.log)
 
-  const topoAbs = resolve(PUBLIC_DIR, `data/map/${ref.as_of}.topojson`)
+  const topoPath = dataPath('map', `${ref.as_of}.topojson`)
+  const topoAbs = resolve(PUBLIC_DIR, topoPath)
   opts.log(`  mapshaper (simplify ${src.simplify}) … 数分かかります`)
   const r = spawnSync(process.execPath, [
     '--max-old-space-size=8192', mapshaperBin,
@@ -81,12 +82,11 @@ export async function buildEdition(src, ref, opts) {
   const topo = JSON.parse(readFileSync(topoAbs, 'utf-8'))
   const { adjacency, skipped } = computeAdjacency(topo)
   if (skipped.length) opts.log(`  note    図形が消えたコード（簡略化で潰れた等）: ${skipped.join(', ')}`)
-  const adj = writeJson(resolve(PUBLIC_DIR, `data/map/${ref.as_of}.adjacency.json`), adjacency)
 
   return {
     id: ref.as_of, as_of: ref.as_of,
-    path: rel(topoAbs).replace(/^public\//, ''),
-    adjacency: adj.file.replace(/^public\//, ''),
+    path: topoPath,
+    adjacency: writeDataJson('map', `${ref.as_of}.adjacency.json`, adjacency),
     rows: Object.keys(adjacency).length,
     source: provenance(cacheKey(ref.url)),
   }

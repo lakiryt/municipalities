@@ -3,12 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { evaluate } from '../lang/evaluate'
 import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
+import { buildItems, baseItemEnv } from '../data/municipalities'
 import {
-  buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal, fetchMunicipalityCodes, fetchRent,
-  fetchMinWages, baseItemEnv, areaSources, populationSources, rentSources, minWageSources, officialCodes,
-  defaultDataSelection,
-  type PopulationRecord, type DesignationSets, type CodeEntry, type MinWageMap, type DataSelection,
-} from '../data/municipalities'
+  fetchArea, fetchPopulation, fetchRent, fetchMinWages, fetchDesignations, fetchCoastal, fetchMunicipalityCodes,
+  officialCodes, defaultDataSelection,
+  type PopulationMap, type RentMap, type MinWageMap, type DesignationSets, type CodeEntry, type DataSelection,
+} from '../data/datasets'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import FilterBar from '@/components/FilterBar'
@@ -160,25 +160,18 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   const [selection, setSelection]       = useState<DataSelection>(defaultDataSelection)
   const [areaMap, setAreaMap]           = useState(new Map<string, number>())
-  const [popMap, setPopMap]             = useState(new Map<string, PopulationRecord>())
+  const [popMap, setPopMap]             = useState<PopulationMap>(new Map())
   const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
-  const [coastal, setCoastal] = useState<Set<string>>(new Set())
-  const [codes, setCodes] = useState<CodeEntry[]>([])
-  const [rentMap, setRentMap] = useState(new Map<string, { inc0: number; exc0: number }>())
-  const [minWageMap, setMinWageMap] = useState<MinWageMap>(new Map())
+  const [coastal, setCoastal]           = useState<Set<string>>(new Set())
+  const [codes, setCodes]               = useState<CodeEntry[]>([])
+  const [rentMap, setRentMap]           = useState<RentMap>(new Map())
+  const [minWageMap, setMinWageMap]     = useState<MinWageMap>(new Map())
 
-  useEffect(() => {
-    const src = areaSources.find(s => s.path === selection.area)
-    if (src) fetchArea(src).then(setAreaMap)
-  }, [selection.area])
-
-  useEffect(() => {
-    const src = populationSources.find(s => s.path === selection.pop)
-    if (src) fetchPopulation(src).then(setPopMap)
-  }, [selection.pop])
-
-  useEffect(() => { fetchRent(rentSources.find(s => s.path === selection.rent)).then(setRentMap) }, [selection.rent])
-  useEffect(() => { fetchMinWages(minWageSources.find(s => s.path === selection.minwage)).then(setMinWageMap) }, [selection.minwage])
+  // The selectable datasets reload whenever データの選択 picks another edition.
+  useEffect(() => { fetchPopulation(selection.pop).then(setPopMap) }, [selection.pop])
+  useEffect(() => { fetchArea(selection.area).then(setAreaMap) }, [selection.area])
+  useEffect(() => { fetchRent(selection.rent).then(setRentMap) }, [selection.rent])
+  useEffect(() => { fetchMinWages(selection.minwage).then(setMinWageMap) }, [selection.minwage])
 
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
   useEffect(() => { fetchCoastal().then(setCoastal) }, [])

@@ -6,14 +6,12 @@
 // them; an edition is one date, built from whichever bundle has it.
 // Rows without a numeric code are subtotals (北海道(市部)), lakes, or the
 // national total and are skipped.
-import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
 import { decodeText, toNumber, clean } from '../lib/text.mjs'
-import { parseCsv, writeCsv } from '../lib/csv.mjs'
+import { parseCsv, writeDataCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { parseEraDate } from '../lib/era.mjs'
 import { pageHtml, links } from '../lib/discover.mjs'
-import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const cacheKey = (url) => `area/${url.split('/').pop()}`
 
@@ -80,6 +78,6 @@ export async function buildEdition(src, ref) {
   const rows = parseBundle(decodeText(readCached(key))).get(ref.as_of)
   if (!rows) throw new Error(`面積: ${ref.url} に ${ref.as_of} の列がありません`)
   rows.sort((a, b) => a.code.localeCompare(b.code))
-  const out = writeCsv(resolve(PUBLIC_DIR, `data/area/${ref.as_of}.csv`), ['code', 'area', 'note'], rows)
-  return { id: ref.as_of, as_of: ref.as_of, path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(key) }
+  const out = writeDataCsv('area', ref.as_of, ['code', 'area', 'note'], rows)
+  return { id: ref.as_of, as_of: ref.as_of, ...out, source: provenance(key) }
 }

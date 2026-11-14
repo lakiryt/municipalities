@@ -4,7 +4,7 @@
 // normalized `code,type,since` CSV. The repo holds one edition (`single`).
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { writeCsv, parseCsv } from '../lib/csv.mjs'
+import { writeDataCsv, parseCsv } from '../lib/csv.mjs'
 import { CURATED_DIR, PUBLIC_DIR } from '../lib/paths.mjs'
 import { readMeta } from '../lib/meta.mjs'
 
@@ -38,10 +38,10 @@ export async function buildEdition(src) {
     }
   }
   rows.sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type) || a.code.localeCompare(b.code))
-  const out = writeCsv(resolve(PUBLIC_DIR, `data/designations/${curated.as_of}.csv`), ['code', 'type', 'since'], rows)
+  const out = writeDataCsv('designations', curated.as_of, ['code', 'type', 'since'], rows)
   return {
     id: curated.as_of, as_of: curated.as_of, checked_at: curated.checked_at,
-    path: out.file.replace(/^public\//, ''), rows: out.rows,
+    ...out,
     counts: Object.fromEntries(TYPES.map(t => [t, (curated[t] ?? []).length])),
     source: { url: null, manual: true },
   }

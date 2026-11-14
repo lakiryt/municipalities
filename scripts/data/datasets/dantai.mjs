@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
-import { writeJson } from '../lib/csv.mjs'
+import { writeRepoJson } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { clean } from '../lib/text.mjs'
 import { readSheet } from '../lib/xlsx.mjs'
@@ -59,11 +59,13 @@ export async function buildEdition(src, ref) {
     return { ...p, romanized }
   })
 
-  const pref = writeJson(resolve(ASSETS_DIR, 'prefectures.json'), withRomaji, { pretty: true })
-  const dantai = writeJson(resolve(ASSETS_DIR, 'dantai_codes.json'), municipalities, { pretty: true })
+  const files = {
+    prefectures: writeRepoJson(resolve(ASSETS_DIR, 'prefectures.json'), withRomaji),
+    municipalities: writeRepoJson(resolve(ASSETS_DIR, 'dantai_codes.json'), municipalities),
+  }
   return {
     id: ref.as_of, as_of: ref.as_of,
-    files: { prefectures: pref.file, municipalities: dantai.file },
+    files,
     rows: municipalities.length,
     source: provenance(key),
   }

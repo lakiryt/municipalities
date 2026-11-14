@@ -1,14 +1,12 @@
 // 総務省 統計局 標準地域コード: names and readings for every prefecture,
 // municipality, designated-city ward, and grouping row (郡/振興局/支庁).
 // The publisher only offers the latest version.
-import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
 import { decodeText, clean } from '../lib/text.mjs'
-import { parseCsv, writeCsv } from '../lib/csv.mjs'
+import { parseCsv, writeDataCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { parseEraDate } from '../lib/era.mjs'
 import { pageHtml, links, stripTags } from '../lib/discover.mjs'
-import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const cacheKey = (url) => `codes/${url.split('/').pop()}`
 
@@ -33,7 +31,7 @@ export async function fetchEdition(src, ref, opts) {
 // at all. Only 郡/振興局/支庁 labels are the latter — real parent names all end
 // in 市 — so this suffix check tells them apart.
 const GROUPING_LABEL_SUFFIXES = ['郡', '振興局', '支庁']
-export const isGroupingLabel = (name1) => GROUPING_LABEL_SUFFIXES.some(s => name1.endsWith(s))
+const isGroupingLabel = (name1) => GROUPING_LABEL_SUFFIXES.some(s => name1.endsWith(s))
 
 /**
  * One output row per CSV row. `name` is the display name the app uses:
@@ -68,7 +66,6 @@ export function parseCodes(text) {
 export async function buildEdition(src, ref) {
   const key = cacheKey(ref.url)
   const rows = parseCodes(decodeText(readCached(key)))
-  const out = writeCsv(resolve(PUBLIC_DIR, `data/codes/${ref.as_of}.csv`),
-    ['code', 'name', 'kana', 'pref_name', 'parent_name', 'group_name'], rows)
-  return { id: ref.as_of, as_of: ref.as_of, path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(key) }
+  const out = writeDataCsv('codes', ref.as_of, ['code', 'name', 'kana', 'pref_name', 'parent_name', 'group_name'], rows)
+  return { id: ref.as_of, as_of: ref.as_of, ...out, source: provenance(key) }
 }

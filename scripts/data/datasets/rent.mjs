@@ -3,14 +3,12 @@
 // checks each registered file is still listed on e-Stat.
 // Five rows per area (住宅の所有の関係: 総数/公営/UR・公社/民営/給与住宅), with
 // the average rent per m² both including and excluding zero-rent homes.
-import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
-import { writeCsv } from '../lib/csv.mjs'
+import { writeDataCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { clean, toNumber } from '../lib/text.mjs'
 import { readSheet, findColumn } from '../lib/xlsx.mjs'
 import { pageHtml } from '../lib/discover.mjs'
-import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const fileUrl = (id) => `https://www.e-stat.go.jp/stat-search/file-download?statInfId=${id}&fileKind=0`
 const cacheKey = (id) => `rent/${id}.xlsx`
@@ -68,9 +66,9 @@ export function parseRent(rows) {
 
 export async function buildEdition(src, ref) {
   const rows = parseRent(readSheet(readCached(cacheKey(ref.statInfId))))
-  const out = writeCsv(resolve(PUBLIC_DIR, `data/rent/${ref.id}.csv`), COLUMNS, rows)
+  const out = writeDataCsv('rent', ref.id, COLUMNS, rows)
   return {
     id: ref.id, as_of: ref.as_of, published: ref.published, label: ref.label,
-    path: out.file.replace(/^public\//, ''), rows: out.rows, source: provenance(cacheKey(ref.statInfId)),
+    ...out, source: provenance(cacheKey(ref.statInfId)),
   }
 }

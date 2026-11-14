@@ -31,16 +31,20 @@ export const editionFiles = (e) => [
 
 /**
  * Downloads (if not cached, or always with opts.force) and builds the given
- * editions. The ref comes from the catalog for new editions, or from
- * meta.json for ones already held (so rebuilding works without a fresh
- * discover). New editions are enabled unless opts.enable === false.
+ * editions. `from` picks where each edition's ref comes from: 'catalog'
+ * (what the publisher offers now — for getting editions) or 'held' (the ref
+ * stored when it was got — for rebuilding exactly what we have, without a
+ * fresh discover). Either falls back to the other. New editions are enabled
+ * unless opts.enable === false.
  */
-export async function getEditions(id, src, editionIds, opts) {
+export async function getEditions(id, src, editionIds, opts, { from = 'catalog' } = {}) {
   const catalog = readCatalog().datasets[id]?.editions ?? []
   if (src.single && editionIds.length > 1) throw new Error(`${id} は1版のみ保持するデータです`)
   for (const eid of editionIds) {
     const held = heldEditions(id)
-    const ref = catalog.find(e => e.id === eid)?.ref ?? held.find(e => e.id === eid)?.ref
+    const fromCatalog = catalog.find(e => e.id === eid)?.ref
+    const fromHeld = held.find(e => e.id === eid)?.ref
+    const ref = from === 'held' ? fromHeld ?? fromCatalog : fromCatalog ?? fromHeld
     if (!ref) throw new Error(`${id}: 版 ${eid} が見つかりません（先に「配布元を確認」してください）`)
     opts.log(`  ${id}@${eid}`)
     await DATASETS[id].fetchEdition(src, ref, opts)
@@ -60,7 +64,7 @@ export async function getEditions(id, src, editionIds, opts) {
 /** Rebuilds every held edition (or the given ones) from its stored ref. */
 export async function rebuildHeld(id, src, opts, editionIds = null) {
   const ids = editionIds ?? heldEditions(id).map(e => e.id)
-  await getEditions(id, src, ids, opts)
+  await getEditions(id, src, ids, opts, { from: 'held' })
   return ids
 }
 

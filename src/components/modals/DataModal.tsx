@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   areaSources, populationSources, rentSources, minWageSources, type Source, type DataSelection,
-} from '@/data/municipalities'
+} from '@/data/datasets'
 
 const SECTIONS: { key: keyof DataSelection; title: string; sources: Source[] }[] = [
   { key: 'pop',     title: '人口データ',   sources: populationSources },

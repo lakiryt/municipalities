@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { CACHE_DIR } from './paths.mjs'
 
-export const CATALOG_PATH = resolve(CACHE_DIR, 'catalog.json')
+const CATALOG_PATH = resolve(CACHE_DIR, 'catalog.json')
 
 export function readCatalog() {
   if (!existsSync(CATALOG_PATH)) return { datasets: {} }

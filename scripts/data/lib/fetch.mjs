@@ -24,9 +24,6 @@ const writeLog = (log) => {
 /** The fetch-log entry for a cached file, or undefined if it was never fetched. */
 export const fetchRecord = (cacheKey) => readLog()[cacheKey]
 
-/** All fetch-log entries (cache key → record). */
-export const fetchLog = () => readLog()
-
 export const cachePath = (cacheKey) => resolve(CACHE_DIR, cacheKey)
 
 const throttle = async (url) => {
@@ -130,10 +127,10 @@ export async function download(url, cacheKey, { force = false, log = console.log
  * Fetches a page for discovery (not cached — the point is to see what the
  * publisher has right now). Returns the bytes; decode with decodeText().
  */
-export async function getPage(url, { log = () => {} } = {}) {
+export async function getPage(url, { log = () => {}, logUrl = url } = {}) {
   await throttle(url)
-  log(`  GET     ${url}`)
-  const res = await httpGet(url, url)
+  log(`  GET     ${logUrl}`)
+  const res = await httpGet(url, logUrl)
   const chunks = []
   for await (const c of res.stream) chunks.push(c)
   return Buffer.concat(chunks)

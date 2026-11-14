@@ -1,4 +1,4 @@
-import { prefectures } from '@/data/municipalities'
+import { prefectures } from '@/data/datasets'
 import {
   MUNI_TYPES, KUBUN_OPTS,
   type FilterState,

@@ -1,7 +1,7 @@
 // Decodes the N03 municipality boundaries TopoJSON into per-code SVG paths,
 // projected with a plain spherical Mercator (no external geo library).
 
-import { mapTopojsonPath } from '@/data/municipalities'
+import { mapTopojsonPath } from '@/data/datasets'
 
 export const VIEW_SIZE = 960
 

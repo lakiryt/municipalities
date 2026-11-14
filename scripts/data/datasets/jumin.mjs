@@ -5,15 +5,13 @@
 // into one CSV per year. Layouts drift between years (merged header cells,
 // "5歳～9歳" vs "5～9", the 合計 row's code as "-" vs blank), so columns are
 // located by their header text, never by position.
-import { resolve } from 'node:path'
 import { download, readCached, provenance } from '../lib/fetch.mjs'
-import { writeCsv } from '../lib/csv.mjs'
+import { writeDataCsv } from '../lib/csv.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { clean, toNumber } from '../lib/text.mjs'
 import { readSheet, headerLabels, findColumn } from '../lib/xlsx.mjs'
 import { parseEraDate } from '../lib/era.mjs'
 import { pageHtml } from '../lib/discover.mjs'
-import { PUBLIC_DIR } from '../lib/paths.mjs'
 
 const fileUrl = (id) => `https://www.e-stat.go.jp/stat-search/file-download?statInfId=${id}&fileKind=0`
 const cacheKey = (id) => `jumin/${id}.xlsx`
@@ -118,10 +116,10 @@ export async function buildEdition(src, ref, opts) {
   const codes = [...new Set([...main.rows.keys(), ...age.rows.keys()])].sort()
   const rows = codes.map(code => ({ code, ...main.rows.get(code), ...age.rows.get(code) }))
 
-  const out = writeCsv(resolve(PUBLIC_DIR, `data/jumin/${ref.year}.csv`), columns, rows)
+  const out = writeDataCsv('jumin', ref.year, columns, rows)
   return {
     id: String(ref.year), as_of: main.asOf, label: `${ref.year}年`,
-    path: out.file.replace(/^public\//, ''), rows: out.rows,
+    ...out,
     source: [provenance(cacheKey(ref.main)), provenance(cacheKey(ref.age))],
   }
 }
@@ -132,7 +130,7 @@ const LIST_URL = (year) =>
   `https://www.e-stat.go.jp/stat-search/files?page=1&layout=datalist&toukei=00200241&tstat=000001039591&cycle=7&year=${year}0&month=0&tclass1=000001039601&result_page=1`
 
 /** Scrapes e-Stat's file list for a year and returns { main, age } statInfIds (null if absent). */
-export async function findYear(year, opts) {
+async function findYear(year, opts) {
   const html = await pageHtml(LIST_URL(year), opts)
   const items = html.split('stat-dataset_list-item').slice(1).map(s => ({
     id: (s.match(/stat_infid=(\d{12})/) ?? [])[1],
