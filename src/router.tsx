@@ -8,6 +8,7 @@ import { areaConfig, cityAreaConfig } from './rankings/area'
 import FormulasPage from './components/pages/FormulasPage'
 import MunicipalityPage from './components/pages/MunicipalityPage'
 import PrefRankingPage from './components/pages/PrefRankingPage'
+import PrefHubPage from './components/pages/PrefHubPage'
 import { populationChangeConfig } from './rankings/populationChange'
 import { designatedCitiesConfig, coreCitiesConfig } from './rankings/designatedCities'
 import { townVillageConfig } from './rankings/townsVillages'
@@ -23,6 +24,7 @@ import { initialColumns } from './data/municipalities'
 const router = createBrowserRouter([
   { path: '/',                                   element: <HomePage /> },
   { path: '/explore',                            element: <App /> },
+  { path: '/rankings/:pref',                     element: <PrefHubPage /> },
   { path: '/rankings/:pref/density',             element: <PrefRankingPage configFor={densityConfig} /> },
   { path: '/rankings/:pref/cities',              element: <PrefRankingPage configFor={cityPopulationConfig} /> },
   { path: '/rankings/:pref/area',                element: <PrefRankingPage configFor={areaConfig} /> },

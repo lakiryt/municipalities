@@ -91,7 +91,7 @@ test('the rent-vs-minimum-wage labor-days ranking page loads with all its column
   }
 
   await page.goto('/')
-  const link = page.getByRole('link', { name: /最低賃金労働日数ランキング/ })
+  const link = page.getByRole('link', { name: '家賃を稼ぐのに必要な労働日数', exact: true })
   await expect(link).toBeVisible()
   await link.click()
 

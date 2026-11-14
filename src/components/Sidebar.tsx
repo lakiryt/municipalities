@@ -15,6 +15,8 @@ function Sidebar({ onClose }: Props) {
         </div>
         <div className="py-2">
           <Link to="/" onClick={onClose} className={link}>トップ</Link>
+          <Link to="/rankings/all/population-change" onClick={onClose} className={link}>人口増加率ランキング</Link>
+          <Link to="/rankings/all/designated-cities" onClick={onClose} className={link}>政令指定都市一覧</Link>
           <Link to="/search" onClick={onClose} className={link}>詳細検索</Link>
           <Link to="/explore" onClick={onClose} className={link}>自由探索（列・条件を自由に設定）</Link>
           <Link to="/formulas" onClick={onClose} className={link}>式の記述方法</Link>

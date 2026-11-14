@@ -109,7 +109,7 @@ function MunicipalityPage() {
       <main className="pt-11 pb-8">
         <nav className="max-w-5xl mx-auto px-4 pt-3 text-xs text-gray-500" aria-label="パンくず">
           <Link to="/" className="hover:underline">トップ</Link>
-          {pref && <> › <Link to={`/rankings/${pref.romanized}/density`} className="hover:underline">{pref.kanji}</Link></>}
+          {pref && <> › <Link to={`/rankings/${pref.romanized}`} className="hover:underline">{pref.kanji}</Link></>}
           {parentCity && <> › <Link to={linkTo(parentCity)} className="hover:underline">{nameOf(parentCity)}</Link></>}
         </nav>
         <PageHeader

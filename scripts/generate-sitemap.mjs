@@ -55,6 +55,7 @@ const urls = [
   { path: '/explore',                           priority: '0.5', changefreq: 'monthly' },
   { path: '/formulas',                          priority: '0.4', changefreq: 'yearly'  },
   ...prefectures.flatMap(p => [
+    { path: `/rankings/${p.romanized}`,           priority: '0.8', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/density`,   priority: '0.7', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/cities`,    priority: '0.7', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/area`,      priority: '0.7', changefreq: 'monthly' },

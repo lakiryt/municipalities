@@ -1,130 +1,154 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { prefectures } from '../../data/datasets'
-import populationOver500k from '../../rankings/populationOver500k'
-import { populationConfig } from '../../rankings/population'
-import { cityPopulationConfig } from '../../rankings/cityPopulation'
-import { densityConfig } from '../../rankings/density'
-import { areaConfig, cityAreaConfig } from '../../rankings/area'
-import elderlyRatioConfig from '../../rankings/elderlyRatio'
-import rentConfig from '../../rankings/rent'
-import rentLaborDaysConfig from '../../rankings/rentLaborDays'
-import Canonical from '../Canonical'
+import { censusPeriod, prefectures } from '@/data/datasets'
+import { REGIONS } from '@/data/prefTiles'
+import { useCensusOverview, type CensusRow } from '@/data/useCensusOverview'
+import { formatRate } from '@/lib/changeScale'
+import { BRAND_NAME, BRAND_SERIES } from '@/lib/brand'
+import { CATALOG, rankingPath } from '@/rankings/catalog'
+import AppHeader from '@/components/AppHeader'
+import Sidebar from '@/components/Sidebar'
+import Canonical from '@/components/Canonical'
+import SiteFooter from '@/components/SiteFooter'
+import PrefTileMap from '@/components/home/PrefTileMap'
+import MuniSearch from '@/components/home/MuniSearch'
+
+const NAVY = '#13294b'
+
+function RateList({ title, rows, more }: { title: string; rows: CensusRow[]; more: { to: string; label: string } }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-gray-700 mb-1">{title}</h3>
+      <ol className="divide-y divide-gray-100">
+        {rows.map((r, i) => (
+          <li key={r.code} className="flex items-baseline gap-2 py-1.5 text-sm">
+            <span className="w-4 text-right text-xs text-gray-400 tabular-nums">{i + 1}</span>
+            <Link to={`/m/${r.code}`} className="font-medium text-[#13294b] hover:underline">{r.name}</Link>
+            <span className="text-xs text-gray-500">{r.prefName}</span>
+            <span className="ml-auto tabular-nums font-semibold">{formatRate(r.rate)}</span>
+          </li>
+        ))}
+      </ol>
+      <Link to={more.to} className="mt-1 inline-block text-xs text-blue-700 hover:underline">{more.label} →</Link>
+    </div>
+  )
+}
 
 function HomePage() {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const { municipalities, places, prefs, loaded } = useCensusOverview()
+  const period = censusPeriod()
+
+  const withRate = municipalities.filter(m => !Number.isNaN(m.rate)).sort((a, b) => b.rate - a.rate)
+  const counted = municipalities.filter(m => !Number.isNaN(m.latest)).length
+  const growingPrefs = prefs.filter(p => p.rate > 0).map(p => p.prefName)
+  const growingMunis = withRate.filter(m => m.rate > 0).length
+
   return (
-    <div className="max-w-lg mx-auto px-6 py-16">
-      <title>まちくらべ — 全国の市区町村を人口・面積でくらべる｜霊智堂Atlas</title>
-      <meta name="description" content="全国の市区町村（都道府県・市区町村）の人口・面積・人口密度・老年人口比率ランキングを掲載。都道府県別の絞り込みや、条件を自由に組み合わせた検索・比較もできます。" />
+    <>
+      <title>まちくらべ — 市区町村の人口・人口増減・面積のランキングと地図｜霊智堂Atlas</title>
+      <meta name="description" content={`全国の市区町村を、人口・人口増減率（国勢調査${period}）・面積・人口密度・家賃などでくらべるランキングと地図。都道府県別のランキングや、市区町村ごとの詳しいデータも見られます。`} />
       <Canonical />
-      <h1 className="text-3xl font-bold mb-2">まちくらべ</h1>
-      <p className="text-gray-500 mb-8">
-        全国の市区町村を対象に、人口・面積・人口密度・老年人口比率などのランキングと統計データを掲載しています。都道府県ごとの絞り込みや、条件を自由に組み合わせた検索・比較も可能です。
-      </p>
+      <AppHeader onMenuClick={() => setMenuOpen(true)} />
+      {menuOpen && <Sidebar onClose={() => setMenuOpen(false)} />}
 
-      <Link
-        to="/search"
-        className="flex items-center gap-3 w-full mb-10 px-5 py-4 rounded-xl border-2 border-blue-500 bg-blue-50 hover:bg-blue-100 transition-colors group"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-        </svg>
-        <div>
-          <div className="text-base font-semibold text-blue-700">詳細検索</div>
-          <div className="text-sm text-blue-500">都道府県・種別・区分・よみかたで絞り込む</div>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400 ml-auto group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      </Link>
+      <main className="pt-11">
+        {/* Hero: what this is, and the quickest way in — a municipality's name. */}
+        <section className="bg-[#f4f7fb] border-b border-[#e3eaf3]">
+          <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+            <p className="text-xs tracking-widest text-gray-500">{BRAND_SERIES}</p>
+            <h1 className="mt-1 text-4xl md:text-5xl font-black tracking-tight" style={{ color: NAVY }}>{BRAND_NAME}</h1>
+            <p className="mt-3 max-w-2xl text-gray-700 leading-relaxed">
+              全国{counted > 0 ? `${counted.toLocaleString('ja-JP')}の` : 'の'}市区町村を、人口・人口の増減・面積・人口密度・家賃などのデータで、ランキングと地図でくらべられます。
+            </p>
+            <div className="mt-5 max-w-xl">
+              <MuniSearch entries={places.map(p => ({ code: p.code, name: p.name, kana: p.kana, prefName: p.prefName, population: p.latest }))} />
+            </div>
+          </div>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">ランキング</h2>
-        <ul className="space-y-1">
-          <li><Link to="/rankings/all/density" className="text-blue-600 hover:underline">{densityConfig(null).title}</Link></li>
-          <li><Link to="/rankings/all/cities" className="text-blue-600 hover:underline">{cityPopulationConfig(null).title}</Link></li>
-          <li><Link to="/rankings/all/area" className="text-blue-600 hover:underline">{areaConfig(null).title}</Link></li>
-          <li><Link to="/rankings/all/city-area" className="text-blue-600 hover:underline">{cityAreaConfig(null).title}</Link></li>
-          <li><Link to="/rankings/all/elderly-ratio" className="text-blue-600 hover:underline">{elderlyRatioConfig.title}</Link></li>
-          <li><Link to="/rankings/all/rent" className="text-blue-600 hover:underline">{rentConfig.title}</Link></li>
-          <li><Link to="/rankings/all/rent-labor-days?map=@4" className="text-blue-600 hover:underline">{rentLaborDaysConfig.title}</Link></li>
-        </ul>
-      </section>
+        {/* Featured: the newest census, which is what people search for now. */}
+        <section className="max-w-5xl mx-auto px-4 py-8" aria-labelledby="change">
+          <h2 id="change" className="text-xl md:text-2xl font-bold" style={{ color: NAVY }}>人口が増えたまち・減ったまち</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            国勢調査（{period}）。
+            {loaded && <>人口が増えたのは{growingPrefs.length ? growingPrefs.join('・') : 'なし'}だけ、市区町村では{withRate.length.toLocaleString('ja-JP')}のうち{growingMunis}でした。</>}
+          </p>
+          <div className="mt-5 grid gap-8 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-start">
+            <PrefTileMap
+              rates={new Map(prefs.map(p => [p.prefCode, p.rate]))}
+              linkFor={r => `/rankings/${r}`}
+              caption="都道府県の人口増減率"
+            />
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-1">
+              {loaded ? (
+                <>
+                  <RateList title="増加率が高い市区町村" rows={withRate.slice(0, 5)} more={{ to: '/rankings/all/population-change', label: '人口増加率ランキング' }} />
+                  <RateList title="減少率が高い市区町村" rows={withRate.slice(-5).reverse()} more={{ to: '/rankings/all/population-decline', label: '人口減少率ランキング' }} />
+                </>
+              ) : <p className="text-sm text-gray-400">読み込み中…</p>}
+            </div>
+          </div>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">一覧・統計</h2>
-        <ul className="space-y-1">
-          <li><Link to={`/rankings/all/population-over-500k`} className="text-blue-600 hover:underline">{populationOver500k.title}</Link></li>
-          <li><Link to="/list/all/population" className="text-blue-600 hover:underline">{populationConfig.title}</Link></li>
-        </ul>
-      </section>
+        <section className="bg-[#fafaf9] border-y border-gray-100" aria-labelledby="prefs">
+          <div className="max-w-5xl mx-auto px-4 py-8">
+            <h2 id="prefs" className="text-xl font-bold" style={{ color: NAVY }}>都道府県からさがす</h2>
+            <p className="mt-1 text-sm text-gray-600">その都道府県の市区町村の一覧と、人口・面積・人口密度などのランキングへ。</p>
+            <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+              {REGIONS.map(r => (
+                <div key={r.name} className="flex gap-3">
+                  <span className="w-20 shrink-0 text-xs text-gray-500 pt-1">{r.name}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {prefectures.filter(p => { const n = Number(p.code.slice(0, 2)); return n >= r.from && n <= r.to }).map(p => (
+                      <Link
+                        key={p.code}
+                        to={`/rankings/${p.romanized}`}
+                        className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm text-[#13294b] hover:border-[#4a6fa5] hover:bg-[#eef3fa]"
+                      >
+                        {p.kanji}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別人口密度</h2>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {prefectures.map(pref => (
-            <Link
-              key={pref.code}
-              to={`/rankings/${pref.romanized}/density`}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              {pref.kanji}
+        <section className="max-w-5xl mx-auto px-4 py-8" aria-labelledby="rankings">
+          <h2 id="rankings" className="text-xl font-bold" style={{ color: NAVY }}>全国のランキング</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {CATALOG.map(g => (
+              <div key={g.title} className="rounded-xl border border-gray-200 p-4">
+                <h3 className="text-sm font-semibold text-gray-500 mb-2">{g.title}</h3>
+                <ul className="space-y-1.5">
+                  {g.entries.map(e => (
+                    <li key={e.slug}>
+                      <Link to={rankingPath(e)} className="text-[#13294b] hover:underline">{e.label}</Link>
+                      {e.note && <span className="ml-1.5 text-xs text-gray-400">{e.note}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="mt-10 text-xl font-bold" style={{ color: NAVY }}>自分で表をつくる</h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Link to="/explore" className="rounded-xl border border-gray-200 p-4 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
+              <div className="font-semibold text-[#13294b]">自由探索</div>
+              <div className="text-sm text-gray-600">列・並べ替え・絞り込みを自分で決めて、表と地図をつくる</div>
             </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別市の人口ランキング</h2>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {prefectures.map(pref => (
-            <Link
-              key={pref.code}
-              to={`/rankings/${pref.romanized}/cities`}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              {pref.kanji}
+            <Link to="/search" className="rounded-xl border border-gray-200 p-4 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
+              <div className="font-semibold text-[#13294b]">詳細検索</div>
+              <div className="text-sm text-gray-600">都道府県・種別・区分・よみかたで市区町村を絞り込む</div>
             </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別面積ランキング（市区町村）</h2>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {prefectures.map(pref => (
-            <Link
-              key={pref.code}
-              to={`/rankings/${pref.romanized}/area`}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              {pref.kanji}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">都道府県別面積ランキング（市のみ）</h2>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {prefectures.map(pref => (
-            <Link
-              key={pref.code}
-              to={`/rankings/${pref.romanized}/city-area`}
-              className="text-blue-600 hover:underline text-sm"
-            >
-              {pref.kanji}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">ツール</h2>
-        <ul className="space-y-1">
-          <li><Link to="/explore" className="text-blue-600 hover:underline">自由探索</Link></li>
-        </ul>
-      </section>
-    </div>
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
   )
 }
 
