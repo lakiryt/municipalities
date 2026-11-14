@@ -5,8 +5,9 @@ import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
 import {
   buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal, fetchMunicipalityCodes, fetchRent,
-  fetchMinWages, baseItemEnv, areaSources, populationSources, officialCodes,
-  type PopulationRecord, type DesignationSets, type CodeEntry, type MinWageMap,
+  fetchMinWages, baseItemEnv, areaSources, populationSources, rentSources, minWageSources, officialCodes,
+  defaultDataSelection,
+  type PopulationRecord, type DesignationSets, type CodeEntry, type MinWageMap, type DataSelection,
 } from '../data/municipalities'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
@@ -157,8 +158,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       : `${title} — 日本の自治体データ`
   }, [title, mapColumn])
 
-  const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
-  const [selectedPopPath, setSelectedPopPath]   = useState(populationSources[0].path)
+  const [selection, setSelection]       = useState<DataSelection>(defaultDataSelection)
   const [areaMap, setAreaMap]           = useState(new Map<string, number>())
   const [popMap, setPopMap]             = useState(new Map<string, PopulationRecord>())
   const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
@@ -168,20 +168,21 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [minWageMap, setMinWageMap] = useState<MinWageMap>(new Map())
 
   useEffect(() => {
-    const src = areaSources.find(s => s.path === selectedAreaPath)
+    const src = areaSources.find(s => s.path === selection.area)
     if (src) fetchArea(src).then(setAreaMap)
-  }, [selectedAreaPath])
+  }, [selection.area])
 
   useEffect(() => {
-    const src = populationSources.find(s => s.path === selectedPopPath)
+    const src = populationSources.find(s => s.path === selection.pop)
     if (src) fetchPopulation(src).then(setPopMap)
-  }, [selectedPopPath])
+  }, [selection.pop])
+
+  useEffect(() => { fetchRent(rentSources.find(s => s.path === selection.rent)).then(setRentMap) }, [selection.rent])
+  useEffect(() => { fetchMinWages(minWageSources.find(s => s.path === selection.minwage)).then(setMinWageMap) }, [selection.minwage])
 
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
   useEffect(() => { fetchCoastal().then(setCoastal) }, [])
   useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
-  useEffect(() => { fetchRent().then(setRentMap) }, [])
-  useEffect(() => { fetchMinWages().then(setMinWageMap) }, [])
 
   // The full, unrestricted base — every downstream view narrows this its
   // own way, but none of them build items from anything smaller than this.
@@ -369,11 +370,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       )}
       {dataOpen && (
         <DataModal
-          selectedAreaPath={selectedAreaPath}
-          selectedPopPath={selectedPopPath}
-          onApply={(areaPath, popPath) => {
-            setSelectedAreaPath(areaPath)
-            setSelectedPopPath(popPath)
+          selection={selection}
+          onApply={next => {
+            setSelection(next)
             setDataOpen(false)
           }}
           onClose={() => setDataOpen(false)}

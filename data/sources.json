@@ -68,10 +68,11 @@
     "agency": "総務省 統計局 統計調査部 国勢統計課",
     "page": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040210062",
     "discover": "manual",
-    "usage": "latest",
-    "note": "5年ごとの調査。新しい調査の同じ表（第122-4表に相当）の statInfId を editions に手で登録する",
+    "usage": "select",
+    "note": "5年ごとの調査。新しい調査の同じ表（令和5年は第122-4表、平成30年は第123-4表）の statInfId を editions に手で登録する",
     "editions": [
-      { "id": "2023", "as_of": "2023-10-01", "published": "2024-09-25", "label": "令和5年", "statInfId": "000040210062" }
+      { "id": "2023", "as_of": "2023-10-01", "published": "2024-09-25", "label": "令和5年", "statInfId": "000040210062" },
+      { "id": "2018", "as_of": "2018-10-01", "published": "2019-09-30", "label": "平成30年", "statInfId": "000031865896" }
     ]
   },
   "minwage": {
@@ -80,8 +81,8 @@
     "agency": "厚生労働省",
     "page": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/minimumichiran/index.html",
     "discover": "auto",
-    "usage": "latest2",
-    "note": "配布ページの「…改定状況」xlsx に全年度が入っている。アプリは有効な版の新しい2つから、都道府県ごとに発効済みの額を使う"
+    "usage": "select",
+    "note": "配布ページの「…改定状況」xlsx に全年度が入っている。アプリの既定は「現在」（有効な版の新しい2つから、都道府県ごとに発効済みの額）で、年度を指定して選ぶこともできる"
   },
   "map": {
     "label": "国土数値情報 行政区域",

@@ -28,28 +28,39 @@ export async function fetchEdition(src, ref, opts) {
   await download(fileUrl(ref.statInfId), cacheKey(ref.statInfId), opts)
 }
 
-// "0_総数" → total, … The leading number is the category code.
-const TENURE = { 0: 'total', 1: 'public', 2: 'ur', 3: 'private', 4: 'company' }
-const COLUMNS = ['code', ...['inc0', 'exc0'].flatMap(z => Object.values(TENURE).map(t => `${z}_${t}`))]
+// 住宅の所有の関係, matched by name: the category codes differ between
+// surveys ("0_総数"/"1_公営の借家" in 2023, "00_総数"/"10_公営の借家" in 2018).
+const TENURE = [
+  [/総数/, 'total'], [/公営/, 'public'], [/都市再生機構|UR|公社/, 'ur'], [/民営/, 'private'], [/給与/, 'company'],
+]
+const tenureOf = (cell) => {
+  const m = clean(cell).match(/^\d{1,2}_(.+)$/)
+  return m ? TENURE.find(([re]) => re.test(m[1]))?.[1] ?? null : null
+}
+const COLUMNS = ['code', ...['inc0', 'exc0'].flatMap(z => TENURE.map(([, t]) => `${z}_${t}`))]
 
+/**
+ * Column positions also differ between surveys (2018 has extra leading
+ * columns), so the two value columns are found by their item labels and the
+ * area/tenure columns by their contents ("13101_千代田区", "30_民営借家").
+ */
 export function parseRent(rows) {
-  // Header rows are labelled in column 2 (表章項目/事項名/項目名/表章単位).
-  const itemRow = rows.find(r => clean(r[2]) === '項目名')
-  if (!itemRow) throw new Error('家賃 xlsx: 項目名 row not found')
+  const itemRow = rows.find(r => r.some(c => clean(c) === '1_家賃0円を含む'))
+  if (!itemRow) throw new Error('家賃 xlsx: 「1_家賃0円を含む」の見出し行が見つかりません')
   const labels = itemRow.map(c => [clean(c)])
   const inc0 = findColumn(labels, ['家賃0円を含む'])
   const exc0 = findColumn(labels, ['家賃0円を含まない'])
 
   const out = new Map()
   for (const r of rows) {
-    const m = clean(r[1]).match(/^(\d{5})_/)
-    const t = clean(r[2]).match(/^(\d)_/)
-    if (!m || !t || !TENURE[t[1]]) continue
-    const code = toCode5(m[1])
+    const areaCell = r.find(c => /^\d{5}_/.test(clean(c)))
+    const tenure = areaCell && r.map(tenureOf).find(Boolean)
+    if (!areaCell || !tenure) continue
+    const code = toCode5(clean(areaCell).slice(0, 5))
     const rec = out.get(code) ?? { code }
     // "-" (no such homes, or too few to report) → blank.
-    rec[`inc0_${TENURE[t[1]]}`] = toNumber(r[inc0])
-    rec[`exc0_${TENURE[t[1]]}`] = toNumber(r[exc0])
+    rec[`inc0_${tenure}`] = toNumber(r[inc0])
+    rec[`exc0_${tenure}`] = toNumber(r[exc0])
     out.set(code, rec)
   }
   return [...out.values()].sort((a, b) => a.code.localeCompare(b.code))

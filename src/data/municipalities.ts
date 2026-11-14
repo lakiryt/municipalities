@@ -83,10 +83,14 @@ const fetchCsv = (path: string) => fetch(`/${path}`).then(r => r.text()).then(pa
 // for the same date.
 export type Source = { label: string; name: string; as_of: string; path: string }
 
+// Datasets whose editions are better told apart by name than by date
+// (国勢調査 has 速報/確定 on one date; surveys read as "令和5年", "2026年度").
+const NAMED_EDITIONS = new Set(['kokusei', 'rent', 'minwage'])
+
 const sourcesOf = (id: string): Source[] =>
   dataset(id).editions.map(e => ({
     label: dataset(id).label,
-    name: id === 'kokusei' ? (e.label ?? e.as_of) : e.as_of,
+    name: NAMED_EDITIONS.has(id) ? (e.label ?? e.as_of) : e.as_of,
     as_of: e.as_of,
     path: e.path,
   }))
@@ -197,10 +201,11 @@ export const mapTopojsonPath = (): string | undefined => latest('map')?.path
 // (total/public/ur/private/company) both including (inc0) and excluding (exc0)
 // zero-rent homes; only the totals are surfaced. Categories too small to
 // report are empty cells → NaN.
-export const fetchRent = (): Promise<Map<string, { inc0: number; exc0: number }>> => {
-  const e = latest('rent')
-  if (!e) return Promise.resolve(new Map())
-  return fetchCsv(e.path).then(rows => new Map(
+export const rentSources: Source[] = sourcesOf('rent')
+
+export const fetchRent = (src: { path: string } | undefined): Promise<Map<string, { inc0: number; exc0: number }>> => {
+  if (!src) return Promise.resolve(new Map())
+  return fetchCsv(src.path).then(rows => new Map(
     rows.map((r): [string, { inc0: number; exc0: number }] => [r.code, { inc0: toNum(r.inc0_total), exc0: toNum(r.exc0_total) }])
   ))
 }
@@ -232,12 +237,40 @@ export const pickEffectiveMinWages = (
   return out
 }
 
-export const fetchMinWages = (): Promise<MinWageMap> => {
+// The default choice isn't an edition but "whatever is in effect today"
+// (see pickEffectiveMinWages); a specific 年度 can be picked instead.
+export const MINWAGE_EFFECTIVE = 'effective'
+
+export const minWageSources: Source[] = [
+  { label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE },
+  ...sourcesOf('minwage'),
+]
+
+// ── Data selection ("データの選択") ──────────────────────────────────────────
+
+// Which edition of each selectable dataset the table/map uses, by path
+// (minimum wage also has the non-edition choice MINWAGE_EFFECTIVE).
+export type DataSelection = { pop: string; area: string; rent: string; minwage: string }
+
+export const defaultDataSelection = (): DataSelection => ({
+  pop: populationSources[0]?.path ?? '',
+  area: areaSources[0]?.path ?? '',
+  rent: rentSources[0]?.path ?? '',
+  minwage: minWageSources[0]?.path ?? '',
+})
+
+const minWageRows = (path: string) =>
+  fetchCsv(path).then(rows => rows.map(r => ({ code: r.code, min: toNum(r.min), since: r.since })))
+
+export const fetchMinWages = (src: { path: string } | undefined): Promise<MinWageMap> => {
+  if (!src) return Promise.resolve(new Map())
+  if (src.path !== MINWAGE_EFFECTIVE) {
+    // A specific 年度: its rates as published, effective or not yet.
+    return minWageRows(src.path).then(rows => new Map(rows.map(r => [r.code.slice(0, 2), { min: r.min, since: r.since }])))
+  }
   const eds = dataset('minwage').editions.slice(0, 2)
-  return Promise.all(eds.map(e => fetchCsv(e.path))).then(all => pickEffectiveMinWages(
-    all.map(rows => rows.map(r => ({ code: r.code, min: toNum(r.min), since: r.since }))),
-    new Date().toISOString().slice(0, 10),
-  ))
+  return Promise.all(eds.map(e => minWageRows(e.path))).then(all =>
+    pickEffectiveMinWages(all, new Date().toISOString().slice(0, 10)))
 }
 
 // ── Kana normalization ────────────────────────────────────────────────────────

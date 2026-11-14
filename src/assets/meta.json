@@ -276,7 +276,7 @@
             "label": "令和7年 速報集計",
             "statsDataId": "0004050397"
           },
-          "enabled": true
+          "enabled": false
         },
         {
           "id": "2020",
@@ -314,7 +314,7 @@
             "label": "令和2年 速報集計",
             "statsDataId": "0003433219"
           },
-          "enabled": true
+          "enabled": false
         }
       ]
     },
@@ -554,6 +554,27 @@
             "published": "2024-09-25",
             "label": "令和5年",
             "statInfId": "000040210062"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2018",
+          "as_of": "2018-10-01",
+          "published": "2019-09-30",
+          "label": "平成30年",
+          "path": "data/rent/2018.csv",
+          "rows": 1310,
+          "source": {
+            "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000031865896&fileKind=0",
+            "retrieved_at": "2026-11-14",
+            "sha256": "e8771a6607d661a3598e12af13bb15246d0526228c5957add9d44e3bfbf280a3"
+          },
+          "ref": {
+            "id": "2018",
+            "as_of": "2018-10-01",
+            "published": "2019-09-30",
+            "label": "平成30年",
+            "statInfId": "000031865896"
           },
           "enabled": true
         }
