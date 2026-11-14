@@ -69,7 +69,14 @@ const mercator = ([lon, lat]: Point): Point => [
 // shares one code across several geometries, so their paths are concatenated.
 export type MuniPaths = Map<string, string>
 
-export async function fetchMunicipalityPaths(): Promise<MuniPaths> {
+// Decoded once and shared: the map view and the detail page's locator map
+// both need it, and the TopoJSON is ~7MB.
+let pathsPromise: Promise<MuniPaths> | null = null
+export function fetchMunicipalityPaths(): Promise<MuniPaths> {
+  return pathsPromise ??= loadMunicipalityPaths()
+}
+
+async function loadMunicipalityPaths(): Promise<MuniPaths> {
   const path = mapTopojsonPath()
   if (!path) return new Map()
   const topology: Topology = await fetch(`/${path}`).then(r => r.json())
@@ -155,6 +162,15 @@ export const COLOR_SCHEMES: Record<ColorSchemeKey, { label: string; ramp: string
     ],
   },
 }
+
+// Diverging (増減): decline in a warm hue, a light neutral at 0, growth in
+// blue ending in the brand navy — the same reading as the home page's
+// prefecture map. Lightness steps mirror each other around the middle.
+export const DIVERGING_RAMP = [
+  '#8c2d16', '#b8502c', '#d9784f', '#efaa8a', '#f8d8c8',
+  '#f5f4f0',
+  '#cde2fb', '#86b6ef', '#3987e5', '#1c5cab', '#13294b',
+]
 
 function hexToRgb(hex: string) {
   const n = parseInt(hex.slice(1), 16)

@@ -1,20 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { evaluate } from '@/lang/evaluate'
 import { baseItemEnv, type BaseItem } from '@/data/municipalities'
 import type { DesignationSets } from '@/data/datasets'
-import type { ColumnState } from '@/types'
+import type { ColumnState, ColumnRef } from '@/types'
+import { formatValue } from '@/lib/format'
+import { fitBounds, type Box } from '@/lib/mapFit'
+import { makeScale, canLog, canDiverge, suggestScale, isSigned, SCALE_LABELS, type ScaleChoice } from '@/lib/colorScale'
 import {
-  fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, VIEW_SIZE,
+  fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP, VIEW_SIZE,
   type MuniPaths, type ColorSchemeKey,
 } from '@/lib/topoMap'
 
 type Props = {
   column: ColumnState
+  // Numeric columns the map can be colored by (the switcher's options).
+  columnOptions: ColumnRef[]
+  onSelectColumn: (id: number) => void
   displayItems: BaseItem[]
+  // Every row, shown or not: names any shape on hover, and tells which wards
+  // belong to a designated city (which has no shape of its own).
+  allItems?: BaseItem[]
   designations: DesignationSets | undefined
   coastal: Set<string>
-  onClose: () => void
+  // When the rows are filtered (e.g. to one prefecture), zoom to them.
+  fitToItems?: boolean
+  linkFor?: (code: string) => string
 }
+
+// Legend values are scale positions, not data: 3 significant figures
+// (13,988.7664 → 13,989; 4.4152 → 4.42).
+const legendValue = (v: number) =>
+  formatValue(Number(v.toPrecision(Math.max(3, Math.floor(Math.log10(Math.abs(v) || 1)) + 1))))
+
+type Picked = { code: string; label: string; pref: string; value: number | undefined }
 
 const NO_DATA_FILL = '#e1e0d9'
 const MIN_SCALE = 1
@@ -32,9 +51,33 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
   return { scale, x: at.x - scale * worldX, y: at.y - scale * worldY }
 }
 
-function MapModal({ column, displayItems, designations, coastal, onClose }: Props) {
+// The map view: fills the content area below the toolbar (not a modal), so
+// "表 ｜ 地図" switches between two views of the same rows. Desktop hovers
+// for a tooltip; a click/tap pins a card (phones have no hover).
+function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems = [], designations, coastal, fitToItems = false, linkFor }: Props) {
+  // The color scale and outlier clipping (a percentage, 0 = none) are per
+  // map and kept in the URL (?scale=log&clip=2), like the map column itself.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const scaleParam = searchParams.get('scale')
+  const scaleChoice: ScaleChoice =
+    scaleParam === 'linear' || scaleParam === 'log' || scaleParam === 'rank' || scaleParam === 'diverging' || scaleParam === 'symlog'
+      ? scaleParam : 'auto'
+  const clipParam = Number(searchParams.get('clip') ?? 0)
+  const clipPercent = clipParam >= 0 && clipParam <= 49 ? clipParam : 0
+  // The input's own text, so it can be briefly empty or mid-edit.
+  const [clipText, setClipText] = useState(String(clipPercent))
+  const setParam = (key: string, value: string | null) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev)
+    if (value === null) next.delete(key); else next.set(key, value)
+    return next
+  }, { replace: true })
+
   const [paths, setPaths] = useState<MuniPaths | null>(null)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number | undefined } | null>(null)
+  const [picked, setPicked] = useState<Picked | null>(null)
+  // A drag that ends over a municipality still fires a click — remember how
+  // far the pointer moved so a pan doesn't also pick.
+  const movedRef = useRef(0)
   const [view, setView] = useState<View>({ scale: 1, x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [schemeKey, setSchemeKey] = useState<ColorSchemeKey>('blue')
@@ -72,6 +115,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     const onMove = (e: MouseEvent) => {
       const drag = dragRef.current
       if (!drag) return
+      movedRef.current = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY)
       const dx = (e.clientX - drag.startClientX) * drag.unitsPerPixel
       const dy = (e.clientY - drag.startClientY) * drag.unitsPerPixel
       setView({ ...drag.startView, x: drag.startView.x + dx, y: drag.startView.y + dy })
@@ -92,6 +136,29 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     return m
   }, [displayItems])
 
+  const allByCode = useMemo(() => new Map(allItems.map(i => [i.code, i])), [allItems])
+  const wardsOf = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const i of allItems) if (i.parent) m.set(i.parent, [...(m.get(i.parent) ?? []), i.code])
+    return m
+  }, [allItems])
+
+  // Which row each shape shows: its own, or — for a designated city shown
+  // without its wards (e.g. filtered by &official) — the city's, so the
+  // city is drawn over its wards' shapes. A ward shown itself wins.
+  const owner = useMemo(() => {
+    const m = new Map<string, string>()
+    if (!paths) return m
+    for (const code of itemByCode.keys()) if (paths.has(code)) m.set(code, code)
+    for (const code of itemByCode.keys()) {
+      if (paths.has(code)) continue
+      for (const w of wardsOf.get(code) ?? []) if (paths.has(w) && !m.has(w)) m.set(w, code)
+    }
+    return m
+  }, [paths, itemByCode, wardsOf])
+  const drawn = useMemo(() => new Set(owner.values()), [owner])
+
+  // One value per shown row (a city drawn over its wards counts once).
   const values = useMemo(() => {
     if (!paths) return new Map<string, number>()
     const map = new Map<string, number>()
@@ -102,32 +169,31 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
       // small islands are drawn under their prefecture's own code rather
       // than a municipality's, and coloring them by the prefecture's total
       // would be just as misleading as including the total itself.
-      if (!paths.has(code) || code.endsWith('000')) continue
+      if (!drawn.has(code) || code.endsWith('000')) continue
       const v = evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number
       if (!isNaN(v)) map.set(code, v)
     }
     return map
-  }, [itemByCode, column, designations, coastal, paths])
+  }, [itemByCode, column, designations, coastal, paths, drawn])
 
-  const [min, max] = useMemo(() => {
-    const vs = [...values.values()]
-    return vs.length ? [Math.min(...vs), Math.max(...vs)] : [0, 1]
-  }, [values])
+  const valueList = useMemo(() => [...values.values()], [values])
+  const logPossible = useMemo(() => canLog(valueList), [valueList])
+  const divergePossible = useMemo(() => canDiverge(valueList), [valueList])
+  const autoKind = useMemo(() => suggestScale(valueList), [valueList])
+  const scale = useMemo(() => makeScale(valueList, scaleChoice, clipPercent), [valueList, scaleChoice, clipPercent])
+  const diverging = isSigned(scale.kind)
+  const ramp = diverging ? DIVERGING_RAMP : COLOR_SCHEMES[schemeKey].ramp
 
-  // Same domain as the map's color scale, so a bar's horizontal position
-  // lines up with where its value falls on the legend gradient below.
+  // Bins are equal steps along the color scale (not the raw values), so a
+  // bar's horizontal position lines up with its color on the legend below —
+  // on a log scale each bar covers the same ratio, not the same difference.
   const BIN_COUNT = 20
   const bins = useMemo(() => {
-    const vs = [...values.values()]
-    if (vs.length === 0) return []
-    const width = max === min ? 1 : (max - min) / BIN_COUNT
+    if (valueList.length === 0) return []
     const counts = new Array(BIN_COUNT).fill(0)
-    for (const v of vs) {
-      const idx = Math.min(BIN_COUNT - 1, Math.max(0, Math.floor((v - min) / width)))
-      counts[idx]++
-    }
-    return counts.map((count, i) => ({ x0: min + i * width, x1: min + (i + 1) * width, count }))
-  }, [values, min, max])
+    for (const v of valueList) counts[Math.min(BIN_COUNT - 1, Math.floor(scale.t(v) * BIN_COUNT))]++
+    return counts.map((count, i) => ({ x0: scale.valueAt(i / BIN_COUNT), x1: scale.valueAt((i + 1) / BIN_COUNT), count }))
+  }, [valueList, scale])
 
   const maxCount = Math.max(1, ...bins.map(b => b.count))
 
@@ -149,7 +215,39 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     ro.observe(area)
     ro.observe(gradient)
     return () => ro.disconnect()
-  }, [min, max, schemeKey])
+  }, [scale, schemeKey])
+
+  // Zoom to the filtered rows (one prefecture, say): the union of their
+  // shapes' bounding boxes, in the map's own coordinates. Only when the
+  // filtered set changes — panning/zooming afterwards is left alone.
+  const fitKey = fitToItems ? [...itemByCode.keys()].join() : ''
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!paths || !svg) return
+    // Measured after the shapes are laid out (next frame), then applied.
+    const frame = requestAnimationFrame(() => {
+      // Nothing filtered — or a filter that keeps (nearly) every shape —
+      // shows the whole country rather than zooming to it.
+      if (!fitKey || owner.size >= 0.9 * paths.size) { setView({ scale: 1, x: 0, y: 0 }); return }
+      // One box per municipality (a municipality may be several paths).
+      const boxes = new Map<string, Box>()
+      svg.querySelectorAll<SVGPathElement>('path[data-code]').forEach(el => {
+        const code = el.dataset.code!
+        if (!owner.has(code)) return
+        const bb = el.getBBox()
+        const prev = boxes.get(code)
+        boxes.set(code, prev
+          ? { x0: Math.min(prev.x0, bb.x), y0: Math.min(prev.y0, bb.y), x1: Math.max(prev.x1, bb.x + bb.width), y1: Math.max(prev.y1, bb.y + bb.height) }
+          : { x0: bb.x, y0: bb.y, x1: bb.x + bb.width, y1: bb.y + bb.height })
+      })
+      const fit = fitBounds([...boxes.values()])
+      if (!fit) return
+      const sc = Math.min(MAX_SCALE, Math.max(MIN_SCALE, 0.9 * VIEW_SIZE / Math.max(fit.x1 - fit.x0, fit.y1 - fit.y0)))
+      setView({ scale: sc, x: VIEW_SIZE / 2 - sc * (fit.x0 + fit.x1) / 2, y: VIEW_SIZE / 2 - sc * (fit.y0 + fit.y1) / 2 })
+    })
+    return () => cancelAnimationFrame(frame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paths, fitKey])
 
   const clientToSvgPoint = (clientX: number, clientY: number) => {
     const svg = svgRef.current
@@ -164,6 +262,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     const ctm = svgRef.current?.getScreenCTM()
     if (!ctm) return
+    movedRef.current = 0
     dragRef.current = { startClientX: e.clientX, startClientY: e.clientY, startView: view, unitsPerPixel: 1 / ctm.a }
     setIsDragging(true)
   }
@@ -251,17 +350,32 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     }
   }, [paths])
 
+  const pick = (shape: string) => {
+    if (movedRef.current > 5) return
+    const code = owner.get(shape) ?? shape
+    // A shape outside the shown rows still says what it is (データなし).
+    const item = itemByCode.get(code) ?? allByCode.get(code)
+    if (!item) { setPicked(null); return }
+    setPicked({ code, label: item.kanji || item.prefecture.kanji || '', pref: item.kanji ? item.prefecture.kanji ?? '' : '', value: values.get(code) })
+  }
+
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-white rounded-lg shadow-xl p-4 w-[92vw] h-[88vh] max-w-5xl flex flex-col">
-        <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-lg font-bold">{column.label}の地図</h3>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm ml-auto" onClick={onClose}>
-            閉じる
-          </button>
+    <div className="h-full w-full max-w-5xl mx-auto px-3 pb-3 flex flex-col">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+          <h2 className="text-sm font-semibold">{column.label}の地図</h2>
+          {columnOptions.length > 1 && (
+            <label className="flex items-center gap-1.5 text-xs text-gray-500 ml-auto">
+              色分けする列
+              <select
+                aria-label="色分けする列"
+                className="border border-gray-300 rounded px-1.5 py-1 text-sm text-gray-900 bg-white max-w-[55vw]"
+                value={column.id}
+                onChange={e => { setPicked(null); onSelectColumn(Number(e.target.value)) }}
+              >
+                {columnOptions.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+            </label>
+          )}
         </div>
 
         <div className="relative flex-1 min-h-0 touch-none" ref={mapAreaRef}>
@@ -276,21 +390,21 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               onMouseDown={handleMouseDown}
             >
               <g transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>
-                {[...paths.entries()].map(([code, d]) => {
+                {[...paths.entries()].map(([shape, d]) => {
+                  const code = owner.get(shape) ?? shape
                   const v = values.get(code)
-                  const ramp = COLOR_SCHEMES[schemeKey].ramp
-                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(max === min ? 0.5 : (v - min) / (max - min), ramp)
+                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
                   return (
                     <path
-                      key={code}
+                      key={shape}
+                      data-code={shape}
                       d={d}
                       fill={fill}
-                      stroke="none"
-                      strokeWidth={0.5}
+                      strokeWidth={picked?.code === code ? 1.5 : 0.5}
                       vectorEffect="non-scaling-stroke"
                       onMouseMove={e => {
                         if (isDragging) return
-                        const item = itemByCode.get(code)
+                        const item = itemByCode.get(code) ?? allByCode.get(code)
                         if (!item) { setHover(null); return }
                         // Prefecture-level codes (the remote islands drawn under
                         // them) have no municipality name of their own in the
@@ -300,11 +414,30 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
                         setHover({ x: e.clientX, y: e.clientY, label, value: v })
                       }}
                       onMouseLeave={() => setHover(null)}
+                      onClick={() => pick(shape)}
+                      stroke={picked?.code === code ? '#111827' : 'none'}
                     />
                   )
                 })}
               </g>
             </svg>
+          )}
+          {picked && (
+            <div
+              data-testid="map-picked"
+              className="absolute top-2 left-2 z-20 bg-white/95 border border-gray-200 rounded-lg shadow-md px-3 py-2 text-sm max-w-[70%]"
+            >
+              <div className="flex items-start gap-3">
+                <div>
+                  <div className="font-semibold">{picked.label}<span className="ml-1.5 text-xs text-gray-400 font-normal">{picked.pref}</span></div>
+                  <div className="text-gray-600 tabular-nums">
+                    {column.label}: {picked.value !== undefined ? formatValue(picked.value) : 'データなし'}
+                  </div>
+                  {linkFor && picked.pref && <Link to={linkFor(picked.code)} className="text-xs text-blue-600 hover:underline">詳細を見る →</Link>}
+                </div>
+                <button aria-label="閉じる" className="text-gray-400 hover:text-gray-700 leading-none" onClick={() => setPicked(null)}>✕</button>
+              </div>
+            </div>
           )}
           {hover && (
             <div
@@ -312,7 +445,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               className="fixed pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 z-50"
               style={{ left: hover.x + 12, top: hover.y + 12 }}
             >
-              {hover.value !== undefined ? `${hover.label}: ${hover.value.toLocaleString('ja-JP')}` : `${hover.label}: データなし`}
+              {hover.value !== undefined ? `${hover.label}: ${formatValue(hover.value)}` : `${hover.label}: データなし`}
             </div>
           )}
 
@@ -325,8 +458,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               <svg data-testid="map-histogram" viewBox="0 0 400 200" preserveAspectRatio="none" className="w-full h-full">
                 <line x1={0} y1={190} x2={400} y2={190} stroke="#e5e7eb" strokeWidth={1} />
                 {bins.map((bin, i) => {
-                  const ramp = COLOR_SCHEMES[schemeKey].ramp
-                  const fill = sequentialColor(max === min ? 0.5 : ((bin.x0 + bin.x1) / 2 - min) / (max - min), ramp)
+                  const fill = sequentialColor((i + 0.5) / BIN_COUNT, ramp)
                   const barWidth = 400 / BIN_COUNT
                   const barHeight = (bin.count / maxCount) * 178
                   return (
@@ -356,7 +488,8 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
             </div>
           )}
 
-          {paths && (
+          {paths && scale.kind !== 'rank' && (
+            // On a rank scale every bar would be the same height — no histogram.
             <button
               className="absolute bottom-3 right-3 z-20 px-3 py-1 border border-gray-300 rounded bg-white/90 hover:bg-gray-50 text-sm shadow-sm"
               onClick={() => setShowHistogram(h => !h)}
@@ -373,20 +506,21 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
             aria-label="配色"
             aria-haspopup="listbox"
             aria-expanded={schemeOpen}
-            title={COLOR_SCHEMES[schemeKey].label}
-            className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400"
+            title={diverging ? '増減の配色（0が中央。減少は赤系、増加は青系）' : COLOR_SCHEMES[schemeKey].label}
+            disabled={diverging}
+            className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400 disabled:cursor-default disabled:hover:border-gray-300"
             onClick={() => setSchemeOpen(o => !o)}
           >
-            <span>{min.toLocaleString('ja-JP')}</span>
+            <span className="tabular-nums">{scale.clippedLow ? '≤ ' : ''}{legendValue(scale.lo)}</span>
             <span
               ref={gradientRef}
               className="h-2 flex-1 rounded-sm block"
-              style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
+              style={{ background: `linear-gradient(to right, ${ramp.join(', ')})` }}
             />
-            <span>{max.toLocaleString('ja-JP')}</span>
-            <span className="text-gray-400">▾</span>
+            <span className="tabular-nums">{scale.clippedHigh ? '≥ ' : ''}{legendValue(scale.hi)}</span>
+            {!diverging && <span className="text-gray-400">▾</span>}
           </button>
-          {schemeOpen && (
+          {schemeOpen && !diverging && (
             <div
               role="listbox"
               className="absolute z-10 bottom-full mb-2 left-0 bg-white border border-gray-300 rounded shadow-lg py-1 w-44"
@@ -410,9 +544,49 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
             </div>
           )}
         </div>
-      </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-600">
+          <label className="flex items-center gap-1.5">
+            目盛り
+            <select
+              aria-label="目盛り"
+              className="border border-gray-300 rounded px-1.5 py-0.5 bg-white text-gray-900"
+              value={scaleChoice}
+              onChange={e => setParam('scale', e.target.value === 'auto' ? null : e.target.value)}
+            >
+              <option value="auto">自動（{SCALE_LABELS[autoKind]}）</option>
+              <option value="linear">線形</option>
+              <option value="log" disabled={!logPossible}>対数{logPossible ? '' : '（0以下の値が多いため不可）'}</option>
+              <option value="rank">順位（パーセンタイル）</option>
+              <option value="diverging" disabled={!divergePossible}>{SCALE_LABELS.diverging}{divergePossible ? '' : '（正と負の値がないため不可）'}</option>
+              <option value="symlog" disabled={!divergePossible}>{SCALE_LABELS.symlog}{divergePossible ? '' : '（正と負の値がないため不可）'}</option>
+            </select>
+          </label>
+          <label className={`flex items-center gap-1.5 ${scale.kind === 'rank' ? 'opacity-40' : ''}`} title="上下それぞれ指定した割合の値を色の範囲から外し、両端の色で塗ります（0 で外さない）">
+            外れ値を除く 上下
+            <input
+              type="number"
+              aria-label="外れ値として除く割合（%）"
+              min={0}
+              max={49}
+              step={0.5}
+              className="w-14 border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-900 tabular-nums disabled:bg-gray-50"
+              value={clipText}
+              disabled={scale.kind === 'rank'}
+              onChange={e => {
+                setClipText(e.target.value)
+                const v = Number(e.target.value)
+                if (e.target.value !== '' && v >= 0 && v <= 49) setParam('clip', v > 0 ? String(v) : null)
+              }}
+            />
+            %
+          </label>
+          {scale.kind !== 'linear' && (
+            <span className="text-gray-400 tabular-nums">中央の色 ≒ {legendValue(scale.valueAt(0.5))}</span>
+          )}
+        </div>
     </div>
   )
 }
 
-export default MapModal
+export default MapView

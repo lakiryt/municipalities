@@ -1,17 +1,14 @@
-import { useState } from 'react'
-import {
-  areaSources, populationSources, rentSources, minWageSources, type Source, type DataSelection,
-} from '@/data/datasets'
-
-const SECTIONS: { key: keyof DataSelection; title: string; sources: Source[] }[] = [
-  { key: 'pop',     title: '人口データ',   sources: populationSources },
-  { key: 'area',    title: '面積データ',   sources: areaSources },
-  { key: 'rent',    title: '家賃データ',   sources: rentSources },
-  { key: 'minwage', title: '最低賃金',     sources: minWageSources },
-]
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { SELECTABLE, DATA_KEYS, dataset, type Source, type DataSelection, type DataKey } from '@/data/datasets'
 
 type Props = {
   selection: DataSelection
+  // Opened from one data chip: that section is highlighted, scrolled to and
+  // focused, and named in the title.
+  focus?: DataKey
+  // Data the page actually uses; the rest is folded away below.
+  used?: DataKey[]
   onApply: (selection: DataSelection) => void
   onClose: () => void
 }
@@ -25,11 +22,12 @@ function groupByLabel(sources: Source[]): [string, Source[]][] {
   return [...map.entries()]
 }
 
-function SourceSection({ radioName, sources, selectedPath, onChange }: {
+function SourceSection({ radioName, sources, selectedPath, onChange, autoFocus = false }: {
   radioName: string
   sources: Source[]
   selectedPath: string
   onChange: (path: string) => void
+  autoFocus?: boolean
 }) {
   const groups = groupByLabel(sources)
   const selectedSrc = sources.find(s => s.path === selectedPath)
@@ -39,7 +37,7 @@ function SourceSection({ radioName, sources, selectedPath, onChange }: {
   const single = groups.length === 1
 
   return (
-    <div className="space-y-1 mb-5">
+    <div className="space-y-1">
       {groups.map(([label, srcs]) => {
         const isActive = label === activeLabel
         return (
@@ -65,6 +63,7 @@ function SourceSection({ radioName, sources, selectedPath, onChange }: {
               }`}
               value={isActive ? selectedPath : srcs[0].path}
               tabIndex={isActive ? 0 : -1}
+              autoFocus={autoFocus && isActive}
               onChange={e => onChange(e.target.value)}
             >
               {srcs.map(src => (
@@ -78,30 +77,74 @@ function SourceSection({ radioName, sources, selectedPath, onChange }: {
   )
 }
 
-function DataModal({ selection, onApply, onClose }: Props) {
+// 出典 of the chosen edition, linking to the publisher's page.
+function SourceLink({ source }: { source: Source | undefined }) {
+  if (!source) return null
+  const ds = dataset(source.dataset)
+  const text = `${ds.agency ? `${ds.agency}「` : '「'}${ds.name ?? ds.label}」`
+  return (
+    <p className="px-3 mt-0.5 text-[11px] text-gray-500 truncate">
+      出典：{ds.page ? <a href={ds.page} target="_blank" rel="noopener noreferrer" className="hover:underline">{text}</a> : text}
+    </p>
+  )
+}
+
+function DataModal({ selection, focus, used, onApply, onClose }: Props) {
   const [pending, setPending] = useState(selection)
+  const focusedRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { focusedRef.current?.scrollIntoView({ block: 'nearest' }) }, [])
+
+  const available = DATA_KEYS.filter(k => SELECTABLE[k].sources.length > 0)
+  const primary = used ? available.filter(k => used.includes(k)) : available
+  const others = available.filter(k => !primary.includes(k))
+
+  const section = (k: DataKey) => {
+    const focused = k === focus
+    return (
+      <div
+        key={k}
+        ref={focused ? focusedRef : undefined}
+        data-focused={focused || undefined}
+        className={`rounded-lg p-2 -mx-2 mb-3 ${focused ? 'bg-blue-50 ring-2 ring-blue-400' : ''}`}
+      >
+        <p className={`text-xs font-semibold tracking-widest mb-1 ${focused ? 'text-blue-700' : 'text-gray-400'}`}>
+          {SELECTABLE[k].title}データ
+        </p>
+        <SourceSection
+          radioName={k}
+          sources={SELECTABLE[k].sources}
+          selectedPath={pending[k]}
+          onChange={path => setPending(p => ({ ...p, [k]: path }))}
+          autoFocus={focused}
+        />
+        <SourceLink source={SELECTABLE[k].sources.find(s => s.path === pending[k])} />
+      </div>
+    )
+  }
 
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-lg shadow-xl p-6 w-[460px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
-        <h3 className="text-lg font-bold mb-4">データの選択</h3>
+      <div role="dialog" aria-label="データの選択" className="bg-white rounded-lg shadow-xl p-6 w-[460px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <h3 className="text-lg font-bold mb-4">
+          データの選択{focus && <span className="text-blue-700"> — {SELECTABLE[focus].title}</span>}
+        </h3>
 
-        {SECTIONS.filter(s => s.sources.length > 0).map(s => (
-          <div key={s.key}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">{s.title}</p>
-            <SourceSection
-              radioName={s.key}
-              sources={s.sources}
-              selectedPath={pending[s.key]}
-              onChange={path => setPending(p => ({ ...p, [s.key]: path }))}
-            />
-          </div>
-        ))}
+        {primary.map(section)}
 
-        <div className="flex justify-end gap-2">
+        {others.length > 0 && (
+          <details className="mb-4" open={focus !== undefined && others.includes(focus)}>
+            <summary className="cursor-pointer text-xs text-gray-500 mb-2">
+              このページで使っていないデータ（{others.map(k => SELECTABLE[k].title).join('・')}）
+            </summary>
+            {others.map(section)}
+          </details>
+        )}
+
+        <div className="flex items-center justify-end gap-2">
+          <Link to="/data" className="mr-auto text-xs text-blue-700 hover:underline">データと出典の一覧</Link>
           <button
             className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
             onClick={onClose}

@@ -4,12 +4,12 @@ const populationOver500k: RankingConfig = {
   title: '人口50万人以上の自治体一覧',
   description: '総人口が50万人以上の市区町村の一覧です。',
   columns: [
-    { label: '自治体コード',   expression: '$code' },
-    { label: '都道府県', expression: '$prefkanji' },
-    { label: '自治体名', expression: '$kanji' },
-    { label: '総人口',   expression: '#totalpop' },
+    { id: 2, label: '自治体名', expression: '$kanji' },
+    { id: 3, label: '総人口',   expression: '#totalpop' },
+    { id: 1, label: '都道府県', expression: '$prefkanji' },
+    { id: 0, label: '自治体コード',   expression: '$code' },
   ],
-  filterExpression: 'LEQ(500000, #totalpop)',
+  filterExpression: 'AND(&official, LEQ(500000, #totalpop))',
   sortExpression: '#totalpop',
   sortDirection: 'desc',
 }

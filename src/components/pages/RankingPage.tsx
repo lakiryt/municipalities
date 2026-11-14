@@ -7,7 +7,7 @@ type Props = { config: RankingConfig }
 
 function RankingPage({ config }: Props) {
   const columns: ColumnState[] = config.columns.map((col, i) => ({
-    id: i,
+    id: col.id ?? i,
     label: col.label,
     expression: col.expression,
     typed: parseAndTypeCheck(col.expression),
@@ -30,7 +30,6 @@ function RankingPage({ config }: Props) {
         initialColumns={columns}
         initialFilter={initialFilter}
         initialSort={initialSort}
-        restrictToOfficial
       />
     </>
   )

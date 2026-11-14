@@ -27,7 +27,8 @@ function writeMeta(meta) {
   for (const id of Object.keys(meta.datasets).sort((a, b) => indexOr(order, a) - indexOr(order, b))) {
     const src = manifest[id] ?? {}
     const attribution = Object.fromEntries(ATTRIBUTION_KEYS.filter(k => src[k] !== undefined).map(k => [k, src[k]]))
-    datasets[id] = { ...attribution, editions: [...meta.datasets[id].editions].sort(byNewest) }
+    const { extras } = meta.datasets[id]
+    datasets[id] = { ...attribution, ...(extras ? { extras } : {}), editions: [...meta.datasets[id].editions].sort(byNewest) }
   }
   writeFileSync(META_PATH, JSON.stringify({ datasets }, null, 2) + '\n')
 }
@@ -56,6 +57,18 @@ export function removeEditions(id, editionIds) {
   ds.editions = ds.editions.filter(e => !editionIds.includes(e.id))
   writeMeta(meta)
   return removed
+}
+
+/**
+ * Dataset-level derived files (not editions), e.g. jumin's population
+ * series across all held editions: { series: 'data/jumin/series.csv' }.
+ */
+export function setExtras(id, extras) {
+  const meta = readMeta()
+  if (!meta.datasets[id]) return
+  if (extras && Object.keys(extras).length) meta.datasets[id].extras = extras
+  else delete meta.datasets[id].extras
+  writeMeta(meta)
 }
 
 export function setEnabled(id, editionIds, enabled) {

@@ -17,7 +17,12 @@ export type Edition = {
   adjacency?: string
   enabled?: boolean
 }
-export type DatasetMeta = { label: string; name?: string; agency?: string; page?: string; editions: Edition[] }
+export type DatasetMeta = {
+  label: string; name?: string; agency?: string; page?: string
+  editions: Edition[]
+  // Files derived from all editions together, e.g. jumin's { series }.
+  extras?: Record<string, string>
+}
 
 // The repo may hold editions that are switched off in the management UI
 // (`enabled: false`); the app never sees those.
@@ -61,12 +66,17 @@ const fetchCsv = (path: string) => fetch(`/${path}`).then(r => r.text()).then(pa
 // `label` is the dataset (住民基本台帳, 国勢調査, …); `name` tells its editions
 // apart — usually the date, but e.g. 国勢調査 has a 速報 and a 確定 edition
 // for the same date, and surveys read better as "令和5年" / "2026年度".
-export type Source = { label: string; name: string; as_of: string; path: string }
+// `key` identifies the edition in URLs (?pop=jumin:2025, ?area=2026-04-01).
+export type Source = { dataset: string; key: string; label: string; name: string; as_of: string; path: string }
 
 const NAMED_EDITIONS = new Set(['kokusei', 'rent', 'minwage'])
+// Population mixes two datasets, so its keys carry the dataset id.
+const PREFIXED_KEYS = new Set(['jumin', 'kokusei'])
 
 const sourcesOf = (id: string): Source[] =>
   dataset(id).editions.map(e => ({
+    dataset: id,
+    key: PREFIXED_KEYS.has(id) ? `${id}:${e.id}` : e.id,
     label: dataset(id).label,
     name: NAMED_EDITIONS.has(id) ? (e.label ?? e.as_of) : e.as_of,
     as_of: e.as_of,
@@ -81,19 +91,100 @@ export const populationSources: Source[] = [...sourcesOf('jumin'), ...sourcesOf(
 export const areaSources: Source[] = sourcesOf('area')
 export const rentSources: Source[] = sourcesOf('rent')
 export const minWageSources: Source[] = [
-  { label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE },
+  { dataset: 'minwage', key: MINWAGE_EFFECTIVE, label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE },
   ...sourcesOf('minwage'),
 ]
 
+// ── Population change (人口増減) ─────────────────────────────────────────────────
+
+// 人口増減 compares two editions of one population dataset: each pair of
+// consecutive 国勢調査 (one edition per date — the 確定 when enabled,
+// otherwise the 速報), and each earlier 住民基本台帳 year with the latest.
+// Like the other selectable data it is picked in データの選択; its 'path' is
+// the two CSV paths joined by '|'.
+const PAIR_SEP = '|'
+const onePerDate = (eds: Edition[]) => eds.filter((e, i) => eds.findIndex(x => x.as_of === e.as_of) === i)
+const pairSource = (id: string, from: Edition, to: Edition): Source => ({
+  dataset: id,
+  key: `${id}:${from.id}~${to.id}`,
+  label: dataset(id).label,
+  name: `${from.as_of.slice(0, 4)}→${to.as_of.slice(0, 4)}年`,
+  as_of: to.as_of,
+  path: `${from.path}${PAIR_SEP}${to.path}`,
+})
+
+export const changeSources: Source[] = (() => {
+  const census = onePerDate(dataset('kokusei').editions)   // newest first
+  const jumin = onePerDate(dataset('jumin').editions)
+  return [
+    ...census.slice(1).map((from, i) => pairSource('kokusei', from, census[i])),
+    ...jumin.slice(1).map(from => pairSource('jumin', from, jumin[0])),
+  ]
+})()
+
+export type ChangeMap = Map<string, { from: number; to: number }>
+const changeCache = new Map<string, Promise<ChangeMap>>()
+export const fetchPopulationChange = (path: string): Promise<ChangeMap> => {
+  const [fromPath, toPath] = path.split(PAIR_SEP)
+  if (!fromPath || !toPath) return Promise.resolve(new Map())
+  let p = changeCache.get(path)
+  if (!p) {
+    p = Promise.all([fetchCsv(fromPath), fetchCsv(toPath)]).then(([from, to]) => {
+      const before = new Map(from.map(r => [r.code, toNum(r.totalpop)]))
+      return new Map(to.map(r => [r.code, { from: before.get(r.code) ?? NaN, to: toNum(r.totalpop) }]))
+    })
+    changeCache.set(path, p)
+  }
+  return p
+}
+
 /** Which edition of each selectable dataset the table/map uses, by path. */
-export type DataSelection = { pop: string; area: string; rent: string; minwage: string }
+export type DataSelection = { pop: string; change: string; area: string; rent: string; minwage: string }
+export type DataKey = keyof DataSelection
+
+export const SELECTABLE: Record<DataKey, { title: string; sources: Source[] }> = {
+  pop:     { title: '人口',     sources: populationSources },
+  change:  { title: '人口増減', sources: changeSources },
+  area:    { title: '面積',     sources: areaSources },
+  rent:    { title: '家賃',     sources: rentSources },
+  minwage: { title: '最低賃金', sources: minWageSources },
+}
+export const DATA_KEYS = Object.keys(SELECTABLE) as DataKey[]
 
 export const defaultDataSelection = (): DataSelection => ({
   pop: populationSources[0]?.path ?? '',
+  change: changeSources[0]?.path ?? '',
   area: areaSources[0]?.path ?? '',
   rent: rentSources[0]?.path ?? '',
   minwage: minWageSources[0]?.path ?? '',
 })
+
+export const selectedSource = (key: DataKey, selection: DataSelection): Source | undefined =>
+  SELECTABLE[key].sources.find(s => s.path === selection[key])
+
+/**
+ * The selection lives in the URL (?pop=jumin:2025&area=2026-04-01) so that
+ * reloading or sharing a page keeps it. Only non-default choices appear;
+ * unknown keys (e.g. an edition since disabled) fall back to the default.
+ */
+export function selectionFromParams(params: URLSearchParams): DataSelection {
+  const selection = defaultDataSelection()
+  for (const k of DATA_KEYS) {
+    const src = SELECTABLE[k].sources.find(s => s.key === params.get(k))
+    if (src) selection[k] = src.path
+  }
+  return selection
+}
+
+export function writeSelectionParams(params: URLSearchParams, selection: DataSelection): URLSearchParams {
+  const defaults = defaultDataSelection()
+  for (const k of DATA_KEYS) {
+    const src = selectedSource(k, selection)
+    if (src && src.path !== defaults[k]) params.set(k, src.key)
+    else params.delete(k)
+  }
+  return params
+}
 
 // ── Population ────────────────────────────────────────────────────────────────
 
@@ -171,10 +262,11 @@ export const fetchMinWages = (path: string): Promise<MinWageMap> => {
 // data for just render as "no data" — there's no need to tell them apart here.
 // The pipeline has already resolved display names (ward → "札幌市中央区",
 // town → "当別町" without its 郡/振興局 label; see scripts/data/datasets/codes.mjs).
-export type CodeEntry = { code: string; kanji: string; kana: string }
+// `parent`: a designated-city ward's city name (from the CSV's parent_name).
+export type CodeEntry = { code: string; kanji: string; kana: string; parent: string }
 
 export const parseCodesCsv = (raw: string): CodeEntry[] =>
-  parseCsv(raw).map(r => ({ code: r.code, kanji: r.name, kana: r.kana }))
+  parseCsv(raw).map(r => ({ code: r.code, kanji: r.name, kana: r.kana, parent: r.parent_name ?? '' }))
 
 export const fetchMunicipalityCodes = (): Promise<CodeEntry[]> => {
   const e = latest('codes')
@@ -207,15 +299,42 @@ export const fetchDesignations = (): Promise<DesignationSets> => {
   })
 }
 
-/** Codes whose boundary touches the sea (pseudo-neighbor "coast" in the adjacency data). */
-export const fetchCoastal = (): Promise<Set<string>> => {
+// code → neighboring codes, plus the pseudo-neighbor "coast" for codes whose
+// boundary touches the sea. Shared by &coastal and the detail page, so it's
+// fetched once.
+let adjacencyPromise: Promise<Record<string, string[]>> | null = null
+export const fetchAdjacency = (): Promise<Record<string, string[]>> => {
   const path = latest('map')?.adjacency
-  if (!path) return Promise.resolve(new Set())
-  return fetch(`/${path}`)
-    .then(r => r.json() as Promise<Record<string, string[]>>)
-    .then(data => new Set(
-      Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
-    ))
+  if (!path) return Promise.resolve({})
+  return adjacencyPromise ??= fetch(`/${path}`).then(r => r.json() as Promise<Record<string, string[]>>)
+}
+
+/** Codes whose boundary touches the sea. */
+export const fetchCoastal = (): Promise<Set<string>> =>
+  fetchAdjacency().then(data => new Set(
+    Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
+  ))
+
+// ── Population series (detail page) ───────────────────────────────────────────
+
+export type SeriesPoint = { id: string; as_of: string; totalpop: number; setai: number }
+
+/**
+ * One municipality's 住民基本台帳 population for every enabled year, oldest
+ * first — from the pipeline's derived series file, not the yearly files.
+ */
+export const fetchPopulationSeries = (code: string): Promise<SeriesPoint[]> => {
+  const path = dataset('jumin').extras?.series
+  if (!path) return Promise.resolve([])
+  const years = dataset('jumin').editions
+  return fetchCsv(path).then(rows => {
+    const r = rows.find(x => x.code === code)
+    if (!r) return []
+    return years
+      .map(e => ({ id: e.id, as_of: e.as_of, totalpop: toNum(r[`totalpop_${e.id}`]), setai: toNum(r[`setai_${e.id}`]) }))
+      .filter(p => !Number.isNaN(p.totalpop))
+      .sort((a, b) => a.as_of.localeCompare(b.as_of))
+  })
 }
 
 /** The boundary TopoJSON the map draws (newest enabled edition). */

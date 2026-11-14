@@ -47,6 +47,8 @@ test('the filter modal offers a column-reference picker that inserts @id at the 
   await expect(page.locator('tbody tr').first()).toBeVisible()
 
   await page.getByRole('button', { name: '絞り込み', exact: true }).click()
+  // /explore starts with &official; start from an empty filter here.
+  await page.getByPlaceholder(/AND\(EQ/).fill('')
   // Default seeded columns are id 0..4 in order; "総人口" is the 4th (id 3).
   await page.getByRole('button', { name: /^@\d+\s+総人口$/ }).click()
 

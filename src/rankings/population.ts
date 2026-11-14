@@ -26,7 +26,7 @@ export const populationConfig: RankingConfig = {
         { expression: '#inc_soc',       label: '社会増減数' },
         { expression: 'ROUND(MULT(100, #inc_soc_rate), 2)',      label: '社会増減率(%)' },
   ],
-    filterExpression: undefined,
+    filterExpression: '&official',
     sortExpression: '',
     sortDirection: 'desc',
 }

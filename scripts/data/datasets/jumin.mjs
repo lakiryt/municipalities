@@ -6,7 +6,10 @@
 // "5歳～9歳" vs "5～9", the 合計 row's code as "-" vs blank), so columns are
 // located by their header text, never by position.
 import { download, readCached, provenance } from '../lib/fetch.mjs'
-import { writeDataCsv } from '../lib/csv.mjs'
+import { writeDataCsv, parseCsv } from '../lib/csv.mjs'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { PUBLIC_DIR } from '../lib/paths.mjs'
 import { toCode5 } from '../lib/code.mjs'
 import { clean, toNumber } from '../lib/text.mjs'
 import { readSheet, headerLabels, findColumn } from '../lib/xlsx.mjs'
@@ -122,6 +125,35 @@ export async function buildEdition(src, ref, opts) {
     ...out,
     source: [provenance(cacheKey(ref.main)), provenance(cacheKey(ref.age))],
   }
+}
+
+// ── Derived: population series ────────────────────────────────────────────────
+
+// Columns kept per year in the series (the detail page's trend chart).
+const SERIES_COLUMNS = ['totalpop', 'setai']
+
+/**
+ * One small file with every held year side by side — code, totalpop_2026,
+ * setai_2026, totalpop_2025, … — so a municipality's trend doesn't need
+ * every year's full (~770KB) file. The app shows only enabled years.
+ */
+export async function deriveExtras(src, held) {
+  if (held.length === 0) return {}
+  const years = [...held].sort((a, b) => b.id.localeCompare(a.id))
+  const byCode = new Map()
+  for (const e of years) {
+    const [header, ...rows] = parseCsv(readFileSync(resolve(PUBLIC_DIR, e.path), 'utf-8'))
+    const idx = Object.fromEntries(header.map((h, i) => [h, i]))
+    for (const r of rows) {
+      if (!r[idx.code]) continue
+      const rec = byCode.get(r[idx.code]) ?? { code: r[idx.code] }
+      for (const c of SERIES_COLUMNS) rec[`${c}_${e.id}`] = r[idx[c]]
+      byCode.set(r[idx.code], rec)
+    }
+  }
+  const columns = ['code', ...years.flatMap(e => SERIES_COLUMNS.map(c => `${c}_${e.id}`))]
+  const out = writeDataCsv('jumin', 'series', columns, [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code)))
+  return { series: out.path }
 }
 
 // ── statInfId discovery ──────────────────────────────────────────────────────

@@ -1,24 +1,26 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { evaluate } from '../lang/evaluate'
-import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
+import { parseAndTypeCheck } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
-import { buildItems, baseItemEnv } from '../data/municipalities'
-import {
-  fetchArea, fetchPopulation, fetchRent, fetchMinWages, fetchDesignations, fetchCoastal, fetchMunicipalityCodes,
-  officialCodes, defaultDataSelection,
-  type PopulationMap, type RentMap, type MinWageMap, type DesignationSets, type CodeEntry, type DataSelection,
-} from '../data/datasets'
+import { baseItemEnv, type BaseItem } from '../data/municipalities'
+import type { Env } from '../lang/evaluate'
+import { selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection, type DataKey } from '../data/datasets'
+import { useMunicipalityData } from '../data/useMunicipalityData'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
-import FilterBar from '@/components/FilterBar'
+import { usedData } from '@/lib/usedData'
+import { describeFilter } from '@/lib/filterLabel'
+import { pageTitle } from '@/lib/brand'
+import AppHeader from '@/components/AppHeader'
+import PageHeader from '@/components/PageHeader'
+import Toolbar from '@/components/Toolbar'
 import DataTable from '@/components/DataTable'
+import MapView from '@/components/MapView'
 import ColumnModal from '@/components/modals/ColumnModal'
 import FilterModal from '@/components/modals/FilterModal'
 import SortModal from '@/components/modals/SortModal'
 import DataModal from '@/components/modals/DataModal'
-import MapModal from '@/components/modals/MapModal'
-import MapColumnPickerModal from '@/components/modals/MapColumnPickerModal'
 import SearchModal from '@/components/modals/SearchModal'
 import Sidebar from '@/components/Sidebar'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -29,10 +31,6 @@ type Props = {
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
   initialSearchOpen?: boolean
-  // Rankings only make sense for real municipalities — wards of designated
-  // cities would double-count against their parent city, and organizational
-  // rows (Hokkaido's 振興局, etc.) aren't municipalities at all.
-  restrictToOfficial?: boolean
 }
 
 // Adds or updates a column by stable id, minting a fresh id for a new one.
@@ -50,7 +48,19 @@ function upsertColumn(
   return { cols: next, id: modal.id }
 }
 
-function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false, restrictToOfficial = false }: Props) {
+// Which column (if any) the current sort is "about": a direct `@id`
+// reference, or a column whose expression is (or wraps, e.g. in ROUND) the
+// sort expression — ranking pages sort by an expression, not a reference.
+function sortedColumnOf(sort: SortState | null, columns: ColumnState[]): ColumnState | null {
+  if (!sort) return null
+  const ref = sort.expression.match(/^@(\d+)$/)
+  if (ref) return columns.find(c => c.id === Number(ref[1])) ?? null
+  const norm = (e: string) => e.replace(/\s+/g, '')
+  const target = norm(sort.expression)
+  return columns.find(c => norm(c.expression) === target) ?? columns.find(c => norm(c.expression).includes(target)) ?? null
+}
+
+function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false }: Props) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -59,14 +69,25 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // component) replays prior edits. Any edit re-navigates to /explore with
   // the new state, so a page's own `initial*` props are only ever the
   // starting point before the first edit.
+  const startKey = JSON.stringify([initialColumns.map(c => [c.id, c.label, c.expression]), initialFilter?.expression, initialSort?.expression, initialSort?.direction])
   const defaultState: ExploreState = useMemo(() => ({
     columns: initialColumns.map(c => ({ id: c.id, label: c.label, expression: c.expression })),
     filterExpression: initialFilter?.expression ?? '',
     sortExpression: initialSort?.expression ?? '',
     sortDirection: initialSort?.direction ?? 'desc',
+    // Recomputed only when the page's starting point itself changes (e.g. a
+    // ranking whose column labels name the period データの選択 compares),
+    // not on every render of a freshly mapped array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [])
+  }), [startKey])
   const effectiveState = decodeExploreState(searchParams.get('s')) ?? defaultState
+
+  // Navigations render in a transition, so for a moment after an edit the
+  // rendered state lags behind the URL. Every edit builds on the URL — the
+  // latest state — so a quick second edit (sort, then delete a column) never
+  // undoes the first or misses what it changed.
+  const latestState = (): ExploreState =>
+    decodeExploreState(new URLSearchParams(window.location.search).get('s')) ?? defaultState
 
   // Columns can never reference `@id` themselves (only filter/sort can), so
   // they're parsed with no column context at all — that's what guarantees
@@ -113,7 +134,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   // The map only ever references a single column (never a compound
   // expression), so unlike filter/sort it resolves straight to a
-  // ColumnState — MapModal needs the column itself (for its label/title),
+  // ColumnState — MapView needs the column itself (for its label/title),
   // not just a typed expression to evaluate.
   const mapState: { expression: string; typed: TypedExpr } | null = useMemo(() => {
     if (!mapExpression) return null
@@ -127,7 +148,18 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     ? columns.find(c => c.id === Number(mapColumnId)) ?? null
     : null
 
-  const commit = (next: ExploreState) => navigate(`/explore?s=${encodeURIComponent(encodeExploreState(next))}`)
+  // データの選択 lives in the URL too (?pop=…&area=…), so it survives reloads
+  // and shared links — and carries over when an edit moves a page to /explore.
+  const selection: DataSelection = useMemo(() => selectionFromParams(searchParams), [searchParams])
+  const setSelection = (next: DataSelection) => setSearchParams(prev => writeSelectionParams(new URLSearchParams(prev), next))
+  const exploreUrl = (next: ExploreState, extra: Record<string, string> = {}) => {
+    const params = writeSelectionParams(new URLSearchParams(), selection)
+    params.set('s', encodeExploreState(next))
+    for (const [k, v] of Object.entries(extra)) params.set(k, v)
+    return `/explore?${params}`
+  }
+
+  const commit = (next: ExploreState) => navigate(exploreUrl(next))
 
   // Updates just the `map` param on the current URL — same pathname, same
   // `s=` (if any) — so opening/closing the map never leaves the page it was
@@ -146,90 +178,89 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [filterOpen, setFilterOpen]       = useState(false)
   const [sortOpen, setSortOpen]           = useState(false)
-  const [dataOpen, setDataOpen]           = useState(false)
-  const [mapPickerOpen, setMapPickerOpen] = useState(false)
+  // データの選択: open (optionally focused on one dataset, from its chip) or closed.
+  const [dataModal, setDataModal] = useState<{ focus?: DataKey } | null>(null)
   const [searchOpen, setSearchOpen]       = useState(initialSearchOpen)
   const [sidebarOpen, setSidebarOpen]     = useState(false)
 
   useEffect(() => {
     if (!title) return
     document.title = mapColumn
-      ? `${mapColumn.label}の地図 — ${title} — 日本の自治体データ`
-      : `${title} — 日本の自治体データ`
+      ? pageTitle(`${mapColumn.label}の地図`, title)
+      : pageTitle(title)
   }, [title, mapColumn])
 
-  const [selection, setSelection]       = useState<DataSelection>(defaultDataSelection)
-  const [areaMap, setAreaMap]           = useState(new Map<string, number>())
-  const [popMap, setPopMap]             = useState<PopulationMap>(new Map())
-  const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
-  const [coastal, setCoastal]           = useState<Set<string>>(new Set())
-  const [codes, setCodes]               = useState<CodeEntry[]>([])
-  const [rentMap, setRentMap]           = useState<RentMap>(new Map())
-  const [minWageMap, setMinWageMap]     = useState<MinWageMap>(new Map())
+  // The data the columns, filter, sort and map draw on: shown as chips and in
+  // 出典, and 人口増減 is only fetched when something uses it.
+  const used = usedData([
+    ...columns.map(c => c.expression), filterExpression, sortState?.expression ?? '',
+    mapColumn?.expression ?? '',
+  ])
+  const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
 
-  // The selectable datasets reload whenever データの選択 picks another edition.
-  useEffect(() => { fetchPopulation(selection.pop).then(setPopMap) }, [selection.pop])
-  useEffect(() => { fetchArea(selection.area).then(setAreaMap) }, [selection.area])
-  useEffect(() => { fetchRent(selection.rent).then(setRentMap) }, [selection.rent])
-  useEffect(() => { fetchMinWages(selection.minwage).then(setMinWageMap) }, [selection.minwage])
-
-  useEffect(() => { fetchDesignations().then(setDesignations) }, [])
-  useEffect(() => { fetchCoastal().then(setCoastal) }, [])
-  useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
-
-  // The full, unrestricted base — every downstream view narrows this its
-  // own way, but none of them build items from anything smaller than this.
-  const activeItems = useMemo(
-    () => buildItems(popMap, areaMap, codes, rentMap, minWageMap),
-    [popMap, areaMap, codes, rentMap, minWageMap]
-  )
+  const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.selectable.has('change'))
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
     : null
 
-  // Table view: official municipalities only (when asked), then the user's
-  // filter, then sort. The counts shown in the toolbar are this view's, not
-  // the full base's — a "1918 total" would be a strange thing to show above
-  // a table that only ever displays 1747 rows.
+  // Table rows: every municipality and designated-city ward (each has its
+  // own figures and page); not prefectures or grouping rows (郡・振興局).
+  // Which of them to show is up to the filter — rankings start with
+  // &official so a city and its wards aren't counted twice, but that's a
+  // visible, removable condition. The toolbar counts are of these rows.
   const tableBaseItems = useMemo(
-    () => restrictToOfficial ? activeItems.filter(item => officialCodes.has(item.code)) : activeItems,
-    [activeItems, restrictToOfficial]
+    () => activeItems.filter(item => item.kind !== '' && item.kind !== '都道府県'),
+    [activeItems]
   )
 
-  const filteredItems = filterExpr !== null
-    ? tableBaseItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
-    : tableBaseItems
+  // Each municipality's variables (incl. ~15 derived ones) are computed once
+  // per data change and shared by the filter, the sort and the table cells —
+  // recomputing them inside the sort comparator made every sort ~1s.
+  const envs = useMemo(
+    () => new Map(activeItems.map(item => [item.code, baseItemEnv(item, designations, coastal)])),
+    [activeItems, designations, coastal]
+  )
+  const envOf = useMemo(
+    () => (item: BaseItem): Env => ({ ...envs.get(item.code)!, columns: colEnv }),
+    [envs, colEnv]
+  )
 
-  const displayItems = sortState !== null
-    ? [...filteredItems].sort((a, b) => {
-        const va = evaluate(sortState.typed, { ...baseItemEnv(a, designations, coastal), columns: colEnv })
-        const vb = evaluate(sortState.typed, { ...baseItemEnv(b, designations, coastal), columns: colEnv })
-        const sign = sortState.direction === 'asc' ? 1 : -1
-        if (sortState.typed.type === 's') {
-          return sign * (va as string).localeCompare(vb as string, 'ja')
-        }
-        const na = va as number, nb = vb as number
-        if (isNaN(na) && isNaN(nb)) return 0
-        if (isNaN(na)) return 1
-        if (isNaN(nb)) return -1
-        return sign * (na - nb)
-      })
-    : filteredItems
+  const filteredItems = useMemo(
+    () => filterExpr !== null ? tableBaseItems.filter(item => evaluate(filterExpr, envOf(item)) === true) : tableBaseItems,
+    [tableBaseItems, filterExpr, envOf]
+  )
+
+  // Sort key evaluated once per row, then a plain sort on the keys.
+  const displayItems = useMemo(() => {
+    if (sortState === null) return filteredItems
+    const sign = sortState.direction === 'asc' ? 1 : -1
+    const keyed = filteredItems.map(item => ({ item, v: evaluate(sortState.typed, envOf(item)) }))
+    keyed.sort((a, b) => {
+      if (sortState.typed.type === 's') return sign * (a.v as string).localeCompare(b.v as string, 'ja')
+      const na = a.v as number, nb = b.v as number
+      if (isNaN(na) && isNaN(nb)) return 0
+      if (isNaN(na)) return 1
+      if (isNaN(nb)) return -1
+      return sign * (na - nb)
+    })
+    return keyed.map(k => k.item)
+  }, [filteredItems, sortState, envOf])
 
   // Map view: the full base plus the same filter — never restricted to
   // official municipalities (a designated-city ward has no 地方公共団体 code
   // of its own but is still a real shape to color) and never sorted, since
-  // "order" isn't a concept a map has. (MapModal narrows this further still,
+  // "order" isn't a concept a map has. (MapView narrows this further still,
   // to whatever codes actually have a drawn path.)
-  const mapItems = filterExpr !== null
-    ? activeItems.filter(item => evaluate(filterExpr, { ...baseItemEnv(item, designations, coastal), columns: colEnv }) === true)
-    : activeItems
+  const mapItems = useMemo(
+    () => filterExpr !== null ? activeItems.filter(item => evaluate(filterExpr, envOf(item)) === true) : activeItems,
+    [activeItems, filterExpr, envOf]
+  )
 
   const handleColumnSave = (label: string, expression: string) => {
     if (modal === null) return
-    const { cols } = upsertColumn(effectiveState.columns, modal, label, expression)
-    commit({ ...effectiveState, columns: cols })
+    const { cols } = upsertColumn(latestState().columns, modal, label, expression)
+    commit({ ...latestState(), columns: cols })
     setModal(null)
   }
 
@@ -238,8 +269,8 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // freezing today's expression text.
   const handleSetColumnSort = (label: string, expression: string) => {
     if (modal === null) return
-    const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
-    commit({ ...effectiveState, columns: cols, sortExpression: `@${id}`, sortDirection: 'desc' })
+    const { cols, id } = upsertColumn(latestState().columns, modal, label, expression)
+    commit({ ...latestState(), columns: cols, sortExpression: `@${id}`, sortDirection: 'desc' })
     setModal(null)
   }
 
@@ -261,9 +292,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       // since `@id` can't resolve to a column that was never saved anywhere
       // — combined into one navigation rather than a commit() followed by a
       // separate setMapExpression(), which would race against each other.
-      const { cols, id } = upsertColumn(effectiveState.columns, modal, label, expression)
-      const nextState = { ...effectiveState, columns: cols }
-      navigate(`/explore?s=${encodeURIComponent(encodeExploreState(nextState))}&map=@${id}`)
+      const { cols, id } = upsertColumn(latestState().columns, modal, label, expression)
+      const nextState = { ...latestState(), columns: cols }
+      navigate(exploreUrl(nextState, { map: `@${id}` }))
     }
     setModal(null)
   }
@@ -273,18 +304,23 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // A reference to the column that was just deleted becomes a normal
   // "column not found" type-check error, same as any other invalid edit.
   const handleColumnDelete = (id: number) => {
-    commit({ ...effectiveState, columns: effectiveState.columns.filter(c => c.id !== id) })
+    const state = latestState()
+    commit({ ...state, columns: state.columns.filter(c => c.id !== id) })
     setModal(null)
   }
 
-  // The map isn't checked here: reaching a column's edit modal requires the
-  // map to be closed first (it's a full-screen overlay), and closing it
-  // always clears `mapExpression` — so a column being edited is never the
-  // one the map currently references.
+  // The map isn't checked here: column headers (the only way into the edit
+  // modal) only exist in the table view, and switching to it clears
+  // `mapExpression` — so a column being edited is never the one the map
+  // currently references.
+  // `@id` is the only way an expression refers to a column, so a textual
+  // check on the latest filter/sort is exact.
   const columnUsedIn = (id: number): string[] => {
+    const { filterExpression: f, sortExpression: so } = latestState()
+    const ref = new RegExp(`@${id}(?![0-9])`)
     const usedIn: string[] = []
-    if (filterExpr !== null && referencesColumn(filterExpr, id)) usedIn.push('絞り込み')
-    if (sortState !== null && referencesColumn(sortState.typed, id)) usedIn.push('並べ替え')
+    if (ref.test(f)) usedIn.push('絞り込み')
+    if (ref.test(so)) usedIn.push('並べ替え')
     return usedIn
   }
 
@@ -299,10 +335,34 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     }
   }
 
-  // Unlike a column's own "show on the map" action, the toolbar button
-  // always asks which column to show — it has no column of its own to be
-  // immediate about, and reusing the last one silently would be surprising.
-  const handleMapClick = () => setMapPickerOpen(true)
+  const sortedColumn = sortedColumnOf(sortState, columns)
+  const numericColumns = columnRefs.filter(c => c.type === 'n')
+
+  // 表/地図: the map view is just `map=@id` on the URL. Switching to it
+  // colors by the column the rows are ranked by when that's numeric (what
+  // the page is "about"), else the first numeric column.
+  const handleViewChange = (view: 'table' | 'map') => {
+    if (view === 'table') return setMapExpression('')
+    const id = sortedColumn && sortedColumn.typed.type === 'n' ? sortedColumn.id : numericColumns[0]?.id
+    if (id !== undefined) setMapExpression(`@${id}`)
+  }
+
+  // Header sort buttons: the same column again flips the direction; a new
+  // one starts high-to-low for numbers, A→Z for text.
+  const handleSortColumn = (id: number) => {
+    const col = columns.find(c => c.id === id)
+    if (!col) return
+    const direction = sortedColumn?.id === id
+      ? (sortState?.direction === 'desc' ? 'asc' : 'desc')
+      : (col.typed.type === 'n' ? 'desc' : 'asc')
+    commit({ ...latestState(), sortExpression: `@${id}`, sortDirection: direction })
+  }
+
+  // A municipality's detail page, carrying the current データの選択 along.
+  const detailLink = (code: string) => {
+    const q = writeSelectionParams(new URLSearchParams(), selection).toString()
+    return `/m/${code}${q ? `?${q}` : ''}`
+  }
 
   const handleSearchApply: Parameters<typeof SearchModal>[0]['onApply'] = (
     { filterExpression: fex, sortExpression, sortDirection, columns: cols }
@@ -319,6 +379,21 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     })
     setSearchOpen(false)
   }
+
+  const toolbar = (
+    <Toolbar
+      view={mapColumn ? 'map' : 'table'}
+      mapAvailable={numericColumns.length > 0}
+      onViewChange={handleViewChange}
+      sortLabel={sortState ? (sortedColumn?.label ?? sortState.expression) : null}
+      sortDirection={sortState?.direction ?? 'desc'}
+      filterLabel={filterExpr !== null ? describeFilter(filterExpression) : null}
+      shownCount={filteredItems.length}
+      totalCount={tableBaseItems.length}
+      onSortClick={() => setSortOpen(true)}
+      onFilterClick={() => setFilterOpen(true)}
+    />
+  )
 
   return (
     <>
@@ -346,8 +421,8 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         <FilterModal
           initialExpression={filterExpression}
           columns={columnRefs}
-          onApply={(expression) => { commit({ ...effectiveState, filterExpression: expression }); setFilterOpen(false) }}
-          onClear={() => { commit({ ...effectiveState, filterExpression: '' }); setFilterOpen(false) }}
+          onApply={(expression) => { commit({ ...latestState(), filterExpression: expression }); setFilterOpen(false) }}
+          onClear={() => { commit({ ...latestState(), filterExpression: '' }); setFilterOpen(false) }}
           onClose={() => setFilterOpen(false)}
         />
       )}
@@ -356,80 +431,71 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           initialExpression={sortState?.expression ?? ''}
           initialDirection={sortState?.direction ?? 'desc'}
           columns={columnRefs}
-          onApply={(expression, _typed, direction) => { commit({ ...effectiveState, sortExpression: expression, sortDirection: direction }); setSortOpen(false) }}
-          onClear={() => { commit({ ...effectiveState, sortExpression: '', sortDirection: 'desc' }); setSortOpen(false) }}
+          onApply={(expression, _typed, direction) => { commit({ ...latestState(), sortExpression: expression, sortDirection: direction }); setSortOpen(false) }}
+          onClear={() => { commit({ ...latestState(), sortExpression: '', sortDirection: 'desc' }); setSortOpen(false) }}
           onClose={() => setSortOpen(false)}
         />
       )}
-      {dataOpen && (
+      {dataModal && (
         <DataModal
+          focus={dataModal.focus} used={usedKeys}
           selection={selection}
           onApply={next => {
             setSelection(next)
-            setDataOpen(false)
+            setDataModal(null)
           }}
-          onClose={() => setDataOpen(false)}
+          onClose={() => setDataModal(null)}
         />
       )}
       {searchOpen && (
         <SearchModal onApply={handleSearchApply} onClose={() => setSearchOpen(false)} />
       )}
-      {mapColumn && (
-        <MapModal
-          column={mapColumn}
-          displayItems={mapItems}
-          designations={designations}
-          coastal={coastal}
-          // Clearing the `map` param (not commit/navigate) drops the
-          // reference without touching the page or its `s=` state — closing
-          // restores the exact URL from before opening, title included, and
-          // pushes a new history entry so browser back still shows it again.
-          onClose={() => setMapExpression('')}
-        />
+      {sidebarOpen && <Sidebar onClose={() => setSidebarOpen(false)} />}
+      <AppHeader title={title} onMenuClick={() => setSidebarOpen(true)} />
+      {mapColumn ? (
+        // Map view: fills the screen below the header — no page scroll, so
+        // drags and pinches always go to the map.
+        <div className="fixed inset-x-0 top-11 bottom-0 flex flex-col">
+          <PageHeader used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
+          {toolbar}
+          <div className="flex-1 min-h-0">
+            <MapView
+              column={mapColumn}
+              columnOptions={numericColumns}
+              onSelectColumn={id => setMapExpression(`@${id}`)}
+              displayItems={mapItems}
+              allItems={activeItems}
+              designations={designations}
+              coastal={coastal}
+              fitToItems={filterExpr !== null}
+              linkFor={detailLink}
+            />
+          </div>
+        </div>
+      ) : (
+        // Table view: one scroll container for both axes, so the toolbar and
+        // the table header stick to the top and the rank/name columns to the
+        // left. The page header, toolbar and source note are pinned to the
+        // left edge (100cqw = the container's visible width) so they don't
+        // slide away when a wide table scrolls sideways.
+        <main className="fixed inset-x-0 top-11 bottom-0 overflow-auto [container-type:inline-size]">
+          <div className="sticky left-0 w-[100cqw]">
+            <PageHeader used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
+          </div>
+          <div className="sticky top-0 left-0 z-40 w-[100cqw]">{toolbar}</div>
+          <DataTable
+            columns={columns}
+            displayItems={displayItems}
+            sortedColumnId={sortedColumn?.id ?? null}
+            sortDirection={sortState?.direction ?? 'desc'}
+            onEditColumn={id => setModal({ kind: 'edit', id })}
+            onAddColumn={() => setModal({ kind: 'add' })}
+            onSortColumn={handleSortColumn}
+            linkFor={detailLink}
+            envOf={envOf}
+          />
+        </main>
       )}
-      {mapPickerOpen && (
-        <MapColumnPickerModal
-          columns={columnRefs.filter(c => c.type === 'n')}
-          onSelect={id => {
-            setMapExpression(`@${id}`)
-            setMapPickerOpen(false)
-          }}
-          onClose={() => setMapPickerOpen(false)}
-        />
-      )}
-      {sidebarOpen && (
-        <Sidebar
-          totalCount={tableBaseItems.length}
-          filteredCount={filteredItems.length}
-          filterActive={filterExpr !== null}
-          sortState={sortState}
-          onSortClick={() => { setSortOpen(true); setSidebarOpen(false) }}
-          onFilterClick={() => { setFilterOpen(true); setSidebarOpen(false) }}
-          onDataClick={() => { setDataOpen(true); setSidebarOpen(false) }}
-          onMapClick={() => { handleMapClick(); setSidebarOpen(false) }}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
-      <FilterBar
-        title={title}
-        totalCount={tableBaseItems.length}
-        filteredCount={filteredItems.length}
-        filterActive={filterExpr !== null}
-        sortState={sortState}
-        onSortClick={() => setSortOpen(true)}
-        onFilterClick={() => setFilterOpen(true)}
-        onDataClick={() => setDataOpen(true)}
-        onMapClick={handleMapClick}
-        onMenuClick={() => setSidebarOpen(true)}
-      />
-      <DataTable
-        columns={columns}
-        displayItems={displayItems}
-        designations={designations}
-        coastal={coastal}
-        onEditColumn={id => setModal({ kind: 'edit', id })}
-        onAddColumn={() => setModal({ kind: 'add' })}
-      />
     </>
   )
 }

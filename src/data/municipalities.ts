@@ -2,7 +2,7 @@ import { parseAndTypeCheck } from '../lang/expr'
 import { evaluate, type Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
 import {
-  prefectures, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets,
+  prefectures, officialCodes, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets, type ChangeMap,
 } from './datasets'
 
 // One row of the table/map: a 標準地域コード entry joined with the selected
@@ -12,6 +12,13 @@ export type BaseItem = {
   code: string
   kanji: string
   kana: string
+  // 市 / 町 / 村 / 特別区 / 政令市の区 / 都道府県, or '' for grouping rows (郡・振興局)
+  kind: string
+  // An actual 地方公共団体 (総務省 全国地方公共団体コード): 市町村 and 特別区,
+  // not a designated city's wards.
+  official: boolean
+  // A designated-city ward's city (its code); '' otherwise.
+  parent: string
   prefecture: {
     code: string
     kanji?: string
@@ -22,6 +29,9 @@ export type BaseItem = {
   rentInc0: number
   rentExc0: number
   minWage: number
+  // 人口増減: total population in the two compared editions (データの選択)
+  popFrom: number
+  popTo: number
 }
 
 // ── Derived expressions ───────────────────────────────────────────────────────
@@ -40,6 +50,8 @@ export const derivedExpressions = [
   { name: 'inc_nat_rate', expr: 'MULT(#inc_nat, INV(#prev_total))',                               desc: '自然増減率' },
   { name: 'inc_soc',      expr: 'SUM(#inc_mov, #inc_other, NEG(SUM(#dec_mov, #dec_other)))',      desc: '社会増減数' },
   { name: 'inc_soc_rate', expr: 'MULT(#inc_soc, INV(#prev_total))',                               desc: '社会増減率' },
+  { name: 'pop_change',      expr: 'SUM(#pop_to, NEG(#pop_from))',        desc: '人口増減数（比較する2時点）' },
+  { name: 'pop_change_rate', expr: 'MULT(#pop_change, INV(#pop_from))',  desc: '人口増減率（比較する2時点）' },
   { name: 'elderly_total',  expr: 'SUM(#total65_69, #total70_74, #total75_79, #total80_84, #total85_89, #total90_94, #total95_99, #total100_)',   desc: '65歳以上人口（計）' },
   { name: 'elderly_female', expr: 'SUM(#female65_69, #female70_74, #female75_79, #female80_84, #female85_89, #female90_94, #female95_99, #female100_)', desc: '65歳以上人口（女）' },
   { name: 'elderly_male',   expr: 'SUM(#male65_69, #male70_74, #male75_79, #male80_84, #male85_89, #male90_94, #male95_99, #male100_)',             desc: '65歳以上人口（男）' },
@@ -65,22 +77,41 @@ const getPrefecture = (code: string) => {
   return { ...prefecture, code }
 }
 
+/** What kind of place a 標準地域コード row is. */
+export function kindOf(entry: { code: string; kanji: string; parent: string }): string {
+  if (entry.code.endsWith('000')) return '都道府県'
+  if (officialCodes.has(entry.code)) {
+    const last = entry.kanji.slice(-1)
+    return last === '区' ? '特別区' : last
+  }
+  return entry.parent ? '政令市の区' : ''
+}
+
 export const buildItems = (
   popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[],
   rentMap: RentMap = new Map(),
-  minWageMap: MinWageMap = new Map()
-): BaseItem[] =>
-  codes.map(item => ({
+  minWageMap: MinWageMap = new Map(),
+  changeMap: ChangeMap = new Map()
+): BaseItem[] => {
+  // ward → its city's code, by the city's name within the prefecture
+  const cityCode = new Map(codes.filter(c => officialCodes.has(c.code)).map(c => [`${c.code.slice(0, 2)}:${c.kanji}`, c.code]))
+  return codes.map(item => ({
     code: item.code,
     kanji: item.kanji,
     kana: item.kana,
+    kind: kindOf(item),
+    official: officialCodes.has(item.code),
+    parent: item.parent ? cityCode.get(`${item.code.slice(0, 2)}:${item.parent}`) ?? '' : '',
     prefecture: getPrefecture(item.code),
     population: popMap.get(item.code) ?? {},
     area: areaMap.get(item.code) ?? NaN,
     rentInc0: rentMap.get(item.code)?.inc0 ?? NaN,
     rentExc0: rentMap.get(item.code)?.exc0 ?? NaN,
     minWage: minWageMap.get(item.code.slice(0, 2))?.min ?? NaN,
+    popFrom: changeMap.get(item.code)?.from ?? NaN,
+    popTo: changeMap.get(item.code)?.to ?? NaN,
   }))
+}
 
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
   const numvars: Record<string, number> = {
@@ -89,6 +120,8 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     rent_inc0: item.rentInc0,
     rent_exc0: item.rentExc0,
     minwage: item.minWage,
+    pop_from: item.popFrom,
+    pop_to: item.popTo,
   }
   const strvars: Record<string, string> = {
     code:      item.code,
@@ -97,12 +130,14 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     prefcode:  item.prefecture.code,
     prefkanji: item.prefecture.kanji ?? '',
     prefkana:  item.prefecture.kana ?? '',
+    kind:      item.kind,
   }
   const boolvars: Record<string, boolean> = {
     seirei:  designations?.seirei.has(item.code)  ?? false,
     chukaku: designations?.chukaku.has(item.code) ?? false,
     tokurei: designations?.tokurei.has(item.code) ?? false,
     coastal: coastal?.has(item.code) ?? false,
+    official: item.official,
   }
   for (const { name, typed } of derivedDefs) {
     numvars[name] = evaluate(typed, { numvars, strvars, boolvars }) as number
@@ -119,7 +154,7 @@ const _demogSeed = Object.fromEntries([
   ..._ageSuffixes.map(s => [`male${s}`, 0]),
 ])
 const _dummy: BaseItem = {
-  code: '', kanji: '', kana: '',
+  code: '', kanji: '', kana: '', kind: '', official: false, parent: '',
   prefecture: { code: '' },
   population: {
     totalpop: 0, malepop: 0, femalepop: 0, setai: 0,
@@ -131,6 +166,8 @@ const _dummy: BaseItem = {
   rentInc0: 0,
   rentExc0: 0,
   minWage: 0,
+  popFrom: 0,
+  popTo: 0,
 }
 
 const _dummyDesignations: DesignationSets = {
@@ -143,10 +180,12 @@ export const varCompletions: string[] = [
   ...Object.keys(baseItemEnv(_dummy, _dummyDesignations).boolvars).map(k => `&${k}`),
 ]
 
+// 自由探索's starting columns. Name first so it can stay pinned on narrow
+// screens; ids are fixed (not positions) so older `@id` URLs still resolve.
 export const initialColumns: ColumnState[] = [
-  { label: '自治体コード',     expression: '$code' },
-  { label: '都道府県名', expression: '$prefkanji' },
-  { label: '自治体名',   expression: '$kanji' },
-  { label: '総人口',     expression: '#totalpop' },
-  { label: '面積',       expression: '#area' },
-].map((col, i) => ({ id: i, ...col, typed: parseAndTypeCheck(col.expression) }))
+  { id: 2, label: '自治体名',   expression: '$kanji' },
+  { id: 1, label: '都道府県名', expression: '$prefkanji' },
+  { id: 3, label: '総人口',     expression: '#totalpop' },
+  { id: 4, label: '面積',       expression: '#area' },
+  { id: 0, label: '自治体コード', expression: '$code' },
+].map(col => ({ ...col, typed: parseAndTypeCheck(col.expression) }))

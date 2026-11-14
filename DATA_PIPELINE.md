@@ -89,6 +89,7 @@ npm run data -- status                             # A/B/C の件数と最新時
 | `data/.cache/` | 生データ、取得記録（URL・日時・sha256）、配布元カタログ、チェック結果 | しない |
 | `public/data/<dataset>/<版>.csv` | 生成物（アプリが実行時に読む） | する |
 | `public/data/map/<版>.topojson`, `<版>.adjacency.json` | 地図と隣接（海岸）データ | する |
+| `public/data/jumin/series.csv` | 保持中の全年の人口・世帯数を横に並べた派生ファイル（自治体ページの推移グラフ用）。版の取得・削除のたびに作り直す（`deriveExtras`） | する |
 | `src/assets/meta.json` | 保持中の版の一覧（出典・取得日・ref・enabled）。アプリはパスをすべてここから引く | する |
 | `src/assets/prefectures.json`, `dantai_codes.json` | 公共団体コードから生成（バンドルされる） | する |
 
@@ -128,6 +129,8 @@ npm run data -- status                             # A/B/C の件数と最新時
   - `fetchEdition(src, ref, opts)` → 生データを `data/.cache/` に保存（`lib/fetch.mjs` の `download`）
   - `buildEdition(src, ref, opts)` → 生成物を書き（`lib/csv.mjs` の `writeDataCsv`）、`meta.json` 用の
     `{ id, as_of, label?, path, rows, source }` を返す
+
+  - （任意）`deriveExtras(src, heldEditions)` → 保持中の全版から作る派生ファイルを書き、`{ 名前: path }` を返す（`meta.json` の `extras` に入る）
 
   アプリ側は `src/data/datasets.ts` で `dataset(id).editions` から読む。
 

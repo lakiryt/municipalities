@@ -5,25 +5,28 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('tbody tr').first()).toBeVisible()
 })
 
-// Opens the map for the first time on a fresh page — since nothing's been
-// referenced yet, this picks `label` from the column picker that appears.
-async function openMapViaPicker(page: Page, label = '総人口') {
-  await page.getByRole('button', { name: '地図表示', exact: true }).click()
-  await page.getByRole('button', { name: label, exact: true }).click()
-}
-
+const mapTab = (page: Page) => page.getByRole('tab', { name: '地図', exact: true })
+const tableTab = (page: Page) => page.getByRole('tab', { name: '表', exact: true })
+const columnSelect = (page: Page) => page.getByRole('combobox', { name: '色分けする列' })
 const mapHeading = (page: Page, label: string) => page.getByRole('heading', { name: `${label}の地図`, exact: true })
 
-test('opening the map for the first time asks which column to show, then renders it titled with that column', async ({ page }) => {
+// Switches to the map view and (optionally) recolors it by `label`.
+// /explore has no sort, so the map starts on its first numeric column, 総人口.
+async function openMap(page: Page, label = '総人口') {
+  await mapTab(page).click()
+  await expect(page.locator('svg path').first()).toBeVisible()
+  if (label !== '総人口') await columnSelect(page).selectOption({ label })
+  await expect(mapHeading(page, label)).toBeVisible()
+}
+
+test('the 地図 tab shows the map, colored by the first numeric column when nothing is sorted', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', err => errors.push(String(err)))
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()) })
 
-  await page.getByRole('button', { name: '地図表示', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '地図に表示する列' })).toBeVisible()
-  await page.getByRole('button', { name: '総人口', exact: true }).click()
-
+  await mapTab(page).click()
   await expect(mapHeading(page, '総人口')).toBeVisible()
+  await expect(mapTab(page)).toHaveAttribute('aria-selected', 'true')
   await expect(page).toHaveTitle(/^総人口の地図 — /)
   const paths = page.locator('svg path')
   await expect(paths.first()).toBeVisible()
@@ -31,62 +34,53 @@ test('opening the map for the first time asks which column to show, then renders
   expect(errors).toEqual([])
 })
 
-test('closing the map restores the page title', async ({ page }) => {
+test('switching back to 表 shows the table again and restores the page title', async ({ page }) => {
   const titleBeforeOpening = await page.title()
-
-  await openMapViaPicker(page, '総人口')
+  await openMap(page)
   await expect(page).toHaveTitle(/^総人口の地図 — /)
 
-  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  await tableTab(page).click()
+  await expect(page.locator('tbody tr').first()).toBeVisible()
   await expect(page).toHaveTitle(titleBeforeOpening)
 })
 
-test('the toolbar map button always asks again, even after a column was already chosen', async ({ page }) => {
-  await openMapViaPicker(page, '総人口')
-  await expect(mapHeading(page, '総人口')).toBeVisible()
-  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+test('the 色分けする列 select recolors the map by another numeric column', async ({ page }) => {
+  await openMap(page, '総人口')
+  // Only numeric columns are offered.
+  const options = await columnSelect(page).locator('option').allTextContents()
+  expect(options).toEqual(['総人口', '面積'])
 
-  // Reopening from the toolbar re-asks rather than silently reusing 総人口 —
-  // unlike a column's own "show on the map" action, it has no column of its
-  // own to be immediate about.
-  await page.getByRole('button', { name: '地図表示', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '地図に表示する列' })).toBeVisible()
-  await page.getByRole('button', { name: '面積', exact: true }).click()
+  await columnSelect(page).selectOption({ label: '面積' })
   await expect(mapHeading(page, '面積')).toBeVisible()
 })
 
-test('the chosen map column is reflected in its own `map` URL param, independent of `s=`, and closing clears it', async ({ page }) => {
-  await openMapViaPicker(page, '面積')
+test('the map column is its own `map` URL param, independent of `s=`, and switching to 表 clears it', async ({ page }) => {
+  await openMap(page, '面積')
 
   const mapParam = () => new URL(page.url()).searchParams.get('map')
   const sParam = () => new URL(page.url()).searchParams.get('s')
 
-  // Opening via the picker never touched `s=` at all — /explore had no
-  // edits yet, so it's still absent — only `map` was added.
+  // Opening the map never touched `s=` — /explore had no edits yet.
   expect(mapParam()).toMatch(/^@\d+$/)
-  const sBeforeClose = sParam()
-  expect(sBeforeClose).toBeNull()
+  expect(sParam()).toBeNull()
 
-  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  await tableTab(page).click()
   await expect(mapHeading(page, '面積')).toBeHidden()
   expect(mapParam()).toBeNull()
-  // Closing only ever touches `map` — the rest of the URL is untouched.
-  expect(sParam()).toBe(sBeforeClose)
+  expect(sParam()).toBeNull()
 })
 
-test('browser back after closing the map reopens it', async ({ page }) => {
-  await openMapViaPicker(page, '総人口')
-  await expect(mapHeading(page, '総人口')).toBeVisible()
-
-  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+test('browser back after switching to 表 shows the map again', async ({ page }) => {
+  await openMap(page)
+  await tableTab(page).click()
   await expect(mapHeading(page, '総人口')).toBeHidden()
 
   await page.goBack()
   await expect(mapHeading(page, '総人口')).toBeVisible()
 })
 
-test('visiting a URL with a map column already set shows the map open immediately', async ({ page }) => {
-  await openMapViaPicker(page, '総人口')
+test('visiting a URL with a map column already set shows the map immediately', async ({ page }) => {
+  await openMap(page)
   const openUrl = page.url()
 
   await page.goto('about:blank')
@@ -97,21 +91,20 @@ test('visiting a URL with a map column already set shows the map open immediatel
 })
 
 test('a column\'s "この列を地図に表示" action opens the map directly with that column', async ({ page }) => {
-  await page.getByRole('columnheader', { name: '総人口', exact: true }).click()
+  await page.getByRole('columnheader', { name: '面積', exact: true }).getByRole('button', { name: '面積', exact: true }).click()
   await page.getByRole('button', { name: 'この列を地図に表示' }).click()
 
-  await expect(mapHeading(page, '総人口')).toBeVisible()
+  await expect(mapHeading(page, '面積')).toBeVisible()
   await expect(page.locator('svg path').first()).toBeVisible()
 })
 
 test('the map action is disabled for a non-numeric column', async ({ page }) => {
-  await page.getByRole('columnheader', { name: '自治体名', exact: true }).click()
+  await page.getByRole('columnheader', { name: '自治体名', exact: true }).getByRole('button', { name: '自治体名', exact: true }).click()
   await expect(page.getByRole('button', { name: 'この列を地図に表示' })).toBeDisabled()
 })
 
 test('hovering a municipality shows a tooltip with its name and value', async ({ page }) => {
-  await openMapViaPicker(page)
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await openMap(page)
 
   // Any path that isn't the "no data" gray fill has a real value — a plain
   // CSS attribute selector finds one without needing DOM-typed evaluate().
@@ -123,8 +116,29 @@ test('hovering a municipality shows a tooltip with its name and value', async ({
   await expect(page.getByTestId('map-tooltip')).toHaveText(/.+: [\d,]+/)
 })
 
+test('clicking (tapping) a municipality pins a card with its name and value, which closes with ✕', async ({ page }) => {
+  await openMap(page)
+  const target = page.locator('svg path:not([fill="#e1e0d9"])').nth(200)
+  await target.dispatchEvent('click')
+
+  const card = page.getByTestId('map-picked')
+  await expect(card).toBeVisible()
+  await expect(card).toContainText(/総人口: [\d,]+/)
+
+  await card.getByRole('button', { name: '閉じる' }).click()
+  await expect(card).toBeHidden()
+})
+
+test('on a ranking page, the 地図 tab colors by the ranked column', async ({ page }) => {
+  await page.goto('/rankings/all/density')
+  await expect(page.locator('tbody tr').first()).toBeVisible()
+  await mapTab(page).click()
+  await expect(mapHeading(page, '人口密度(人/km²)')).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe('/rankings/all/density')
+})
+
 test('clicking the legend opens a color scheme picker that recolors the map without changing the data shown', async ({ page }) => {
-  await openMapViaPicker(page)
+  await openMap(page)
   const target = page.locator('svg path:not([fill="#e1e0d9"])').first()
   await expect(target).toBeVisible()
 
@@ -145,7 +159,7 @@ test('clicking the legend opens a color scheme picker that recolors the map with
 })
 
 test('the color scheme picker closes on an outside click without changing the selection', async ({ page }) => {
-  await openMapViaPicker(page)
+  await openMap(page)
   await expect(page.locator('svg path').first()).toBeVisible()
 
   const legend = page.getByTestId('map-legend')
@@ -157,7 +171,7 @@ test('the color scheme picker closes on an outside click without changing the se
 })
 
 test('hovering a "no data" municipality still shows a tooltip with its name', async ({ page }) => {
-  await openMapViaPicker(page)
+  await openMap(page)
   await expect(page.locator('svg path').first()).toBeVisible()
 
   // "No data" codes are prefecture-level totals under which a handful of
@@ -174,7 +188,7 @@ test('hovering a "no data" municipality still shows a tooltip with its name', as
 })
 
 test('the histogram button overlays a value histogram at the bottom without hiding the map, and closes it again', async ({ page }) => {
-  await openMapViaPicker(page)
+  await openMap(page)
   await expect(page.locator('svg path').first()).toBeVisible()
 
   const histogram = page.getByTestId('map-histogram-panel')
@@ -206,7 +220,7 @@ test('the histogram button overlays a value histogram at the bottom without hidi
 })
 
 test('wheel zoom pins the point under the cursor and clamps at the minimum scale', async ({ page }) => {
-  await openMapViaPicker(page)
+  await openMap(page)
   const group = page.locator('svg > g')
   await expect(page.locator('svg path').first()).toBeVisible()
   await expect(group).toHaveAttribute('transform', /scale\(1\)/)
@@ -236,28 +250,21 @@ test('wheel zoom pins the point under the cursor and clamps at the minimum scale
   await expect(async () => expect(await scaleOf()).toBe(1)).toPass()
 })
 
-test('wheeling over the map does not scroll the table behind it', async ({ page }) => {
-  // A row a few screens down, so there's room for the table to have visibly
-  // scrolled if the wheel event leaked through the modal.
-  const trackedRow = page.locator('tbody tr').nth(30)
-  const before = await trackedRow.boundingBox()
-  if (!before) throw new Error('row not visible')
-
-  await openMapViaPicker(page)
+test('wheeling over the map zooms it without scrolling the page away from the toolbar', async ({ page }) => {
+  await openMap(page)
+  const tabBefore = await tableTab(page).boundingBox()
   const box = await page.getByTestId('map-svg').boundingBox()
   if (!box) throw new Error('svg not visible')
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-  for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -200)
   for (let i = 0; i < 5; i++) await page.mouse.wheel(0, 200)
+  for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -200)
 
-  await page.getByRole('button', { name: '閉じる', exact: true }).click()
-  await expect(trackedRow).toBeVisible()
-  const after = await trackedRow.boundingBox()
-  expect(after?.y).toBe(before.y)
+  // The map view never scrolls — the toolbar (and its 表 tab) stays put.
+  expect((await tableTab(page).boundingBox())?.y).toBe(tabBefore?.y)
 })
 
 test('dragging the map pans it (translate changes) without leaving zoom stuck', async ({ page }) => {
-  await openMapViaPicker(page)
+  await openMap(page)
   const group = page.locator('svg > g')
   await expect(page.locator('svg path').first()).toBeVisible()
 
@@ -272,4 +279,44 @@ test('dragging the map pans it (translate changes) without leaving zoom stuck', 
 
   const after = await group.getAttribute('transform')
   expect(after).not.toBe(before)
+})
+
+test('the color scale is automatic per map (log for density), switchable, and kept in the URL with outlier clipping', async ({ page }) => {
+  await page.goto('/rankings/all/density?map=@3')
+  await expect(page.locator('svg path').first()).toBeVisible()
+  const scaleSelect = page.getByRole('combobox', { name: '目盛り' })
+  const legend = page.getByTestId('map-legend')
+
+  // Density spans orders of magnitude → automatic picks log.
+  await expect(scaleSelect.locator('option:checked')).toHaveText('自動（対数）')
+
+  await scaleSelect.selectOption('linear')
+  await expect(page).toHaveURL(/scale=linear/)
+  await expect(legend).not.toContainText('≥')
+
+  // Outliers: any percentage, kept in the URL; 0 (the default) clips nothing.
+  const clip = page.getByRole('spinbutton', { name: '外れ値として除く割合（%）' })
+  await expect(clip).toHaveValue('0')
+  await clip.fill('5')
+  await expect(page).toHaveURL(/clip=5/)
+  await expect(legend).toContainText('≥')
+
+  await page.reload()
+  await expect(scaleSelect.locator('option:checked')).toHaveText('線形')
+  await expect(page.getByRole('spinbutton', { name: '外れ値として除く割合（%）' })).toHaveValue('5')
+})
+
+test('evenly spread data (aging rate) gets a linear automatic scale', async ({ page }) => {
+  await page.goto('/rankings/all/elderly-ratio?map=@4')
+  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.getByRole('combobox', { name: '目盛り' }).locator('option:checked')).toHaveText('自動（線形）')
+})
+
+test('a map filtered to one prefecture zooms to it', async ({ page }) => {
+  await page.goto('/rankings/tokyo/density?map=@3')
+  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(async () => {
+    const t = await page.locator('svg > g').getAttribute('transform')
+    expect(Number(t?.match(/scale\(([\d.]+)\)/)?.[1])).toBeGreaterThan(5)
+  }).toPass()
 })
