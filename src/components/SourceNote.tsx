@@ -1,8 +1,7 @@
-import { dataset, selectedSource, censusPair, type DataKey, type DataSelection } from '@/data/datasets'
+import { dataset, selectedSource, type DataKey, type DataSelection } from '@/data/datasets'
 
 type Props = {
   used: DataKey[]
-  census?: boolean
   selection: DataSelection
   designations: boolean
   map: boolean
@@ -13,7 +12,7 @@ type Line = { agency?: string; name?: string; edition?: string; page?: string }
 
 // 出典: like a figure caption under the table — names, readings and codes
 // always come from 標準地域コード; the rest is whatever data is on screen.
-function SourceNote({ used, census = false, selection, designations, map, compact = false }: Props) {
+function SourceNote({ used, selection, designations, map, compact = false }: Props) {
   const lines: Line[] = []
   const add = (id: string, edition?: string) => {
     const ds = dataset(id)
@@ -24,8 +23,6 @@ function SourceNote({ used, census = false, selection, designations, map, compac
     if (src && src.path !== 'effective') add(src.dataset, src.name)
     else if (src) add('minwage', '現在発効中の額')
   }
-  const pair = census ? censusPair() : undefined
-  if (pair) add('kokusei', `${pair.prev.label ?? pair.prev.as_of}・${pair.latest.label ?? pair.latest.as_of}`)
   if (designations) add('designations')
   if (map) add('map', dataset('map').editions[0]?.as_of)
   add('codes', dataset('codes').editions[0]?.as_of)

@@ -1,12 +1,10 @@
-import { SELECTABLE, selectedSource, censusPair, type DataKey, type DataSelection } from '@/data/datasets'
+import { SELECTABLE, selectedSource, type DataKey, type DataSelection } from '@/data/datasets'
 
 type Props = {
   title?: string
   description?: string
   // Datasets the columns/filter/sort on screen draw on, in display order.
   used: DataKey[]
-  // Uses the comparison of the two latest 国勢調査 (fixed, not selectable).
-  census?: boolean
   selection: DataSelection
   // With a key when a data chip was clicked (open that section), without for the general link.
   onDataClick: (key?: DataKey) => void
@@ -16,8 +14,7 @@ type Props = {
 // Title, what the page shows, and which data (and which edition of it) the
 // numbers come from — where a reader looks for "where is this from?", not
 // tucked away in a menu. Each data chip opens データの選択.
-function PageHeader({ title, description, used, census = false, selection, onDataClick, compact = false }: Props) {
-  const pair = census ? censusPair() : undefined
+function PageHeader({ title, description, used, selection, onDataClick, compact = false }: Props) {
   return (
     <div className={`w-full max-w-5xl mx-auto px-4 ${compact ? 'pt-2 pb-1' : 'pt-4 pb-3'}`}>
       {title && <h1 className={`font-bold ${compact ? 'text-base truncate' : 'text-xl md:text-2xl'}`}>{title}</h1>}
@@ -42,15 +39,6 @@ function PageHeader({ title, description, used, census = false, selection, onDat
             </button>
           )
         })}
-        {pair && (
-          <span
-            className="shrink-0 inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5"
-            title="人口増減は直近2回の国勢調査を比べています（データの選択では変わりません）"
-          >
-            <span className="text-gray-500">人口増減</span>
-            <span className="font-medium">国勢調査 {pair.prev.as_of.slice(0, 4)}年→{pair.latest.as_of.slice(0, 4)}年</span>
-          </span>
-        )}
         <button type="button" onClick={() => onDataClick()} className="shrink-0 text-blue-600 hover:underline px-1">
           データの選択
         </button>

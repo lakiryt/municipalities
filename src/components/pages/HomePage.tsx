@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { censusPeriod, prefectures } from '@/data/datasets'
+import { prefectures } from '@/data/datasets'
+import { changePeriod } from '@/rankings/populationChange'
 import { REGIONS } from '@/data/prefTiles'
 import { useCensusOverview, type CensusRow } from '@/data/useCensusOverview'
 import { formatRate } from '@/lib/changeScale'
@@ -37,7 +38,7 @@ function RateList({ title, rows, more }: { title: string; rows: CensusRow[]; mor
 function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { municipalities, places, prefs, loaded } = useCensusOverview()
-  const period = censusPeriod()
+  const period = changePeriod()
 
   const withRate = municipalities.filter(m => !Number.isNaN(m.rate)).sort((a, b) => b.rate - a.rate)
   const counted = municipalities.filter(m => !Number.isNaN(m.latest)).length

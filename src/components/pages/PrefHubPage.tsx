@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { censusPair, censusPeriod, prefectures } from '@/data/datasets'
+import { prefectures, selectedSource, defaultDataSelection } from '@/data/datasets'
+import { changePeriod } from '@/rankings/populationChange'
 import { useCensusOverview, type CensusRow } from '@/data/useCensusOverview'
 import { changeClass, formatRate } from '@/lib/changeScale'
 import { CATALOG, rankingPath } from '@/rankings/catalog'
@@ -34,8 +35,8 @@ function PrefHubPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pref = prefectures.find(p => p.romanized === slug)
   const { municipalities, prefs, loaded } = useCensusOverview()
-  const period = censusPeriod()
-  const year = censusPair()?.latest.as_of.slice(0, 4) ?? ''
+  const period = changePeriod()
+  const year = selectedSource('change', defaultDataSelection())?.as_of.slice(0, 4) ?? ''
 
   if (!pref) {
     return (

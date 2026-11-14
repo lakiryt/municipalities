@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  fetchCensusChange, fetchMunicipalityCodes, officialCodes, prefectures,
-  type CensusMap, type CodeEntry,
+  fetchPopulationChange, fetchMunicipalityCodes, officialCodes, prefectures, defaultDataSelection,
+  type ChangeMap, type CodeEntry,
 } from './datasets'
 
 export type CensusRow = {
@@ -21,18 +21,19 @@ const kindOf = (name: string): CensusRow['kind'] => {
 }
 
 // The light-weight data behind the home page and the prefecture pages: names
-// and the two latest 国勢調査 counts (≈ 3 small CSVs), not the full table data.
+// and the default 人口増減 comparison (the last two 国勢調査; ≈ 3 small CSVs),
+// not the full table data.
 export function useCensusOverview() {
   const [codes, setCodes] = useState<CodeEntry[]>([])
-  const [census, setCensus] = useState<CensusMap>(new Map())
+  const [census, setCensus] = useState<ChangeMap>(new Map())
   useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
-  useEffect(() => { fetchCensusChange().then(setCensus) }, [])
+  useEffect(() => { fetchPopulationChange(defaultDataSelection().change).then(setCensus) }, [])
 
   return useMemo(() => {
     const prefName = new Map(prefectures.map(p => [p.code.slice(0, 2), p.kanji]))
     const row = (code: string, name: string): CensusRow => {
       const c = census.get(code)
-      const prev = c?.prev ?? NaN, latest = c?.latest ?? NaN
+      const prev = c?.from ?? NaN, latest = c?.to ?? NaN
       return {
         code, name, kind: kindOf(name),
         prefCode: code.slice(0, 2), prefName: prefName.get(code.slice(0, 2)) ?? '',

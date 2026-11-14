@@ -13,14 +13,12 @@ const NON_POPULATION: Record<string, DataKey> = {
   rent_inc0: 'rent',
   rent_exc0: 'rent',
   minwage: 'minwage',
+  pop_from: 'change',
+  pop_to: 'change',
 }
-
-// 国勢調査 2 回分の比較（固定。データの選択では変わらない）
-const CENSUS = new Set(['census_prev', 'census_pop'])
 
 export type UsedData = {
   selectable: Set<DataKey>
-  census: boolean         // #census_* (the two latest 国勢調査)
   designations: boolean   // &seirei / &chukaku / &tokurei
   coastal: boolean        // &coastal (from the map's adjacency data)
 }
@@ -38,16 +36,13 @@ export function usedData(expressions: string[]): UsedData {
     }
   }
   const selectable = new Set<DataKey>()
-  let census = false
   for (const v of numeric) {
     if (DERIVED.has(v)) continue
-    if (CENSUS.has(v)) { census = true; continue }
     selectable.add(NON_POPULATION[v] ?? 'pop')
   }
   const all = expressions.join(' ')
   return {
     selectable,
-    census,
     designations: /&(seirei|chukaku|tokurei)\b/.test(all),
     coastal: /&coastal\b/.test(all),
   }

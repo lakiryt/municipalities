@@ -85,8 +85,8 @@ test('a data chip opens データの選択 on its own dataset; data the page doe
   await expect(focused).toContainText('面積データ')
   await expect(focused.locator('select')).toBeFocused()
 
-  // Density uses 人口 and 面積 only — 家賃 and 最低賃金 are folded.
-  await expect(dialog.getByText(/このページで使っていないデータ（家賃・最低賃金）/)).toBeVisible()
+  // Density uses 人口 and 面積 only — 人口増減, 家賃 and 最低賃金 are folded.
+  await expect(dialog.getByText(/このページで使っていないデータ（人口増減・家賃・最低賃金）/)).toBeVisible()
   await expect(dialog.getByText('家賃データ')).toBeHidden()
 
   // The general link opens it without a focus.

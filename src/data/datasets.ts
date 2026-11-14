@@ -95,12 +95,56 @@ export const minWageSources: Source[] = [
   ...sourcesOf('minwage'),
 ]
 
+// ── Population change (人口増減) ─────────────────────────────────────────────────
+
+// 人口増減 compares two editions of one population dataset: each pair of
+// consecutive 国勢調査 (one edition per date — the 確定 when enabled,
+// otherwise the 速報), and each earlier 住民基本台帳 year with the latest.
+// Like the other selectable data it is picked in データの選択; its 'path' is
+// the two CSV paths joined by '|'.
+const PAIR_SEP = '|'
+const onePerDate = (eds: Edition[]) => eds.filter((e, i) => eds.findIndex(x => x.as_of === e.as_of) === i)
+const pairSource = (id: string, from: Edition, to: Edition): Source => ({
+  dataset: id,
+  key: `${id}:${from.id}~${to.id}`,
+  label: dataset(id).label,
+  name: `${from.as_of.slice(0, 4)}→${to.as_of.slice(0, 4)}年`,
+  as_of: to.as_of,
+  path: `${from.path}${PAIR_SEP}${to.path}`,
+})
+
+export const changeSources: Source[] = (() => {
+  const census = onePerDate(dataset('kokusei').editions)   // newest first
+  const jumin = onePerDate(dataset('jumin').editions)
+  return [
+    ...census.slice(1).map((from, i) => pairSource('kokusei', from, census[i])),
+    ...jumin.slice(1).map(from => pairSource('jumin', from, jumin[0])),
+  ]
+})()
+
+export type ChangeMap = Map<string, { from: number; to: number }>
+const changeCache = new Map<string, Promise<ChangeMap>>()
+export const fetchPopulationChange = (path: string): Promise<ChangeMap> => {
+  const [fromPath, toPath] = path.split(PAIR_SEP)
+  if (!fromPath || !toPath) return Promise.resolve(new Map())
+  let p = changeCache.get(path)
+  if (!p) {
+    p = Promise.all([fetchCsv(fromPath), fetchCsv(toPath)]).then(([from, to]) => {
+      const before = new Map(from.map(r => [r.code, toNum(r.totalpop)]))
+      return new Map(to.map(r => [r.code, { from: before.get(r.code) ?? NaN, to: toNum(r.totalpop) }]))
+    })
+    changeCache.set(path, p)
+  }
+  return p
+}
+
 /** Which edition of each selectable dataset the table/map uses, by path. */
-export type DataSelection = { pop: string; area: string; rent: string; minwage: string }
+export type DataSelection = { pop: string; change: string; area: string; rent: string; minwage: string }
 export type DataKey = keyof DataSelection
 
 export const SELECTABLE: Record<DataKey, { title: string; sources: Source[] }> = {
   pop:     { title: '人口',     sources: populationSources },
+  change:  { title: '人口増減', sources: changeSources },
   area:    { title: '面積',     sources: areaSources },
   rent:    { title: '家賃',     sources: rentSources },
   minwage: { title: '最低賃金', sources: minWageSources },
@@ -109,6 +153,7 @@ export const DATA_KEYS = Object.keys(SELECTABLE) as DataKey[]
 
 export const defaultDataSelection = (): DataSelection => ({
   pop: populationSources[0]?.path ?? '',
+  change: changeSources[0]?.path ?? '',
   area: areaSources[0]?.path ?? '',
   rent: rentSources[0]?.path ?? '',
   minwage: minWageSources[0]?.path ?? '',
@@ -268,36 +313,6 @@ export const fetchCoastal = (): Promise<Set<string>> =>
   fetchAdjacency().then(data => new Set(
     Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
   ))
-
-// ── Census comparison (人口増減, 国勢調査 2 回分) ───────────────────────────────
-
-// The two most recent 国勢調査 (one edition per date: the 確定 edition when it
-// is enabled, otherwise the 速報), newest first. Unlike the selectable
-// population, a change between two censuses always compares these two.
-export type CensusPair = { latest: Edition; prev: Edition }
-export const censusPair = (): CensusPair | undefined => {
-  const byDate: Edition[] = []
-  for (const e of dataset('kokusei').editions) {
-    if (!byDate.some(x => x.as_of === e.as_of)) byDate.push(e)
-  }
-  return byDate.length >= 2 ? { latest: byDate[0], prev: byDate[1] } : undefined
-}
-/** "2020→2025年" */
-export const censusPeriod = (p: CensusPair | undefined = censusPair()): string =>
-  p ? `${p.prev.as_of.slice(0, 4)}→${p.latest.as_of.slice(0, 4)}年` : ''
-
-export type CensusMap = Map<string, { prev: number; latest: number }>
-let censusPromise: Promise<CensusMap> | null = null
-export const fetchCensusChange = (): Promise<CensusMap> => {
-  const pair = censusPair()
-  if (!pair) return Promise.resolve(new Map())
-  return censusPromise ??= Promise.all([fetchCsv(pair.prev.path), fetchCsv(pair.latest.path)]).then(([prev, latest]) => {
-    const out: CensusMap = new Map()
-    const before = new Map(prev.map(r => [r.code, toNum(r.totalpop)]))
-    for (const r of latest) out.set(r.code, { prev: before.get(r.code) ?? NaN, latest: toNum(r.totalpop) })
-    return out
-  })
-}
 
 // ── Population series (detail page) ───────────────────────────────────────────
 

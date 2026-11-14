@@ -80,13 +80,17 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   // component) replays prior edits. Any edit re-navigates to /explore with
   // the new state, so a page's own `initial*` props are only ever the
   // starting point before the first edit.
+  const startKey = JSON.stringify([initialColumns.map(c => [c.id, c.label, c.expression]), initialFilter?.expression, initialSort?.expression, initialSort?.direction])
   const defaultState: ExploreState = useMemo(() => ({
     columns: initialColumns.map(c => ({ id: c.id, label: c.label, expression: c.expression })),
     filterExpression: initialFilter?.expression ?? '',
     sortExpression: initialSort?.expression ?? '',
     sortDirection: initialSort?.direction ?? 'desc',
+    // Recomputed only when the page's starting point itself changes (e.g. a
+    // ranking whose column labels name the period データの選択 compares),
+    // not on every render of a freshly mapped array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [])
+  }), [startKey])
   const effectiveState = decodeExploreState(searchParams.get('s')) ?? defaultState
 
   // Navigations render in a transition, so for a moment after an edit the
@@ -198,14 +202,14 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   }, [title, mapColumn])
 
   // The data the columns, filter, sort and map draw on: shown as chips and in
-  // 出典, and the census comparison is only fetched when something uses it.
+  // 出典, and 人口増減 is only fetched when something uses it.
   const used = usedData([
     ...columns.map(c => c.expression), filterExpression, sortState?.expression ?? '',
     mapColumn?.expression ?? '',
   ])
   const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
 
-  const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.census)
+  const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.selectable.has('change'))
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
@@ -462,7 +466,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // Map view: fills the screen below the header — no page scroll, so
         // drags and pinches always go to the map.
         <div className="fixed inset-x-0 top-11 bottom-0 flex flex-col">
-          <PageHeader used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
+          <PageHeader used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
           {toolbar}
           <div className="flex-1 min-h-0">
             <MapView
@@ -476,7 +480,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
               linkFor={detailLink}
             />
           </div>
-          <SourceNote used={usedKeys} census={used.census} selection={selection} designations={used.designations} map compact />
+          <SourceNote used={usedKeys} selection={selection} designations={used.designations} map compact />
         </div>
       ) : (
         // Table view: one scroll container for both axes, so the toolbar and
@@ -486,7 +490,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // slide away when a wide table scrolls sideways.
         <main className="fixed inset-x-0 top-11 bottom-0 overflow-auto [container-type:inline-size]">
           <div className="sticky left-0 w-[100cqw]">
-            <PageHeader description={description} used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
+            <PageHeader description={description} used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
           </div>
           <div className="sticky top-0 left-0 z-40 w-[100cqw]">{toolbar}</div>
           <DataTable
@@ -501,7 +505,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
             envOf={envOf}
           />
           <div className="sticky left-0 w-[100cqw]">
-            <SourceNote used={usedKeys} census={used.census} selection={selection} designations={used.designations} map={used.coastal} />
+            <SourceNote used={usedKeys} selection={selection} designations={used.designations} map={used.coastal} />
           </div>
         </main>
       )}

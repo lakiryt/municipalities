@@ -2,7 +2,7 @@ import { parseAndTypeCheck } from '../lang/expr'
 import { evaluate, type Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
 import {
-  prefectures, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets, type CensusMap,
+  prefectures, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets, type ChangeMap,
 } from './datasets'
 
 // One row of the table/map: a 標準地域コード entry joined with the selected
@@ -22,9 +22,9 @@ export type BaseItem = {
   rentInc0: number
   rentExc0: number
   minWage: number
-  // 国勢調査の総人口、直近 2 回分（censusPair）
-  censusPrev: number
-  censusLatest: number
+  // 人口増減: total population in the two compared editions (データの選択)
+  popFrom: number
+  popTo: number
 }
 
 // ── Derived expressions ───────────────────────────────────────────────────────
@@ -43,8 +43,8 @@ export const derivedExpressions = [
   { name: 'inc_nat_rate', expr: 'MULT(#inc_nat, INV(#prev_total))',                               desc: '自然増減率' },
   { name: 'inc_soc',      expr: 'SUM(#inc_mov, #inc_other, NEG(SUM(#dec_mov, #dec_other)))',      desc: '社会増減数' },
   { name: 'inc_soc_rate', expr: 'MULT(#inc_soc, INV(#prev_total))',                               desc: '社会増減率' },
-  { name: 'census_change',      expr: 'SUM(#census_pop, NEG(#census_prev))',          desc: '国勢調査 前回からの人口増減数' },
-  { name: 'census_change_rate', expr: 'MULT(#census_change, INV(#census_prev))',     desc: '国勢調査 前回からの人口増減率' },
+  { name: 'pop_change',      expr: 'SUM(#pop_to, NEG(#pop_from))',        desc: '人口増減数（比較する2時点）' },
+  { name: 'pop_change_rate', expr: 'MULT(#pop_change, INV(#pop_from))',  desc: '人口増減率（比較する2時点）' },
   { name: 'elderly_total',  expr: 'SUM(#total65_69, #total70_74, #total75_79, #total80_84, #total85_89, #total90_94, #total95_99, #total100_)',   desc: '65歳以上人口（計）' },
   { name: 'elderly_female', expr: 'SUM(#female65_69, #female70_74, #female75_79, #female80_84, #female85_89, #female90_94, #female95_99, #female100_)', desc: '65歳以上人口（女）' },
   { name: 'elderly_male',   expr: 'SUM(#male65_69, #male70_74, #male75_79, #male80_84, #male85_89, #male90_94, #male95_99, #male100_)',             desc: '65歳以上人口（男）' },
@@ -74,7 +74,7 @@ export const buildItems = (
   popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[],
   rentMap: RentMap = new Map(),
   minWageMap: MinWageMap = new Map(),
-  censusMap: CensusMap = new Map()
+  changeMap: ChangeMap = new Map()
 ): BaseItem[] =>
   codes.map(item => ({
     code: item.code,
@@ -86,8 +86,8 @@ export const buildItems = (
     rentInc0: rentMap.get(item.code)?.inc0 ?? NaN,
     rentExc0: rentMap.get(item.code)?.exc0 ?? NaN,
     minWage: minWageMap.get(item.code.slice(0, 2))?.min ?? NaN,
-    censusPrev: censusMap.get(item.code)?.prev ?? NaN,
-    censusLatest: censusMap.get(item.code)?.latest ?? NaN,
+    popFrom: changeMap.get(item.code)?.from ?? NaN,
+    popTo: changeMap.get(item.code)?.to ?? NaN,
   }))
 
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
@@ -97,8 +97,8 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     rent_inc0: item.rentInc0,
     rent_exc0: item.rentExc0,
     minwage: item.minWage,
-    census_prev: item.censusPrev,
-    census_pop: item.censusLatest,
+    pop_from: item.popFrom,
+    pop_to: item.popTo,
   }
   const strvars: Record<string, string> = {
     code:      item.code,
@@ -141,8 +141,8 @@ const _dummy: BaseItem = {
   rentInc0: 0,
   rentExc0: 0,
   minWage: 0,
-  censusPrev: 0,
-  censusLatest: 0,
+  popFrom: 0,
+  popTo: 0,
 }
 
 const _dummyDesignations: DesignationSets = {

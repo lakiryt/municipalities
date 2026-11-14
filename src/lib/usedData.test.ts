@@ -21,11 +21,9 @@ describe('usedData', () => {
     expect(u.coastal).toBe(true)
   })
 
-  it('treats the census comparison as its own fixed data, not the selectable population', () => {
-    const u = usedData(['ROUND(MULT(#census_change_rate, 100), 2)'])
-    expect(u.census).toBe(true)
-    expect(u.selectable.size).toBe(0)
-    expect(usedData(['#totalpop']).census).toBe(false)
+  it('treats 人口増減 as its own data, separate from the population', () => {
+    expect([...usedData(['ROUND(MULT(#pop_change_rate, 100), 2)']).selectable]).toEqual(['change'])
+    expect([...usedData(['#totalpop']).selectable]).toEqual(['pop'])
   })
 })
 
