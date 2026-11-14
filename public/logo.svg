@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- ヘッダー用（明るい背景固定）。favicon.svg と同じ形でダークモード切替なし -->
+  <rect fill="#13294b" x="40" y="4" width="11" height="11" rx="2"/>
+  <rect fill="#13294b" x="53" y="4" width="10" height="11" rx="2"/>
+  <rect fill="#2c4a7c" x="40" y="17" width="11" height="11" rx="2"/>
+  <rect fill="#4a6fa5" x="27" y="17" width="11" height="11" rx="2"/>
+  <rect fill="#7a9cc6" x="27" y="30" width="11" height="11" rx="2"/>
+  <rect fill="#2c4a7c" x="40" y="30" width="11" height="11" rx="2"/>
+  <rect fill="#c9a227" x="14" y="30" width="11" height="11" rx="2"/>
+  <rect fill="#7a9cc6" x="14" y="43" width="11" height="11" rx="2"/>
+  <rect fill="#b3c7e0" x="1" y="43" width="11" height="11" rx="2"/>
+  <rect fill="#b3c7e0" x="1" y="56" width="11" height="7" rx="2"/>
+</svg>

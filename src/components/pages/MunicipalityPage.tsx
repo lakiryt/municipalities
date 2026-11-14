@@ -8,6 +8,7 @@ import { useMunicipalityData } from '@/data/useMunicipalityData'
 import { metricValues } from '@/data/metrics'
 import { formatValue } from '@/lib/format'
 import AppHeader from '@/components/AppHeader'
+import { pageTitle } from '@/lib/brand'
 import PageHeader from '@/components/PageHeader'
 import SourceNote from '@/components/SourceNote'
 import Sidebar from '@/components/Sidebar'
@@ -74,7 +75,7 @@ function MunicipalityPage() {
   const title = name ? `${name}（${pref?.kanji ?? ''}）` : ''
 
   useEffect(() => {
-    if (title) document.title = `${title}の人口・面積・人口密度 — 日本の自治体データ`
+    if (title) document.title = pageTitle(`${title}の人口・面積・人口密度`)
   }, [title])
 
   if (loaded && (!item || !name || (!official && !parentCity))) {

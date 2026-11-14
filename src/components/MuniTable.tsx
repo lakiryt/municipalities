@@ -10,6 +10,7 @@ import { useMunicipalityData } from '../data/useMunicipalityData'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import { usedData } from '@/lib/usedData'
+import { pageTitle } from '@/lib/brand'
 import AppHeader from '@/components/AppHeader'
 import PageHeader from '@/components/PageHeader'
 import Toolbar from '@/components/Toolbar'
@@ -192,8 +193,8 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
   useEffect(() => {
     if (!title) return
     document.title = mapColumn
-      ? `${mapColumn.label}の地図 — ${title} — 日本の自治体データ`
-      : `${title} — 日本の自治体データ`
+      ? pageTitle(`${mapColumn.label}の地図`, title)
+      : pageTitle(title)
   }, [title, mapColumn])
 
   const { items: activeItems, designations, coastal } = useMunicipalityData(selection)

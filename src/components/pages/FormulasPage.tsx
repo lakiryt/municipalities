@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { derivedExpressions } from '@/data/municipalities'
 import Canonical from '@/components/Canonical'
+import { pageTitle } from '@/lib/brand'
 
 const functions = [
   { sig: 'AND(b…)',    ret: 'b', desc: 'すべて真のとき真' },
@@ -66,7 +67,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function FormulasPage() {
-  useEffect(() => { document.title = '式の記述方法 — 日本の自治体データ' }, [])
+  useEffect(() => { document.title = pageTitle('式の記述方法') }, [])
   return (
     <>
       <Canonical />
