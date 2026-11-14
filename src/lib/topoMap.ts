@@ -163,6 +163,15 @@ export const COLOR_SCHEMES: Record<ColorSchemeKey, { label: string; ramp: string
   },
 }
 
+// Diverging (増減): decline in a warm hue, a light neutral at 0, growth in
+// blue ending in the brand navy — the same reading as the home page's
+// prefecture map. Lightness steps mirror each other around the middle.
+export const DIVERGING_RAMP = [
+  '#8c2d16', '#b8502c', '#d9784f', '#efaa8a', '#f8d8c8',
+  '#f5f4f0',
+  '#cde2fb', '#86b6ef', '#3987e5', '#1c5cab', '#13294b',
+]
+
 function hexToRgb(hex: string) {
   const n = parseInt(hex.slice(1), 16)
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }

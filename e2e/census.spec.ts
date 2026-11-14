@@ -44,3 +44,19 @@ test('town and village rankings keep to their kind', async ({ page }) => {
   expect(names.length).toBeGreaterThan(5)
   expect(names.every(n => n.endsWith('村'))).toBe(true)
 })
+
+test('a change rate maps on a diverging scale around 0, with outliers clipped by default', async ({ page }) => {
+  await page.goto('/rankings/all/population-change?map=@1')
+  await page.waitForSelector('svg path[data-code]')
+  const scaleSelect = page.getByRole('combobox', { name: '目盛り' })
+  await expect(scaleSelect.locator('option:checked')).toHaveText('自動（増減）')
+  const clip = page.getByRole('checkbox', { name: /外れ値/ })
+  await expect(clip).toBeChecked()
+  await expect(page.getByText('中央の色 ≒ 0')).toBeVisible()
+
+  // Turning clipping off is remembered as an explicit choice (the checkbox
+  // reflects the URL, which updates a moment after the click).
+  await clip.click()
+  await expect(page).toHaveURL(/clip=0/)
+  await expect(clip).not.toBeChecked()
+})

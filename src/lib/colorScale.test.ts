@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { makeScale, suggestScale, quantile, canLog } from './colorScale'
+import { makeScale, suggestScale, quantile, canLog, canDiverge } from './colorScale'
 
 describe('suggestScale', () => {
   it('picks log for data spanning orders of magnitude (population, density)', () => {
@@ -8,11 +8,39 @@ describe('suggestScale', () => {
 
   it('picks linear for evenly spread data (rates, rents) and anything non-positive', () => {
     expect(suggestScale([28, 31, 35, 38, 41, 45, 52])).toBe('linear')
-    expect(suggestScale([-3, 1, 1000, 100000])).toBe('linear')
+    expect(suggestScale([0, 1, 1000, 100000])).toBe('linear')
+  })
+
+  it('picks diverging for data on both sides of 0 (増減率)', () => {
+    expect(suggestScale([-3, 1, 1000, 100000])).toBe('diverging')
+    expect(canDiverge([0, 1, 2])).toBe(false)
   })
 })
 
 describe('makeScale', () => {
+  it('diverging puts 0 in the middle and stretches each side to its own extreme', () => {
+    const s = makeScale([-20, -10, -5, 0, 2, 4], 'diverging', false)
+    expect(s.t(0)).toBe(0.5)
+    expect(s.t(-20)).toBe(0)
+    expect(s.t(4)).toBe(1)
+    expect(s.t(-10)).toBeCloseTo(0.25)
+    expect(s.t(2)).toBeCloseTo(0.75)
+    expect(s.valueAt(0.5)).toBe(0)
+    expect(s.valueAt(0.25)).toBeCloseTo(-10)
+  })
+
+  it('diverging with clipping keeps one outlier from washing out a side', () => {
+    // Mostly decline, a few growing places, one extreme (+81%).
+    const pos = [...Array.from({ length: 60 }, (_, i) => 0.1 + i * 0.1), 81]
+    const data = [...Array.from({ length: 500 }, (_, i) => -10 + i * 0.02), ...pos]
+    const s = makeScale(data, 'diverging', true)
+    expect(s.clippedHigh).toBe(true)
+    expect(s.hi).toBeLessThan(10)
+    expect(s.t(81)).toBe(1)
+    expect(s.t(3)).toBeGreaterThan(0.7)   // without clipping: ~0.52
+    expect(s.lo).toBeLessThan(-9)         // the decline side keeps its full range
+  })
+
   const values = [1, 10, 100, 1000, 10000]
 
   it('linear maps min..max to 0..1', () => {

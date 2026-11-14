@@ -9,14 +9,20 @@
 //            a few zeros (e.g. the uninhabited Northern Territories villages)
 //            are allowed and painted in the lowest color
 //   rank   — percentile rank (robust to any distribution; equal color areas)
+//   diverging — for data with a sign (増減率, 増減数): 0 is the neutral
+//            middle, negatives run one way and positives the other, each
+//            side stretched to its own extreme (growth and decline differ in
+//            size: almost every municipality shrinks). Outliers are clipped by
+//            default here, since a single small town's +81% would otherwise
+//            wash out every other growth.
 //
 // `clip` drops the lowest/highest 2% from the scale's range ("outliers"):
 // they're still drawn, in the end colors, and the legend says ≤ / ≥.
 
-export type ScaleKind = 'linear' | 'log' | 'rank'
+export type ScaleKind = 'linear' | 'log' | 'rank' | 'diverging'
 export type ScaleChoice = ScaleKind | 'auto'
 
-export const SCALE_LABELS: Record<ScaleKind, string> = { linear: '線形', log: '対数', rank: '順位' }
+export const SCALE_LABELS: Record<ScaleKind, string> = { linear: '線形', log: '対数', rank: '順位', diverging: '増減' }
 
 export const CLIP_PERCENT = 2
 
@@ -50,13 +56,19 @@ export function canLog(values: number[]): boolean {
   return positive >= 2 && positive >= LOG_MIN_POSITIVE_SHARE * values.length
 }
 
+/** Whether the data has both signs, so 0 is a meaningful middle. */
+export function canDiverge(values: number[]): boolean {
+  return values.some(v => v < 0) && values.some(v => v > 0)
+}
+
 /**
- * The automatic choice: log when log is possible and the positive values
+ * The automatic choice: diverging for data on both sides of 0; log when log is possible and the positive values
  * span more than an order of magnitude between their 5th and 95th
  * percentiles (population, area, density); linear otherwise (rates, rents,
  * wages).
  */
 export function suggestScale(values: number[]): ScaleKind {
+  if (canDiverge(values)) return 'diverging'
   if (!canLog(values)) return 'linear'
   const positive = values.filter(v => v > 0).sort((a, b) => a - b)
   return quantile(positive, 0.95) / quantile(positive, 0.05) > 10 ? 'log' : 'linear'
@@ -66,6 +78,7 @@ export function makeScale(values: number[], choice: ScaleChoice, clip: boolean):
   const sorted = [...values].sort((a, b) => a - b)
   let kind: ScaleKind = choice === 'auto' ? suggestScale(sorted) : choice
   if (kind === 'log' && !canLog(sorted)) kind = 'linear'
+  if (kind === 'diverging' && !canDiverge(sorted)) kind = 'linear'
   const min = sorted[0] ?? 0, max = sorted.at(-1) ?? 1
 
   if (kind === 'rank') {
@@ -82,6 +95,24 @@ export function makeScale(values: number[], choice: ScaleChoice, clip: boolean):
       kind, lo: min, hi: max, clippedLow: false, clippedHigh: false,
       t: v => (n > 1 ? below(v) / (n - 1) : 0.5),
       valueAt: t => quantile(sorted, t),
+    }
+  }
+
+  if (kind === 'diverging') {
+    // Two slopes meeting at 0: lo..0 → 0..0.5 and 0..hi → 0.5..1. Each side
+    // is clipped on its own, so a side with few values (growth, here) keeps
+    // its colors instead of being clipped away by the other side's quantiles.
+    const neg = sorted.filter(v => v < 0), pos = sorted.filter(v => v > 0)
+    const lo = Math.min(0, clip && neg.length ? quantile(neg, CLIP_PERCENT / 100) : min)
+    const hi = Math.max(0, clip && pos.length ? quantile(pos, 1 - CLIP_PERCENT / 100) : max)
+    return {
+      kind, lo, hi,
+      clippedLow: min < lo,
+      clippedHigh: max > hi,
+      t: v => v < 0
+        ? (lo < 0 ? 0.5 - 0.5 * Math.min(1, v / lo) : 0.5)
+        : (hi > 0 ? 0.5 + 0.5 * Math.min(1, v / hi) : 0.5),
+      valueAt: t => (t < 0.5 ? lo * (0.5 - t) * 2 : hi * (t - 0.5) * 2),
     }
   }
 

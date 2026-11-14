@@ -6,9 +6,9 @@ import type { DesignationSets } from '@/data/datasets'
 import type { ColumnState, ColumnRef } from '@/types'
 import { formatValue } from '@/lib/format'
 import { fitBounds, type Box } from '@/lib/mapFit'
-import { makeScale, canLog, suggestScale, SCALE_LABELS, CLIP_PERCENT, type ScaleChoice } from '@/lib/colorScale'
+import { makeScale, canLog, canDiverge, suggestScale, SCALE_LABELS, CLIP_PERCENT, type ScaleChoice } from '@/lib/colorScale'
 import {
-  fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, VIEW_SIZE,
+  fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP, VIEW_SIZE,
   type MuniPaths, type ColorSchemeKey,
 } from '@/lib/topoMap'
 
@@ -56,8 +56,10 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
   // and kept in the URL (?scale=log&clip=1), like the map column itself.
   const [searchParams, setSearchParams] = useSearchParams()
   const scaleParam = searchParams.get('scale')
-  const scaleChoice: ScaleChoice = scaleParam === 'linear' || scaleParam === 'log' || scaleParam === 'rank' ? scaleParam : 'auto'
-  const clip = searchParams.get('clip') === '1'
+  const scaleChoice: ScaleChoice =
+    scaleParam === 'linear' || scaleParam === 'log' || scaleParam === 'rank' || scaleParam === 'diverging' ? scaleParam : 'auto'
+  // ?clip=1 / ?clip=0 override the default (on for diverging, off otherwise).
+  const clipParam = searchParams.get('clip')
   const setParam = (key: string, value: string | null) => setSearchParams(prev => {
     const next = new URLSearchParams(prev)
     if (value === null) next.delete(key); else next.set(key, value)
@@ -146,9 +148,14 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
   }, [itemByCode, column, designations, coastal, paths])
 
   const valueList = useMemo(() => [...values.values()], [values])
-  const scale = useMemo(() => makeScale(valueList, scaleChoice, clip), [valueList, scaleChoice, clip])
   const logPossible = useMemo(() => canLog(valueList), [valueList])
+  const divergePossible = useMemo(() => canDiverge(valueList), [valueList])
   const autoKind = useMemo(() => suggestScale(valueList), [valueList])
+  const clipDefault = (scaleChoice === 'auto' ? autoKind : scaleChoice) === 'diverging' && divergePossible
+  const clip = clipParam === '1' || (clipParam !== '0' && clipDefault)
+  const scale = useMemo(() => makeScale(valueList, scaleChoice, clip), [valueList, scaleChoice, clip])
+  const diverging = scale.kind === 'diverging'
+  const ramp = diverging ? DIVERGING_RAMP : COLOR_SCHEMES[schemeKey].ramp
 
   // Bins are equal steps along the color scale (not the raw values), so a
   // bar's horizontal position lines up with its color on the legend below —
@@ -354,7 +361,6 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
               <g transform={`translate(${view.x}, ${view.y}) scale(${view.scale})`}>
                 {[...paths.entries()].map(([code, d]) => {
                   const v = values.get(code)
-                  const ramp = COLOR_SCHEMES[schemeKey].ramp
                   const fill = v === undefined ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
                   return (
                     <path
@@ -420,7 +426,6 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
               <svg data-testid="map-histogram" viewBox="0 0 400 200" preserveAspectRatio="none" className="w-full h-full">
                 <line x1={0} y1={190} x2={400} y2={190} stroke="#e5e7eb" strokeWidth={1} />
                 {bins.map((bin, i) => {
-                  const ramp = COLOR_SCHEMES[schemeKey].ramp
                   const fill = sequentialColor((i + 0.5) / BIN_COUNT, ramp)
                   const barWidth = 400 / BIN_COUNT
                   const barHeight = (bin.count / maxCount) * 178
@@ -469,20 +474,21 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
             aria-label="配色"
             aria-haspopup="listbox"
             aria-expanded={schemeOpen}
-            title={COLOR_SCHEMES[schemeKey].label}
-            className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400"
+            title={diverging ? '増減の配色（0が中央。減少は赤系、増加は青系）' : COLOR_SCHEMES[schemeKey].label}
+            disabled={diverging}
+            className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400 disabled:cursor-default disabled:hover:border-gray-300"
             onClick={() => setSchemeOpen(o => !o)}
           >
             <span className="tabular-nums">{scale.clippedLow ? '≤ ' : ''}{legendValue(scale.lo)}</span>
             <span
               ref={gradientRef}
               className="h-2 flex-1 rounded-sm block"
-              style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
+              style={{ background: `linear-gradient(to right, ${ramp.join(', ')})` }}
             />
             <span className="tabular-nums">{scale.clippedHigh ? '≥ ' : ''}{legendValue(scale.hi)}</span>
-            <span className="text-gray-400">▾</span>
+            {!diverging && <span className="text-gray-400">▾</span>}
           </button>
-          {schemeOpen && (
+          {schemeOpen && !diverging && (
             <div
               role="listbox"
               className="absolute z-10 bottom-full mb-2 left-0 bg-white border border-gray-300 rounded shadow-lg py-1 w-44"
@@ -520,6 +526,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
               <option value="linear">線形</option>
               <option value="log" disabled={!logPossible}>対数{logPossible ? '' : '（0以下の値が多いため不可）'}</option>
               <option value="rank">順位（パーセンタイル）</option>
+              <option value="diverging" disabled={!divergePossible}>増減（0を中央に）{divergePossible ? '' : '（正と負の値がないため不可）'}</option>
             </select>
           </label>
           <label className={`flex items-center gap-1.5 ${scale.kind === 'rank' ? 'opacity-40' : ''}`} title="極端に大きい・小さい値に色の範囲が引っ張られないよう、上下の値を両端の色でまとめて塗ります">
@@ -527,7 +534,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
               type="checkbox"
               checked={clip && scale.kind !== 'rank'}
               disabled={scale.kind === 'rank'}
-              onChange={e => setParam('clip', e.target.checked ? '1' : null)}
+              onChange={e => setParam('clip', e.target.checked === clipDefault ? null : e.target.checked ? '1' : '0')}
             />
             外れ値を色の範囲から除く（上下{CLIP_PERCENT}%）
           </label>
