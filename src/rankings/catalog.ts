@@ -1,18 +1,18 @@
 // Every ranking page, grouped for the home page and the prefecture pages.
 // `perPref`: also exists as /rankings/<pref>/… (otherwise national only).
-export type CatalogEntry = { slug: string; label: string; note?: string; perPref: boolean; query?: string }
+export type CatalogEntry = { slug: string; label: string; perPref: boolean; query?: string }
 export type CatalogGroup = { title: string; entries: CatalogEntry[] }
 
 export const CATALOG: CatalogGroup[] = [
   {
     title: '人口',
     entries: [
-      { slug: 'population-change', label: '人口増加率', note: '国勢調査 前回比', perPref: true },
-      { slug: 'population-decline', label: '人口減少率', note: '国勢調査 前回比', perPref: true },
+      { slug: 'population-change', label: '人口増加率', perPref: true },
+      { slug: 'population-decline', label: '人口減少率', perPref: true },
       { slug: 'cities', label: '市の人口', perPref: true },
       { slug: 'towns', label: '町の人口', perPref: true },
       { slug: 'villages', label: '村の人口', perPref: true },
-      { slug: 'elderly-ratio', label: '老年人口比率', note: '65歳以上の割合', perPref: false },
+      { slug: 'elderly-ratio', label: '老年人口比率', perPref: false },
     ],
   },
   {
@@ -26,8 +26,8 @@ export const CATALOG: CatalogGroup[] = [
   {
     title: '暮らし',
     entries: [
-      { slug: 'rent', label: '家賃', note: '20m²あたり', perPref: false },
-      { slug: 'rent-labor-days', label: '家賃を稼ぐのに必要な労働日数', note: '最低賃金で', perPref: false, query: '?map=@4' },
+      { slug: 'rent', label: '家賃', perPref: false },
+      { slug: 'rent-labor-days', label: '家賃を稼ぐのに必要な労働日数', perPref: false, query: '?map=@4' },
     ],
   },
   {

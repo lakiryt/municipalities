@@ -20,6 +20,7 @@ function Sidebar({ onClose }: Props) {
           <Link to="/search" onClick={onClose} className={link}>詳細検索</Link>
           <Link to="/explore" onClick={onClose} className={link}>自由探索（列・条件を自由に設定）</Link>
           <Link to="/formulas" onClick={onClose} className={link}>式の記述方法</Link>
+          <Link to="/data" onClick={onClose} className={link}>データと出典</Link>
         </div>
         <div className="mt-auto p-4 text-xs text-gray-400">
           <p>© 2026 <a target="_blank" rel="noopener noreferrer" href="https://lakiryt.com">Lakiryt</a></p>

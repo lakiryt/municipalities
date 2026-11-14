@@ -10,7 +10,6 @@ import { formatValue } from '@/lib/format'
 import AppHeader from '@/components/AppHeader'
 import { pageTitle } from '@/lib/brand'
 import PageHeader from '@/components/PageHeader'
-import SourceNote from '@/components/SourceNote'
 import Sidebar from '@/components/Sidebar'
 import Canonical from '@/components/Canonical'
 import DataModal from '@/components/modals/DataModal'
@@ -31,7 +30,7 @@ function MunicipalityPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const selection = useMemo(() => selectionFromParams(searchParams), [searchParams])
-  const { items, designations, coastal, loaded } = useMunicipalityData(selection)
+  const { items, designations, coastal, loaded } = useMunicipalityData(selection, true)
   const [adjacency, setAdjacency] = useState<Record<string, string[]>>({})
   const [series, setSeries] = useState<SeriesPoint[]>([])
   // データの選択: open (optionally focused on one dataset, from its chip) or closed.
@@ -115,7 +114,7 @@ function MunicipalityPage() {
         <PageHeader
           title={name}
           description={[item?.kana, pref?.kanji, kind, `自治体コード ${code}`].filter(Boolean).join('・')}
-          used={['pop', 'area', 'rent', 'minwage']}
+          used={['pop', 'change', 'area', 'rent', 'minwage']}
           selection={selection}
           onDataClick={k => setDataModal({ focus: k })}
         />
@@ -137,7 +136,6 @@ function MunicipalityPage() {
                         {prefecture && <><br />{pref?.kanji}内 <b>{prefecture.rank}</b>位 / {prefecture.of}</>}
                       </div>
                     )}
-                    {metric.note && <div className="mt-1 text-[11px] text-gray-400">{metric.note}</div>}
                     {metric.ranking && pref && official && (
                       <Link to={metric.ranking(pref.romanized)} className="mt-1 inline-block text-[11px] text-blue-600 hover:underline">{pref.kanji}のランキング</Link>
                     )}
@@ -145,18 +143,16 @@ function MunicipalityPage() {
                 ))}
               </div>
             )}
-            {!official && parentCity && <p className="mt-2 text-xs text-gray-500">政令指定都市の区は独立した地方公共団体ではないため、順位は付けていません。</p>}
           </section>
 
           <div className="grid md:grid-cols-2 gap-8">
             <section aria-labelledby="trend">
               <h2 id="trend" className="font-semibold mb-1">人口の推移</h2>
-              <p className="text-xs text-gray-500 mb-2">住民基本台帳（各年1月1日）</p>
+              <p className="text-xs text-gray-500 mb-2">住民基本台帳</p>
               <TrendChart points={series} />
             </section>
             <section aria-labelledby="ages">
               <h2 id="ages" className="font-semibold mb-1">年齢構成</h2>
-              <p className="text-xs text-gray-500 mb-2">5歳階級・男女別</p>
               {item && <AgePyramid population={item.population} />}
             </section>
           </div>
@@ -183,7 +179,6 @@ function MunicipalityPage() {
           </section>
         </div>
 
-        <SourceNote used={['pop', 'area', 'rent', 'minwage']} selection={selection} designations={false} map />
       </main>
     </>
   )

@@ -9,6 +9,7 @@ import FormulasPage from './components/pages/FormulasPage'
 import MunicipalityPage from './components/pages/MunicipalityPage'
 import PrefRankingPage from './components/pages/PrefRankingPage'
 import PrefHubPage from './components/pages/PrefHubPage'
+import DataSourcesPage from './components/pages/DataSourcesPage'
 import { populationChangeConfig } from './rankings/populationChange'
 import { designatedCitiesConfig, coreCitiesConfig } from './rankings/designatedCities'
 import { townVillageConfig } from './rankings/townsVillages'
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
   { path: '/rankings/all/rent',                  element: <RankingPage config={rentConfig} /> },
   { path: '/rankings/all/rent-labor-days',       element: <RankingPage config={rentLaborDaysConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
+  { path: '/data',                               element: <DataSourcesPage /> },
   { path: '/formulas',                           element: <FormulasPage /> },
   { path: '/m/:code',                            element: <MunicipalityPage /> },
   {

@@ -11,7 +11,6 @@ export type Metric = {
   label: string
   unit: string
   expr: string
-  note?: string
   // Same value across a prefecture (最低賃金) — a municipal rank is meaningless.
   prefectureLevel?: boolean
   // The ranking page for this figure, given the prefecture's URL slug.
@@ -23,10 +22,11 @@ export const DETAIL_METRICS: Metric[] = [
   { key: 'setai', label: '世帯数', unit: '世帯', expr: '#setai' },
   { key: 'area', label: '面積', unit: 'km²', expr: '#area', ranking: pref => `/rankings/${pref}/area` },
   { key: 'density', label: '人口密度', unit: '人/km²', expr: 'ROUND(MULT(#totalpop, INV(#area)), 1)', ranking: pref => `/rankings/${pref}/density` },
-  { key: 'elderly', label: '老年人口比率', unit: '%', expr: 'ROUND(MULT(#elderly_total, INV(#totalpop), 100), 1)', note: '65歳以上の割合' },
-  { key: 'change', label: '人口増減率', unit: '%', expr: 'ROUND(MULT(#inc_rate, 100), 2)', note: '前年1年間（住民票の記載・消除）' },
-  { key: 'rent', label: '家賃（1m²あたり）', unit: '円', expr: '#rent_exc0', note: '家賃0円の住宅を除く' },
-  { key: 'minwage', label: '最低賃金', unit: '円/時', expr: '#minwage', note: '都道府県単位', prefectureLevel: true },
+  { key: 'elderly', label: '老年人口比率', unit: '%', expr: 'ROUND(MULT(#elderly_total, INV(#totalpop), 100), 1)' },
+  // The period compared is the 人口増減 chosen in データの選択 (its chip says which).
+  { key: 'change', label: '人口増減率', unit: '%', expr: 'ROUND(MULT(#pop_change_rate, 100), 2)', ranking: pref => `/rankings/${pref}/population-change` },
+  { key: 'rent', label: '家賃（1m²あたり）', unit: '円', expr: '#rent_exc0' },
+  { key: 'minwage', label: '最低賃金', unit: '円/時', expr: '#minwage', prefectureLevel: true },
 ]
 
 const typed: Map<string, TypedExpr> = new Map(DETAIL_METRICS.map(m => [m.key, parseAndTypeCheck(m.expr)]))

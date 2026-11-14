@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import AppHeader from '@/components/AppHeader'
+import Sidebar from '@/components/Sidebar'
 import { derivedExpressions } from '@/data/municipalities'
 import Canonical from '@/components/Canonical'
 import { pageTitle } from '@/lib/brand'
@@ -35,11 +36,16 @@ const numVars = [
   { name: '#dec_mov_intl', desc: '昨年の転出者数（国外）（住民基本台帳のみ）'},
   { name: '#dec_deaths', desc: '昨年の死亡者数（住民基本台帳のみ）'},
   { name: '#dec_other', desc: '昨年のその他住民票消除数（住民基本台帳のみ）'},
+  { name: '#total0_4 … #total100_', desc: '5歳階級別人口（#male…・#female… も。住民基本台帳のみ）' },
+  { name: '#pop_from', desc: '人口増減：比べる前の時点の総人口' },
+  { name: '#pop_to', desc: '人口増減：比べた後の時点の総人口' },
+  { name: '#rent_exc0', desc: '延べ面積1m²あたり家賃（円、家賃0円の住宅を除く）' },
+  { name: '#rent_inc0', desc: '延べ面積1m²あたり家賃（円、家賃0円の住宅を含む）' },
   { name: '#minwage', desc: '地域別最低賃金（円、都道府県単位）'},
 ]
 
 const strVars = [
-  { name: '$code',      desc: '団体コード（6桁）' },
+  { name: '$code',      desc: '標準地域コード（5桁）' },
   { name: '$kanji',     desc: '自治体名（漢字）' },
   { name: '$kana',      desc: '自治体名（仮名）' },
   { name: '$prefcode',  desc: '都道府県コード' },
@@ -67,15 +73,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function FormulasPage() {
+  const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => { document.title = pageTitle('式の記述方法') }, [])
   return (
     <>
       <Canonical />
       <meta name="description" content="自由探索で使用できる数値・真偽・文字列の変数・関数・演算子の一覧です。" />
-      <div className="fixed top-0 inset-x-0 z-20 h-11 flex items-center gap-3 bg-gray-50 border-b border-gray-200 px-4">
-        <Link to="/"><img src="/favicon.svg" alt="home" className="h-6 w-6" /></Link>
-        <span className="font-semibold text-sm">式の記述方法</span>
-      </div>
+      <AppHeader title="式の記述方法" onMenuClick={() => setMenuOpen(true)} />
+      {menuOpen && <Sidebar onClose={() => setMenuOpen(false)} />}
       <div className="pt-16 pb-12 px-6 max-w-2xl mx-auto">
         <Section title="型">
           <table className="w-full text-sm">

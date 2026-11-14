@@ -73,7 +73,6 @@ function PrefHubPage() {
         </nav>
         <div className="max-w-5xl mx-auto px-4 pt-3">
           <h1 className="text-2xl md:text-3xl font-bold" style={{ color: NAVY }}>{pref.kanji}</h1>
-          <p className="mt-1 text-sm text-gray-600">{title}</p>
 
           <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="pref-figures">
             <div className="rounded-lg border border-gray-200 p-3">
@@ -105,7 +104,6 @@ function PrefHubPage() {
                 <li key={e.slug}>
                   <Link to={rankingPath(e, pref.romanized)} className="block rounded-lg border border-gray-200 px-3 py-2 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
                     <span className="text-[#13294b] font-medium">{e.label}</span>
-                    {e.note && <span className="ml-1.5 text-xs text-gray-400">{e.note}</span>}
                   </Link>
                 </li>
               ))}
@@ -114,14 +112,13 @@ function PrefHubPage() {
 
         <section className="max-w-5xl mx-auto px-4 mt-8" aria-labelledby="pref-list">
           <h2 id="pref-list" className="text-lg font-bold" style={{ color: NAVY }}>{pref.kanji}の市区町村一覧</h2>
-          <p className="mt-1 text-xs text-gray-500">人口は国勢調査（{year}年）、増減率は{period}。名前から各市区町村のページへ。</p>
           {!loaded ? <p className="mt-3 text-sm text-gray-400">読み込み中…</p> : (
             <div className="mt-3 grid gap-6 md:grid-cols-2" data-testid="pref-municipalities">
               {counts.map(k => (
                 <div key={k.kind}>
                   <h3 className="text-sm font-semibold text-gray-700">{k.label}（{k.n}）</h3>
                   <table className="mt-1 w-full text-sm">
-                    <thead className="sr-only"><tr><th>名前</th><th>人口</th><th>増減率</th></tr></thead>
+                    <thead className="text-[11px] text-gray-400"><tr><th className="sr-only">名前</th><th className="text-right font-normal">人口（{year}年）</th><th className="text-right font-normal">{period}</th></tr></thead>
                     <tbody className="divide-y divide-gray-100">
                       {mine.filter(m => m.kind === k.kind).sort((a, b) => b.latest - a.latest).map(m => (
                         <tr key={m.code}>

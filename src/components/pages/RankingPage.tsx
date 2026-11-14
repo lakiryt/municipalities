@@ -27,7 +27,6 @@ function RankingPage({ config }: Props) {
       {config.description && <meta name="description" content={config.description} />}
       <MuniTable
         title={config.title}
-        description={config.description}
         initialColumns={columns}
         initialFilter={initialFilter}
         initialSort={initialSort}

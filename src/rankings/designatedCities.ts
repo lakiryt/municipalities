@@ -6,7 +6,7 @@ import { CHANGE_RATE, changePeriod } from './populationChange'
 function listConfig(kind: 'seirei' | 'chukaku', name: string, intro: string): RankingConfig {
   return {
     title: `${name}一覧（人口順）`,
-    description: `${intro}全${name}を人口の多い順に並べ、国勢調査による人口増減率（${changePeriod()}）・面積・人口密度も載せています。`,
+    description: `${intro}人口・人口増減率（${changePeriod()}）・面積・人口密度。`,
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
       { id: 1, label: '総人口', expression: '#totalpop' },

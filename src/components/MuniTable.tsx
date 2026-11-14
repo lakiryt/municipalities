@@ -14,7 +14,6 @@ import { pageTitle } from '@/lib/brand'
 import AppHeader from '@/components/AppHeader'
 import PageHeader from '@/components/PageHeader'
 import Toolbar from '@/components/Toolbar'
-import SourceNote from '@/components/SourceNote'
 import DataTable from '@/components/DataTable'
 import MapView from '@/components/MapView'
 import ColumnModal from '@/components/modals/ColumnModal'
@@ -27,7 +26,6 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 
 type Props = {
   title?: string
-  description?: string
   initialColumns: ColumnState[]
   initialFilter?: { expression: string; typed: TypedExpr } | null
   initialSort?: SortState | null
@@ -71,7 +69,7 @@ function describeFilter(expression: string): string {
   return pref ? pref[1] : '条件あり'
 }
 
-function MuniTable({ title, description, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false, restrictToOfficial = false }: Props) {
+function MuniTable({ title, initialColumns, initialFilter = null, initialSort = null, initialSearchOpen = false, restrictToOfficial = false }: Props) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -480,7 +478,6 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
               linkFor={detailLink}
             />
           </div>
-          <SourceNote used={usedKeys} selection={selection} designations={used.designations} map compact />
         </div>
       ) : (
         // Table view: one scroll container for both axes, so the toolbar and
@@ -490,7 +487,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // slide away when a wide table scrolls sideways.
         <main className="fixed inset-x-0 top-11 bottom-0 overflow-auto [container-type:inline-size]">
           <div className="sticky left-0 w-[100cqw]">
-            <PageHeader description={description} used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
+            <PageHeader used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
           </div>
           <div className="sticky top-0 left-0 z-40 w-[100cqw]">{toolbar}</div>
           <DataTable
@@ -504,9 +501,6 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
             linkFor={detailLink}
             envOf={envOf}
           />
-          <div className="sticky left-0 w-[100cqw]">
-            <SourceNote used={usedKeys} selection={selection} designations={used.designations} map={used.coastal} />
-          </div>
         </main>
       )}
     </>

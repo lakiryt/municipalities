@@ -53,6 +53,7 @@ const urls = [
   { path: '/rankings/all/population-over-500k', priority: '0.7', changefreq: 'monthly' },
   { path: '/list/all/population',               priority: '0.7', changefreq: 'monthly' },
   { path: '/explore',                           priority: '0.5', changefreq: 'monthly' },
+  { path: '/data',                              priority: '0.3', changefreq: 'monthly' },
   { path: '/formulas',                          priority: '0.4', changefreq: 'yearly'  },
   ...prefectures.flatMap(p => [
     { path: `/rankings/${p.romanized}`,           priority: '0.8', changefreq: 'monthly' },

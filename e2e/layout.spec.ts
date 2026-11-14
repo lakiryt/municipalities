@@ -1,16 +1,21 @@
 import { test, expect } from '@playwright/test'
 
-test('a ranking page shows its title, description, the data it uses, and the source', async ({ page }) => {
+test('a ranking page shows its title and the data it uses; 出典 is in データの選択', async ({ page }) => {
   await page.goto('/rankings/all/density')
   await expect(page.locator('tbody tr').first()).toBeVisible()
 
   await expect(page.getByRole('heading', { level: 1, name: '全国の自治体の人口密度ランキング' })).toBeVisible()
-  await expect(page.getByText('人口密度（人/km²）の高い順に並べたランキングです')).toBeVisible()
   // Density uses population and area — and only those.
   await expect(page.getByRole('button', { name: /^人口\s*住民基本台帳/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^面積\s*国土地理院/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /^家賃/ })).toHaveCount(0)
-  await expect(page.getByText('出典：', { exact: true }).locator('..')).toContainText('住民基本台帳')
+
+  await page.getByRole('button', { name: /^人口\s*住民基本台帳/ }).click()
+  const dialog = page.getByRole('dialog', { name: 'データの選択' })
+  await expect(dialog.locator('[data-focused]').getByRole('link', { name: /住民基本台帳/ })).toHaveAttribute('href', /^https?:\/\//)
+  await dialog.getByRole('link', { name: 'データと出典の一覧' }).click()
+  await expect(page).toHaveURL(/\/data$/)
+  await expect(page.getByRole('link', { name: /国勢調査/ }).first()).toBeVisible()
 })
 
 test('numbers have thousands separators and the ranked column sits right after the name', async ({ page }) => {

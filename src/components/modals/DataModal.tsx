@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { SELECTABLE, DATA_KEYS, type Source, type DataSelection, type DataKey } from '@/data/datasets'
+import { Link } from 'react-router-dom'
+import { SELECTABLE, DATA_KEYS, dataset, type Source, type DataSelection, type DataKey } from '@/data/datasets'
 
 type Props = {
   selection: DataSelection
@@ -76,6 +77,18 @@ function SourceSection({ radioName, sources, selectedPath, onChange, autoFocus =
   )
 }
 
+// 出典 of the chosen edition, linking to the publisher's page.
+function SourceLink({ source }: { source: Source | undefined }) {
+  if (!source) return null
+  const ds = dataset(source.dataset)
+  const text = `${ds.agency ? `${ds.agency}「` : '「'}${ds.name ?? ds.label}」`
+  return (
+    <p className="px-3 mt-0.5 text-[11px] text-gray-500 truncate">
+      出典：{ds.page ? <a href={ds.page} target="_blank" rel="noopener noreferrer" className="hover:underline">{text}</a> : text}
+    </p>
+  )
+}
+
 function DataModal({ selection, focus, used, onApply, onClose }: Props) {
   const [pending, setPending] = useState(selection)
   const focusedRef = useRef<HTMLDivElement>(null)
@@ -104,6 +117,7 @@ function DataModal({ selection, focus, used, onApply, onClose }: Props) {
           onChange={path => setPending(p => ({ ...p, [k]: path }))}
           autoFocus={focused}
         />
+        <SourceLink source={SELECTABLE[k].sources.find(s => s.path === pending[k])} />
       </div>
     )
   }
@@ -129,7 +143,8 @@ function DataModal({ selection, focus, used, onApply, onClose }: Props) {
           </details>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          <Link to="/data" className="mr-auto text-xs text-blue-700 hover:underline">データと出典の一覧</Link>
           <button
             className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm"
             onClick={onClose}

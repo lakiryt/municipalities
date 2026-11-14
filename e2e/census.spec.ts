@@ -5,9 +5,8 @@ test('the population-change ranking compares two censuses by default, highest gr
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^全国の市区町村の人口増加率ランキング（\d{4}→\d{4}年）$/)
   await expect(page.locator('tbody tr').first()).toBeVisible()
 
-  // Its data chip and 出典 name the comparison.
+  // Its data chip names the comparison.
   await expect(page.getByRole('button', { name: /人口増減\s*国勢調査 \d{4}→\d{4}年/ })).toBeVisible()
-  await expect(page.getByText(/出典：.*国勢調査/)).toBeVisible()
 
   // Rates are sorted high → low, and a municipality whose earlier census
   // count was 0 (双葉町, under evacuation order in 2020) is left out.

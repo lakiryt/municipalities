@@ -60,7 +60,7 @@ function HomePage() {
             <p className="text-xs tracking-widest text-gray-500">{BRAND_SERIES}</p>
             <h1 className="mt-1 text-4xl md:text-5xl font-black tracking-tight" style={{ color: NAVY }}>{BRAND_NAME}</h1>
             <p className="mt-3 max-w-2xl text-gray-700 leading-relaxed">
-              全国{counted > 0 ? `${counted.toLocaleString('ja-JP')}の` : 'の'}市区町村を、人口・人口の増減・面積・人口密度・家賃などのデータで、ランキングと地図でくらべられます。
+              全国{counted > 0 ? counted.toLocaleString('ja-JP') : ''}市区町村のデータを、ランキングと地図で。
             </p>
             <div className="mt-5 max-w-xl">
               <MuniSearch entries={places.map(p => ({ code: p.code, name: p.name, kana: p.kana, prefName: p.prefName, population: p.latest }))} />
@@ -95,7 +95,6 @@ function HomePage() {
         <section className="bg-[#fafaf9] border-y border-gray-100" aria-labelledby="prefs">
           <div className="max-w-5xl mx-auto px-4 py-8">
             <h2 id="prefs" className="text-xl font-bold" style={{ color: NAVY }}>都道府県からさがす</h2>
-            <p className="mt-1 text-sm text-gray-600">その都道府県の市区町村の一覧と、人口・面積・人口密度などのランキングへ。</p>
             <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
               {REGIONS.map(r => (
                 <div key={r.name} className="flex gap-3">
@@ -127,7 +126,6 @@ function HomePage() {
                   {g.entries.map(e => (
                     <li key={e.slug}>
                       <Link to={rankingPath(e)} className="text-[#13294b] hover:underline">{e.label}</Link>
-                      {e.note && <span className="ml-1.5 text-xs text-gray-400">{e.note}</span>}
                     </li>
                   ))}
                 </ul>
@@ -139,11 +137,11 @@ function HomePage() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Link to="/explore" className="rounded-xl border border-gray-200 p-4 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
               <div className="font-semibold text-[#13294b]">自由探索</div>
-              <div className="text-sm text-gray-600">列・並べ替え・絞り込みを自分で決めて、表と地図をつくる</div>
+              <div className="text-sm text-gray-600">列・並べ替え・絞り込みを自由に</div>
             </Link>
             <Link to="/search" className="rounded-xl border border-gray-200 p-4 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
               <div className="font-semibold text-[#13294b]">詳細検索</div>
-              <div className="text-sm text-gray-600">都道府県・種別・区分・よみかたで市区町村を絞り込む</div>
+              <div className="text-sm text-gray-600">都道府県・種別・区分・よみかたで</div>
             </Link>
           </div>
         </section>

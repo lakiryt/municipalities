@@ -16,7 +16,7 @@ type Props = {
 // tucked away in a menu. Each data chip opens データの選択.
 function PageHeader({ title, description, used, selection, onDataClick, compact = false }: Props) {
   return (
-    <div className={`w-full max-w-5xl mx-auto px-4 ${compact ? 'pt-2 pb-1' : 'pt-4 pb-3'}`}>
+    <div className={`w-full max-w-5xl mx-auto px-4 ${compact || !title ? 'pt-2 pb-1' : 'pt-4 pb-3'}`}>
       {title && <h1 className={`font-bold ${compact ? 'text-base truncate' : 'text-xl md:text-2xl'}`}>{title}</h1>}
       {description && !compact && <p className="mt-1 text-sm text-gray-600">{description}</p>}
       <div className={`flex items-center gap-1.5 text-xs ${compact ? 'mt-1 overflow-x-auto whitespace-nowrap no-scrollbar' : 'mt-2 flex-wrap'}`}>
