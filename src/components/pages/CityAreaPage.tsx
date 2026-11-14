@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { prefectures } from '../../data/municipalities'
+import { prefectures } from '../../data/datasets'
 import { cityAreaConfig } from '../../rankings/area'
 import RankingPage from './RankingPage'
 

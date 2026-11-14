@@ -1,10 +1,13 @@
-import code_todofuken from '@/assets/code_todofuken_20240101.json'
-import dantai_codes from '@/assets/dantai_code_20240101.json'
-import meta from '@/assets/meta.json'
 import { parseAndTypeCheck } from '../lang/expr'
 import { evaluate, type Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
+import {
+  prefectures, type PopulationMap, type CodeEntry, type RentMap, type MinWageMap, type DesignationSets,
+} from './datasets'
 
+// One row of the table/map: a 標準地域コード entry joined with the selected
+// editions of every dataset (see buildItems). Loading those datasets lives in
+// ./datasets; this module turns them into items and expression environments.
 export type BaseItem = {
   code: string
   kanji: string
@@ -20,124 +23,6 @@ export type BaseItem = {
   rentExc0: number
   minWage: number
 }
-
-export type PopulationRecord = Record<string, number>
-export type PopulationMap = Map<string, PopulationRecord>
-
-// ── Area data ─────────────────────────────────────────────────────────────────
-
-export const areaSources = meta.area
-
-export const parseAreaCsv = (raw: string): Map<string, number> =>
-  new Map(raw.trim().split('\n').map((line): [string, number] => {
-    const [code, area] = line.split(',')
-    return [code, Number(area)]
-  }))
-
-export const fetchArea = (src: { path: string }): Promise<Map<string, number>> =>
-  fetch(`/${src.path}`)
-    .then(r => r.text())
-    .then(parseAreaCsv)
-
-// ── Population data ───────────────────────────────────────────────────────────
-
-type RawPopSrc = {
-  label: string; name: string; agency: string; as_of: string; source: string
-} & ({ path: string } | { paths: { id: string; path: string }[] })
-
-export type PopulationSource = {
-  label: string; as_of: string; path: string;
-  paths?: { id: string; path: string }[]
-}
-
-export const populationSources: PopulationSource[] = (meta.population as RawPopSrc[]).map(src =>
-  'path' in src
-    ? { label: src.label, as_of: src.as_of, path: src.path }
-    : { label: src.label, as_of: src.as_of, path: src.paths[0].path, paths: src.paths }
-)
-
-const parsePopulationCsv = (raw: string): PopulationMap => {
-  const lines = raw.trim().split('\n').map(l => l.replace(/\r$/, ''))
-  const headers = lines[0].split(',')
-  const codeIdx = headers.indexOf('code')
-  return new Map(
-    lines.slice(1).map((line): [string, PopulationRecord] => {
-      const fields = line.split(',')
-      const record: PopulationRecord = {}
-      headers.forEach((h, i) => { if (i !== codeIdx) record[h] = Number(fields[i]) })
-      return [fields[codeIdx], record]
-    })
-  )
-}
-
-const mergeMaps = (maps: PopulationMap[]): PopulationMap => {
-  const merged = new Map<string, PopulationRecord>()
-  for (const map of maps) {
-    for (const [code, record] of map) {
-      merged.set(code, { ...(merged.get(code) ?? {}), ...record })
-    }
-  }
-  return merged
-}
-
-export const fetchPopulation = (src: PopulationSource): Promise<PopulationMap> => {
-  if (src.paths) {
-    return Promise.all(
-      src.paths.map(p => fetch(`/${p.path}`).then(r => r.text()).then(parsePopulationCsv))
-    ).then(mergeMaps)
-  }
-  return fetch(`/${src.path}`).then(r => r.text()).then(parsePopulationCsv)
-}
-
-// ── Municipality codes ────────────────────────────────────────────────────────
-
-// 総務省統計局 標準地域コード: one row per prefecture, city, ward, or grouping
-// (Hokkaido's 振興局, other prefectures' 郡). Rows the app has no area/population
-// data for just render as "no data" — there's no need to tell them apart here.
-export type CodeEntry = { code: string; kanji: string; kana: string }
-
-// `sityouson_name1`/`name3` double up for two unrelated relationships: a
-// designated city's own name + its ward's name (e.g. 札幌市 + 北区, both real
-// parts of the full name), and a grouping label + the actual municipality's
-// name (e.g. 石狩振興局 + 当別町, or 東津軽郡 + 平内町) where the label isn't
-// part of the municipality's name at all. Only 郡/振興局/支庁 labels are the
-// latter — real parent names all end in 市, so this suffix check tells them
-// apart without needing a separate "is this a grouping row" column.
-const GROUPING_LABEL_SUFFIXES = ['郡', '振興局', '支庁']
-const isGroupingLabel = (name1: string) => GROUPING_LABEL_SUFFIXES.some(suffix => name1.endsWith(suffix))
-
-export const parseCodesCsv = (raw: string): CodeEntry[] =>
-  raw.trim().split('\n').map(l => l.replace(/\r$/, '')).slice(1).map(line => {
-    const [, , tiiki_code, , name1, name2, name3, yomigana] = line.split(',')
-    const nameParts = isGroupingLabel(name1) ? [name3] : [name1, name2, name3]
-    return {
-      code: tiiki_code,
-      kanji: nameParts.map(s => s.trim()).filter(Boolean).join(''),
-      kana: (yomigana ?? '').trim(),
-    }
-  })
-
-export const fetchMunicipalityCodes = (): Promise<CodeEntry[]> =>
-  fetch('/codes/codes20230822.csv').then(r => r.text()).then(parseCodesCsv)
-
-// The full CSV also includes designated-city wards and organizational rows
-// (Hokkaido's 振興局, other prefectures' 郡); this is the narrower set of
-// codes that are actual 地方公共団体, used to keep rankings to real
-// municipalities. Names/readings aren't kept here — the CSV above is the
-// source of truth for those now.
-export const officialCodes: Set<string> = new Set(dantai_codes as string[])
-
-// Some population sources (住民基本台帳) still key rows by the legacy 6-digit
-// dantai code (5-digit code + a JIS X0401/0402 check digit) instead of the
-// plain 5-digit code everything else in this app uses — this reproduces just
-// enough of that checksum to look a row up under either key.
-const checkDigit = (code5: string): number => {
-  const weights = [6, 5, 4, 3, 2]
-  const sum = code5.split('').reduce((acc, d, i) => acc + Number(d) * weights[i], 0)
-  const cd = 11 - (sum % 11)
-  return cd === 10 ? 0 : cd === 11 ? 1 : cd
-}
-const toCode6 = (code5: string): string => code5 + checkDigit(code5)
 
 // ── Derived expressions ───────────────────────────────────────────────────────
 
@@ -162,80 +47,6 @@ export const derivedExpressions = [
 
 const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: parseAndTypeCheck(d.expr) }))
 
-// ── Designation data ──────────────────────────────────────────────────────────
-
-export type DesignationSets = {
-  seirei:  Set<string>
-  chukaku: Set<string>
-  tokurei: Set<string>
-}
-
-type DesignationsJson = {
-  seirei:  { code: string }[]
-  chukaku: string[]
-  tokurei: string[]
-}
-
-export const fetchDesignations = (): Promise<DesignationSets> =>
-  fetch('/designation/designations2022.json')
-    .then(r => r.json() as Promise<DesignationsJson>)
-    .then(data => ({
-      seirei:  new Set(data.seirei.map(e => e.code)),
-      chukaku: new Set(data.chukaku),
-      tokurei: new Set(data.tokurei),
-    }))
-
-// ── Adjacency / coastal data ──────────────────────────────────────────────────
-
-type AdjacencyJson = Record<string, string[]>
-
-export const fetchCoastal = (): Promise<Set<string>> =>
-  fetch('/maps/adjacency.json')
-    .then(r => r.json() as Promise<AdjacencyJson>)
-    .then(data => new Set(
-      Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
-    ))
-
-// ── Rent data ──────────────────────────────────────────────────────────────────
-
-// 住宅の所有の関係別 延べ面積１m²当たり家賃: keyed by 5-digit code, each value is
-// [家賃0円を含む, 家賃0円を含まない], each of those [総数, 公営, UR・公社, 民営, 給与住宅].
-// Only 総数 (index 0) is surfaced. A category too small to report comes
-// through as -1, same as a code with no entry at all — both become NaN.
-type RentJson = Record<string, [number[], number[]]>
-
-export const suppressedToNaN = (n: number | undefined): number => (n === undefined || n < 0 ? NaN : n)
-
-export const fetchRent = (): Promise<Map<string, { inc0: number; exc0: number }>> =>
-  fetch('/rent/rent20240925.json')
-    .then(r => r.json() as Promise<RentJson>)
-    .then(data => new Map(
-      Object.entries(data).map(([code, [inc0, exc0]]): [string, { inc0: number; exc0: number }] => [
-        code,
-        { inc0: suppressedToNaN(inc0[0]), exc0: suppressedToNaN(exc0[0]) },
-      ])
-    ))
-
-// ── Minimum wage data ─────────────────────────────────────────────────────────
-
-// 地域別最低賃金: one row per prefecture, keyed by the same 6-digit dantai
-// code (prefecture code + check digit) as code_todofuken - every municipality
-// in that prefecture shares its value, so lookup only needs the code's
-// 2-digit prefecture prefix.
-type MinWageJson = { code: number; min: number; since: string }[]
-
-export type MinWageMap = Map<string, { min: number; since: string }>
-
-export const fetchMinWages = (): Promise<MinWageMap> =>
-  fetch('/wage/min-wages.json')
-    .then(r => r.json() as Promise<MinWageJson>)
-    .then(data => new Map(
-      data.map((e): [string, { min: number; since: string }] => [
-        String(e.code).padStart(6, '0').slice(0, 2),
-        { min: e.min, since: e.since },
-      ])
-    ))
-
 // ── Kana normalization ────────────────────────────────────────────────────────
 
 // Converts any mix of hiragana / half-width katakana / full-width katakana to
@@ -250,13 +61,13 @@ export const normalizeKana = (s: string): string =>
 
 const getPrefecture = (code: string) => {
   const prefecturePrefix = code.slice(0, 2)
-  const prefecture = code_todofuken.find(item => item.code.slice(0, 2) === prefecturePrefix)
+  const prefecture = prefectures.find(item => item.code.slice(0, 2) === prefecturePrefix)
   return { ...prefecture, code }
 }
 
 export const buildItems = (
   popMap: PopulationMap, areaMap: Map<string, number>, codes: CodeEntry[],
-  rentMap: Map<string, { inc0: number; exc0: number }> = new Map(),
+  rentMap: RentMap = new Map(),
   minWageMap: MinWageMap = new Map()
 ): BaseItem[] =>
   codes.map(item => ({
@@ -264,7 +75,7 @@ export const buildItems = (
     kanji: item.kanji,
     kana: item.kana,
     prefecture: getPrefecture(item.code),
-    population: popMap.get(item.code) ?? popMap.get(toCode6(item.code)) ?? {},
+    population: popMap.get(item.code) ?? {},
     area: areaMap.get(item.code) ?? NaN,
     rentInc0: rentMap.get(item.code)?.inc0 ?? NaN,
     rentExc0: rentMap.get(item.code)?.exc0 ?? NaN,
@@ -321,8 +132,6 @@ const _dummy: BaseItem = {
   rentExc0: 0,
   minWage: 0,
 }
-
-export const prefectures = code_todofuken
 
 const _dummyDesignations: DesignationSets = {
   seirei: new Set(), chukaku: new Set(), tokurei: new Set(),

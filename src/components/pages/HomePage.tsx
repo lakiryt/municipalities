@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { prefectures } from '../../data/municipalities'
+import { prefectures } from '../../data/datasets'
 import populationOver500k from '../../rankings/populationOver500k'
 import { populationConfig } from '../../rankings/population'
 import { cityPopulationConfig } from '../../rankings/cityPopulation'

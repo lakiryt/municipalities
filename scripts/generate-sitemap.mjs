@@ -16,7 +16,7 @@ if (!SITE_URL) {
 const today = new Date().toISOString().slice(0, 10)
 
 const prefectures = JSON.parse(
-  readFileSync(resolve(root, 'src/assets/code_todofuken_20240101.json'), 'utf-8')
+  readFileSync(resolve(root, 'src/assets/prefectures.json'), 'utf-8')
 )
 
 const urls = [

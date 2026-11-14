@@ -1,152 +1,738 @@
 {
-    "prefectures": [
+  "datasets": {
+    "codes": {
+      "label": "標準地域コード",
+      "name": "標準地域コード（都道府県コード及び市区町村コード）",
+      "agency": "総務省 統計局",
+      "page": "https://www.soumu.go.jp/toukei_toukatsu/index/seido/9-5.htm",
+      "editions": [
         {
-            "name": "全国地方公共団体コード",
-            "agency": "総務省",
-            "as_of": "2024-01-01",
-            "path": "code_todofuken_20240101.json",
-            "source": "https://www.soumu.go.jp/denshijiti/code.html"
+          "id": "2023-08-22",
+          "as_of": "2023-08-22",
+          "path": "data/codes/2023-08-22.csv",
+          "rows": 2291,
+          "source": {
+            "url": "https://www.soumu.go.jp/main_content/000323625.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "f7b45e87a909dc98ce5082a4972f71b76ff19e4f70c7632d1c233928381c7fea"
+          },
+          "ref": {
+            "url": "https://www.soumu.go.jp/main_content/000323625.csv",
+            "as_of": "2023-08-22"
+          },
+          "enabled": true
         }
-    ],
-    "official_codes": [
+      ]
+    },
+    "dantai": {
+      "label": "全国地方公共団体コード",
+      "name": "全国地方公共団体コード（都道府県・市区町村）",
+      "agency": "総務省",
+      "page": "https://www.soumu.go.jp/denshijiti/code.html",
+      "editions": [
         {
-            "name": "全国地方公共団体コード（コードのみ。名称等はcodesのCSVを参照）",
-            "agency": "総務省",
-            "as_of": "2024-01-01",
-            "path": "dantai_code_20240101.json",
-            "source": "https://www.soumu.go.jp/denshijiti/code.html"
+          "id": "2024-01-01",
+          "as_of": "2024-01-01",
+          "files": {
+            "prefectures": "src/assets/prefectures.json",
+            "municipalities": "src/assets/dantai_codes.json"
+          },
+          "rows": 1747,
+          "source": {
+            "url": "https://www.soumu.go.jp/main_content/000925835.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "7d04c8a7f6a6e76a7823a0414a8422bf2b26bb6070766971df76eab58ea6ff78"
+          },
+          "ref": {
+            "url": "https://www.soumu.go.jp/main_content/000925835.xlsx",
+            "as_of": "2024-01-01"
+          },
+          "enabled": true
         }
-    ],
-    "codes": [
+      ]
+    },
+    "jumin": {
+      "label": "住民基本台帳",
+      "name": "住民基本台帳に基づく人口、人口動態及び世帯数調査",
+      "agency": "総務省 自治行政局 住民制度課",
+      "page": "https://www.e-stat.go.jp/stat-search/files?toukei=00200241",
+      "editions": [
         {
-            "name": "標準地域コード（都道府県コード及び市区町村コード）",
-            "agency": "総務省 統計局",
-            "as_of": "2023-08-22",
-            "path": "codes/codes20230822.csv",
-            "source": "https://www.soumu.go.jp/toukei_toukatsu/index/seido/9-5.htm"
-        }
-    ],
-    "population": [
-        {
-            "label": "住民基本台帳",
-            "name": "住民基本台帳に基づく人口、人口動態及び世帯数調査 / 調査の結果",
-            "agency": "総務省 自治行政局 住民制度課",
-            "as_of": "2025-08-06",
-            "paths": [
-                {"id": "main", "path": "population/jumin2025.csv"},
-                {"id": "demograhy", "path" : "population/jumin2025demog.csv"}
-            ],
-            "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040306653"
+          "id": "2026",
+          "as_of": "2026-01-01",
+          "label": "2026年",
+          "path": "data/jumin/2026.csv",
+          "rows": 2274,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040479049&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "76378bfa269f3b3c5681eeb895929f2078a25d719bf5d3428d1394831e95df17"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040479050&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "1da86f0b0a99faed1f76fa76f18eaef331b4b8c2599dda6e37107e5f55b275e8"
+            }
+          ],
+          "ref": {
+            "year": 2026,
+            "main": "000040479049",
+            "age": "000040479050"
+          },
+          "enabled": true
         },
         {
-            "label": "国勢調査",
-            "name": "国勢調査 令和７年国勢調査 速報集計 人口速報集計　（男女別人口及び世帯総数） ",
-            "agency": "総務省 統計局 統計調査部 国勢統計課",
-            "as_of": "2025-10-01",
-            "path": "population/kokusei2025sokuho.csv",
-            "source": "https://www.e-stat.go.jp/stat-search/database?statdisp_id=0004050397"
-        }
-    ],
-    "area": [
+          "id": "2025",
+          "as_of": "2025-01-01",
+          "label": "2025年",
+          "path": "data/jumin/2025.csv",
+          "rows": 2274,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306653&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "5e6c474d2b0c89e6006b8ccca844b7422c3d867e2444e3f5ef14627b2bc06f8a"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306654&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "8b72e4fe5bbb9f49c135c17451afb673388100d7d39d0b75acfd9e4539af867e"
+            }
+          ],
+          "ref": {
+            "year": 2025,
+            "main": "000040306653",
+            "age": "000040306654"
+          },
+          "enabled": true
+        },
         {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
+          "id": "2024",
+          "as_of": "2024-01-01",
+          "label": "2024年",
+          "path": "data/jumin/2024.csv",
+          "rows": 2281,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306672&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "f76c54a5f59f1e78a53910a649d96fa24001bfd2efc5d91ecef66b4849bb246b"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306674&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "88f32322cedd97fcc50c0e892f41ffdfe8034f364dd1c1ecd40bfe16c13ec190"
+            }
+          ],
+          "ref": {
+            "year": 2024,
+            "main": "000040306672",
+            "age": "000040306674"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2023",
+          "as_of": "2023-01-01",
+          "label": "2023年",
+          "path": "data/jumin/2023.csv",
+          "rows": 2278,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306647&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "09a35646f7dea3ea738be03cf03b70bccecffe55f916dd4d29a1d87cb722d100"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306648&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "48a13f8dc5ce8b36c43d3dc21ac7f08960ad913aed45cae9dccb8045051909e9"
+            }
+          ],
+          "ref": {
+            "year": 2023,
+            "main": "000040306647",
+            "age": "000040306648"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2022",
+          "as_of": "2022-01-01",
+          "label": "2022年",
+          "path": "data/jumin/2022.csv",
+          "rows": 2278,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000032224636&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "72d4da673c384d824fd24f4ec3802e3c179183b5c3bcb67699b32e0eeb95a9f7"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000032224637&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "645232460cd9b2dc44887cb520c6acb5933c12a6947d86aa19bcb8cccba1539e"
+            }
+          ],
+          "ref": {
+            "year": 2022,
+            "main": "000032224636",
+            "age": "000032224637"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2021",
+          "as_of": "2021-01-01",
+          "label": "2021年",
+          "path": "data/jumin/2021.csv",
+          "rows": 2278,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306659&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "a38f7539e1587ed95d22fd8c12e151ac11697e9f0c95b1ab1ce5cc99656a3ce3"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040306661&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "af485797942888ae6d6b6bc0d1777e791e8715cba5d83c3b117cec0fc6eac394"
+            }
+          ],
+          "ref": {
+            "year": 2021,
+            "main": "000040306659",
+            "age": "000040306661"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2020",
+          "as_of": "2020-01-01",
+          "label": "2020年",
+          "path": "data/jumin/2020.csv",
+          "rows": 2278,
+          "source": [
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000031971203&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "65da53be4fde4c33d0af5c7d225f600bf5f22d961c62e6efc37d3e9c0d9b1011"
+            },
+            {
+              "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000031971230&fileKind=0",
+              "retrieved_at": "2026-11-14",
+              "sha256": "481c335fe5e5458c7751aec403c289e55cfeb3d0e2a81cc789eb043c00a21c0b"
+            }
+          ],
+          "ref": {
+            "year": 2020,
+            "main": "000031971203",
+            "age": "000031971230"
+          },
+          "enabled": true
+        }
+      ]
+    },
+    "kokusei": {
+      "label": "国勢調査",
+      "name": "国勢調査 男女別人口",
+      "agency": "総務省 統計局 統計調査部 国勢統計課",
+      "page": "https://www.e-stat.go.jp/stat-search/database?toukei=00200521",
+      "editions": [
+        {
+          "id": "2025",
+          "as_of": "2025-10-01",
+          "label": "令和7年 確定（人口等基本集計）",
+          "path": "data/kokusei/2025.csv",
+          "rows": 1961,
+          "source": {
+            "url": "e-Stat API statsDataId=0004065881",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1b926856ecee8c6d53ea2afd04bc97fa86abf8c2d0cb4ed911e09850620f7b5e"
+          },
+          "ref": {
+            "id": "2025",
+            "as_of": "2025-10-01",
+            "label": "令和7年 確定（人口等基本集計）",
+            "statsDataId": "0004065881"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2025-sokuho",
+          "as_of": "2025-10-01",
+          "label": "令和7年 速報集計",
+          "path": "data/kokusei/2025-sokuho.csv",
+          "rows": 1961,
+          "source": {
+            "url": "e-Stat API statsDataId=0004050397",
+            "retrieved_at": "2026-11-14",
+            "sha256": "3c7740e03fb8dc331af91b900cf5b8d97bffc1ade4dcc5e01124134fbeb4fba4"
+          },
+          "ref": {
+            "id": "2025-sokuho",
+            "as_of": "2025-10-01",
+            "label": "令和7年 速報集計",
+            "statsDataId": "0004050397"
+          },
+          "enabled": false
+        },
+        {
+          "id": "2020",
+          "as_of": "2020-10-01",
+          "label": "令和2年 確定（人口等基本集計）",
+          "path": "data/kokusei/2020.csv",
+          "rows": 1965,
+          "source": {
+            "url": "e-Stat API statsDataId=0003445078",
+            "retrieved_at": "2026-11-14",
+            "sha256": "ad529d32e3e2740398da03c5788bbcc840a660d18b82a8f5cfbba3a25a86e714"
+          },
+          "ref": {
+            "id": "2020",
+            "as_of": "2020-10-01",
+            "label": "令和2年 確定（人口等基本集計）",
+            "statsDataId": "0003445078"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2020-sokuho",
+          "as_of": "2020-10-01",
+          "label": "令和2年 速報集計",
+          "path": "data/kokusei/2020-sokuho.csv",
+          "rows": 1965,
+          "source": {
+            "url": "e-Stat API statsDataId=0003433219",
+            "retrieved_at": "2026-11-14",
+            "sha256": "c4a38685f256311a6527c09c228d066d5656cd00a72c9263badb8a09ad904c3f"
+          },
+          "ref": {
+            "id": "2020-sokuho",
+            "as_of": "2020-10-01",
+            "label": "令和2年 速報集計",
+            "statsDataId": "0003433219"
+          },
+          "enabled": false
+        }
+      ]
+    },
+    "area": {
+      "label": "国土地理院 面積調査",
+      "name": "全国都道府県市区町村別面積調",
+      "agency": "国土交通省 国土地理院",
+      "page": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO-title.htm",
+      "editions": [
+        {
+          "id": "2026-07-01",
+          "as_of": "2026-07-01",
+          "path": "data/area/2026-07-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2026-07-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2026-04-01",
+          "as_of": "2026-04-01",
+          "path": "data/area/2026-04-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2026-04-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2026-01-01",
+          "as_of": "2026-01-01",
+          "path": "data/area/2026-01-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2026-01-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2025-10-01",
+          "as_of": "2025-10-01",
+          "path": "data/area/2025-10-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-10-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2025-07-01",
+          "as_of": "2025-07-01",
+          "path": "data/area/2025-07-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-07-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2025-04-01",
+          "as_of": "2025-04-01",
+          "path": "data/area/2025-04-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-04-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2025-01-01",
+          "as_of": "2025-01-01",
+          "path": "data/area/2025-01-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2025-01-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2024-10-01",
+          "as_of": "2024-10-01",
+          "path": "data/area/2024-10-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-10-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2024-07-01",
+          "as_of": "2024-07-01",
+          "path": "data/area/2024-07-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-07-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2024-04-01",
+          "as_of": "2024-04-01",
+          "path": "data/area/2024-04-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-04-01"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2024-01-01",
+          "as_of": "2024-01-01",
+          "path": "data/area/2024-01-01.csv",
+          "rows": 2290,
+          "source": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1e5cbbf1fc0fda22ffa3367180d5e57ae0ad43c0d80589a2621f7d119410ca19"
+          },
+          "ref": {
+            "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
+            "as_of": "2024-01-01"
+          },
+          "enabled": true
+        }
+      ]
+    },
+    "designations": {
+      "label": "指定都市・中核市・施行時特例市",
+      "name": "指定都市・中核市・施行時特例市一覧",
+      "agency": "総務省",
+      "page": "https://www.soumu.go.jp/main_sosiki/jichi_gyousei/bunken/chihou-koukyoudantai_kubun.html",
+      "editions": [
+        {
+          "id": "2023-04-01",
+          "as_of": "2023-04-01",
+          "checked_at": "2026-11-14",
+          "path": "data/designations/2023-04-01.csv",
+          "rows": 105,
+          "counts": {
+            "seirei": 20,
+            "chukaku": 62,
+            "tokurei": 23
+          },
+          "source": {
+            "url": null,
+            "manual": true
+          },
+          "ref": {
+            "as_of": "2023-04-01"
+          },
+          "enabled": true
+        }
+      ]
+    },
+    "rent": {
+      "label": "住宅・土地統計調査",
+      "name": "住宅の所有の関係(4区分)別延べ面積１平方メートル当たり家賃(10区分)別借家(専用住宅)数及び延べ面積１平方メートル当たり家賃－全国、都道府県、市区町村",
+      "agency": "総務省 統計局 統計調査部 国勢統計課",
+      "page": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040210062",
+      "editions": [
+        {
+          "id": "2023",
+          "as_of": "2023-10-01",
+          "published": "2024-09-25",
+          "label": "令和5年",
+          "path": "data/rent/2023.csv",
+          "rows": 1283,
+          "source": {
+            "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040210062&fileKind=0",
+            "retrieved_at": "2026-11-14",
+            "sha256": "cf03a809443d4dea9d3bdae7a43fbe2e1238eee10430cc6651bb1eba7d621289"
+          },
+          "ref": {
+            "id": "2023",
+            "as_of": "2023-10-01",
+            "published": "2024-09-25",
+            "label": "令和5年",
+            "statInfId": "000040210062"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2018",
+          "as_of": "2018-10-01",
+          "published": "2019-09-30",
+          "label": "平成30年",
+          "path": "data/rent/2018.csv",
+          "rows": 1310,
+          "source": {
+            "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000031865896&fileKind=0",
+            "retrieved_at": "2026-11-14",
+            "sha256": "e8771a6607d661a3598e12af13bb15246d0526228c5957add9d44e3bfbf280a3"
+          },
+          "ref": {
+            "id": "2018",
+            "as_of": "2018-10-01",
+            "published": "2019-09-30",
+            "label": "平成30年",
+            "statInfId": "000031865896"
+          },
+          "enabled": true
+        }
+      ]
+    },
+    "minwage": {
+      "label": "地域別最低賃金",
+      "name": "地域別最低賃金改定状況",
+      "agency": "厚生労働省",
+      "page": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/minimumichiran/index.html",
+      "editions": [
+        {
+          "id": "2026",
+          "as_of": "2026-12-02",
+          "label": "2026年度",
+          "path": "data/minwage/2026.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2026,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2025",
+          "as_of": "2026-03-31",
+          "label": "2025年度",
+          "path": "data/minwage/2025.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2025,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2024",
+          "as_of": "2024-11-01",
+          "label": "2024年度",
+          "path": "data/minwage/2024.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2024,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2023",
+          "as_of": "2023-10-14",
+          "label": "2023年度",
+          "path": "data/minwage/2023.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2023,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2022",
+          "as_of": "2022-10-20",
+          "label": "2022年度",
+          "path": "data/minwage/2022.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2022,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2021",
+          "as_of": "2021-10-08",
+          "label": "2021年度",
+          "path": "data/minwage/2021.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2021,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        },
+        {
+          "id": "2020",
+          "as_of": "2020-10-09",
+          "label": "2020年度",
+          "path": "data/minwage/2020.csv",
+          "rows": 47,
+          "source": {
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx",
+            "retrieved_at": "2026-11-14",
+            "sha256": "5745e93632b6221aa44712d9bab1ff2d790d713ae5e1d5cca62c77c76d3d1986"
+          },
+          "ref": {
+            "year": 2020,
+            "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
+          },
+          "enabled": true
+        }
+      ]
+    },
+    "map": {
+      "label": "国土数値情報 行政区域",
+      "name": "国土数値情報（行政区域データ）N03",
+      "agency": "国土交通省",
+      "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html",
+      "license": "CC BY 4.0",
+      "editions": [
+        {
+          "id": "2026-01-01",
+          "as_of": "2026-01-01",
+          "path": "data/map/2026-01-01.topojson",
+          "adjacency": "data/map/2026-01-01.adjacency.json",
+          "rows": 1902,
+          "source": {
+            "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2026/N03-20260101_GML.zip",
+            "retrieved_at": "2026-11-14",
+            "sha256": "1f714fca019e22e6f84012dba420384fc7b49c6ad8bd0a867ab1cfb593a78477"
+          },
+          "ref": {
+            "url": "https://nlftp.mlit.go.jp/ksj/gml/data/N03/N03-2026/N03-20260101_GML.zip",
             "as_of": "2026-01-01",
-            "path": "areas/area20260101.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2025-10-01",
-            "path": "areas/area20251001.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2025-07-01",
-            "path": "areas/area20250701.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2025-04-01",
-            "path": "areas/area20250401.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2025-01-01",
-            "path": "areas/area20250101.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2024-10-01",
-            "path": "areas/area20241001.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2024-07-01",
-            "path": "areas/area20240701.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2024-04-01",
-            "path": "areas/area20240401.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
-        },
-        {
-            "label": "国土地理院 面積調査",
-            "name": "全国都道府県市区町村別面積調",
-            "agency": "国土交通省 国土地理院",
-            "as_of": "2024-01-01",
-            "path": "areas/area20240101.csv",
-            "source": "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm#csv"
+            "size": "765.94MB"
+          },
+          "enabled": true
         }
-    ]
-    ,
-    "designation": [
-        {
-            "name": "指定都市一覧",
-            "path": "designation/designations2022.json",
-            "as_of": "2022-07-05",
-            "source": "https://www.soumu.go.jp/main_sosiki/jichi_gyousei/bunken/shitei_toshi-ichiran.html"
-        }
-    ]
-    ,
-    "rent": [
-        {
-            "name": "住宅の所有の関係(4区分)別延べ面積１平方メートル当たり家賃(10区分)別借家(専用住宅)数及び延べ面積１平方メートル当たり家賃－全国、都道府県、市区町村",
-            "agency": "総務省 統計局統計調査部国勢統計課",
-            "as_of": "2024-09-25",
-            "path": "rent/rent20240925.json",
-            "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040210062"
-        }
-    ]
-    ,
-    "wage": [
-        {
-            "name": "地域別最低賃金の全国一覧（都道府県ごとの発効日はデータ内の各行を参照）",
-            "agency": "厚生労働省",
-            "path": "wage/min-wages.json",
-            "source": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/minimumichiran/index.html"
-        }
-    ]
+      ]
+    }
+  }
 }

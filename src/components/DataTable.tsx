@@ -1,5 +1,6 @@
 import { evaluate } from '../lang/evaluate'
-import { baseItemEnv, type BaseItem, type DesignationSets } from '../data/municipalities'
+import { baseItemEnv, type BaseItem } from '../data/municipalities'
+import type { DesignationSets } from '../data/datasets'
 import type { ColumnState } from '../types'
 
 type Props = {

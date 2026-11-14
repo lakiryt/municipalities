@@ -1,0 +1,100 @@
+{
+  "codes": {
+    "label": "標準地域コード",
+    "name": "標準地域コード（都道府県コード及び市区町村コード）",
+    "agency": "総務省 統計局",
+    "page": "https://www.soumu.go.jp/toukei_toukatsu/index/seido/9-5.htm",
+    "discover": "auto",
+    "usage": "latest",
+    "note": "配布元は最新版のみ公開。アプリは有効な版のうち最新を使う"
+  },
+  "dantai": {
+    "label": "全国地方公共団体コード",
+    "name": "全国地方公共団体コード（都道府県・市区町村）",
+    "agency": "総務省",
+    "page": "https://www.soumu.go.jp/denshijiti/code.html",
+    "discover": "auto",
+    "usage": "latest",
+    "single": true,
+    "note": "アプリに組み込まれるため1版のみ保持（取得すると置き換わる）。都道府県の URL 用ローマ字は data/curated/prefecture-romaji.json"
+  },
+  "jumin": {
+    "label": "住民基本台帳",
+    "name": "住民基本台帳に基づく人口、人口動態及び世帯数調査",
+    "agency": "総務省 自治行政局 住民制度課",
+    "page": "https://www.e-stat.go.jp/stat-search/files?toukei=00200241",
+    "discover": "auto",
+    "discover_from": 2014,
+    "usage": "select",
+    "note": "e-Stat の年ごとのファイル一覧から表を探す（1年につき1リクエスト）"
+  },
+  "kokusei": {
+    "label": "国勢調査",
+    "name": "国勢調査 男女別人口",
+    "agency": "総務省 統計局 統計調査部 国勢統計課",
+    "page": "https://www.e-stat.go.jp/stat-search/database?toukei=00200521",
+    "discover": "auto",
+    "usage": "select",
+    "note": "e-Stat API（ESTAT_APP_ID が必要）で 2020年以降の速報・確定の男女別人口表を検索する。それ以前の回は editions に statsDataId を手で登録すれば扱える",
+    "editions": []
+  },
+  "area": {
+    "label": "国土地理院 面積調査",
+    "name": "全国都道府県市区町村別面積調",
+    "agency": "国土交通省 国土地理院",
+    "page": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO-title.htm",
+    "discover": "auto",
+    "discover_pages": [
+      "https://www.gsi.go.jp/KOKUJYOHO/MENCHO-title.htm",
+      "https://www.gsi.go.jp/KOKUJYOHO/OLD-MENCHO-title.htm"
+    ],
+    "usage": "select",
+    "note": "配布ページの CSV（複数時点入り）をすべて読んで時点を列挙する"
+  },
+  "designations": {
+    "label": "指定都市・中核市・施行時特例市",
+    "name": "指定都市・中核市・施行時特例市一覧",
+    "agency": "総務省",
+    "page": "https://www.soumu.go.jp/main_sosiki/jichi_gyousei/bunken/chihou-koukyoudantai_kubun.html",
+    "discover": "curated",
+    "usage": "latest",
+    "single": true,
+    "curated": "designations.json",
+    "note": "自動取得しない。data/curated/designations.json を手で更新して「ビルド」する"
+  },
+  "rent": {
+    "label": "住宅・土地統計調査",
+    "name": "住宅の所有の関係(4区分)別延べ面積１平方メートル当たり家賃(10区分)別借家(専用住宅)数及び延べ面積１平方メートル当たり家賃－全国、都道府県、市区町村",
+    "agency": "総務省 統計局 統計調査部 国勢統計課",
+    "page": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040210062",
+    "discover": "manual",
+    "usage": "select",
+    "note": "5年ごとの調査。新しい調査の同じ表（令和5年は第122-4表、平成30年は第123-4表）の statInfId を editions に手で登録する",
+    "editions": [
+      { "id": "2023", "as_of": "2023-10-01", "published": "2024-09-25", "label": "令和5年", "statInfId": "000040210062" },
+      { "id": "2018", "as_of": "2018-10-01", "published": "2019-09-30", "label": "平成30年", "statInfId": "000031865896" }
+    ]
+  },
+  "minwage": {
+    "label": "地域別最低賃金",
+    "name": "地域別最低賃金改定状況",
+    "agency": "厚生労働省",
+    "page": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/minimumichiran/index.html",
+    "discover": "auto",
+    "usage": "select",
+    "note": "配布ページの「…改定状況」xlsx に全年度が入っている。アプリの既定は「現在」（有効な版の新しい2つから、都道府県ごとに発効済みの額）で、年度を指定して選ぶこともできる"
+  },
+  "map": {
+    "label": "国土数値情報 行政区域",
+    "name": "国土数値情報（行政区域データ）N03",
+    "agency": "国土交通省",
+    "page": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N03-2026.html",
+    "license": "CC BY 4.0",
+    "discover": "auto",
+    "discover_from": "2020-01-01",
+    "usage": "latest",
+    "heavy": true,
+    "simplify": "1%",
+    "note": "1版あたり約 800MB の zip。生成に数分かかる"
+  }
+}

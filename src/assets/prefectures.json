@@ -1,0 +1,284 @@
+[
+  {
+    "code": "01000",
+    "kanji": "北海道",
+    "kana": "ホッカイドウ",
+    "romanized": "hokkaido"
+  },
+  {
+    "code": "02000",
+    "kanji": "青森県",
+    "kana": "アオモリケン",
+    "romanized": "aomori"
+  },
+  {
+    "code": "03000",
+    "kanji": "岩手県",
+    "kana": "イワテケン",
+    "romanized": "iwate"
+  },
+  {
+    "code": "04000",
+    "kanji": "宮城県",
+    "kana": "ミヤギケン",
+    "romanized": "miyagi"
+  },
+  {
+    "code": "05000",
+    "kanji": "秋田県",
+    "kana": "アキタケン",
+    "romanized": "akita"
+  },
+  {
+    "code": "06000",
+    "kanji": "山形県",
+    "kana": "ヤマガタケン",
+    "romanized": "yamagata"
+  },
+  {
+    "code": "07000",
+    "kanji": "福島県",
+    "kana": "フクシマケン",
+    "romanized": "fukushima"
+  },
+  {
+    "code": "08000",
+    "kanji": "茨城県",
+    "kana": "イバラキケン",
+    "romanized": "ibaraki"
+  },
+  {
+    "code": "09000",
+    "kanji": "栃木県",
+    "kana": "トチギケン",
+    "romanized": "tochigi"
+  },
+  {
+    "code": "10000",
+    "kanji": "群馬県",
+    "kana": "グンマケン",
+    "romanized": "gunma"
+  },
+  {
+    "code": "11000",
+    "kanji": "埼玉県",
+    "kana": "サイタマケン",
+    "romanized": "saitama"
+  },
+  {
+    "code": "12000",
+    "kanji": "千葉県",
+    "kana": "チバケン",
+    "romanized": "chiba"
+  },
+  {
+    "code": "13000",
+    "kanji": "東京都",
+    "kana": "トウキョウト",
+    "romanized": "tokyo"
+  },
+  {
+    "code": "14000",
+    "kanji": "神奈川県",
+    "kana": "カナガワケン",
+    "romanized": "kanagawa"
+  },
+  {
+    "code": "15000",
+    "kanji": "新潟県",
+    "kana": "ニイガタケン",
+    "romanized": "niigata"
+  },
+  {
+    "code": "16000",
+    "kanji": "富山県",
+    "kana": "トヤマケン",
+    "romanized": "toyama"
+  },
+  {
+    "code": "17000",
+    "kanji": "石川県",
+    "kana": "イシカワケン",
+    "romanized": "ishikawa"
+  },
+  {
+    "code": "18000",
+    "kanji": "福井県",
+    "kana": "フクイケン",
+    "romanized": "fukui"
+  },
+  {
+    "code": "19000",
+    "kanji": "山梨県",
+    "kana": "ヤマナシケン",
+    "romanized": "yamanashi"
+  },
+  {
+    "code": "20000",
+    "kanji": "長野県",
+    "kana": "ナガノケン",
+    "romanized": "nagano"
+  },
+  {
+    "code": "21000",
+    "kanji": "岐阜県",
+    "kana": "ギフケン",
+    "romanized": "gifu"
+  },
+  {
+    "code": "22000",
+    "kanji": "静岡県",
+    "kana": "シズオカケン",
+    "romanized": "shizuoka"
+  },
+  {
+    "code": "23000",
+    "kanji": "愛知県",
+    "kana": "アイチケン",
+    "romanized": "aichi"
+  },
+  {
+    "code": "24000",
+    "kanji": "三重県",
+    "kana": "ミエケン",
+    "romanized": "mie"
+  },
+  {
+    "code": "25000",
+    "kanji": "滋賀県",
+    "kana": "シガケン",
+    "romanized": "shiga"
+  },
+  {
+    "code": "26000",
+    "kanji": "京都府",
+    "kana": "キョウトフ",
+    "romanized": "kyoto"
+  },
+  {
+    "code": "27000",
+    "kanji": "大阪府",
+    "kana": "オオサカフ",
+    "romanized": "osaka"
+  },
+  {
+    "code": "28000",
+    "kanji": "兵庫県",
+    "kana": "ヒョウゴケン",
+    "romanized": "hyogo"
+  },
+  {
+    "code": "29000",
+    "kanji": "奈良県",
+    "kana": "ナラケン",
+    "romanized": "nara"
+  },
+  {
+    "code": "30000",
+    "kanji": "和歌山県",
+    "kana": "ワカヤマケン",
+    "romanized": "wakayama"
+  },
+  {
+    "code": "31000",
+    "kanji": "鳥取県",
+    "kana": "トットリケン",
+    "romanized": "tottori"
+  },
+  {
+    "code": "32000",
+    "kanji": "島根県",
+    "kana": "シマネケン",
+    "romanized": "shimane"
+  },
+  {
+    "code": "33000",
+    "kanji": "岡山県",
+    "kana": "オカヤマケン",
+    "romanized": "okayama"
+  },
+  {
+    "code": "34000",
+    "kanji": "広島県",
+    "kana": "ヒロシマケン",
+    "romanized": "hiroshima"
+  },
+  {
+    "code": "35000",
+    "kanji": "山口県",
+    "kana": "ヤマグチケン",
+    "romanized": "yamaguchi"
+  },
+  {
+    "code": "36000",
+    "kanji": "徳島県",
+    "kana": "トクシマケン",
+    "romanized": "tokushima"
+  },
+  {
+    "code": "37000",
+    "kanji": "香川県",
+    "kana": "カガワケン",
+    "romanized": "kagawa"
+  },
+  {
+    "code": "38000",
+    "kanji": "愛媛県",
+    "kana": "エヒメケン",
+    "romanized": "ehime"
+  },
+  {
+    "code": "39000",
+    "kanji": "高知県",
+    "kana": "コウチケン",
+    "romanized": "kochi"
+  },
+  {
+    "code": "40000",
+    "kanji": "福岡県",
+    "kana": "フクオカケン",
+    "romanized": "fukuoka"
+  },
+  {
+    "code": "41000",
+    "kanji": "佐賀県",
+    "kana": "サガケン",
+    "romanized": "saga"
+  },
+  {
+    "code": "42000",
+    "kanji": "長崎県",
+    "kana": "ナガサキケン",
+    "romanized": "nagasaki"
+  },
+  {
+    "code": "43000",
+    "kanji": "熊本県",
+    "kana": "クマモトケン",
+    "romanized": "kumamoto"
+  },
+  {
+    "code": "44000",
+    "kanji": "大分県",
+    "kana": "オオイタケン",
+    "romanized": "oita"
+  },
+  {
+    "code": "45000",
+    "kanji": "宮崎県",
+    "kana": "ミヤザキケン",
+    "romanized": "miyazaki"
+  },
+  {
+    "code": "46000",
+    "kanji": "鹿児島県",
+    "kana": "カゴシマケン",
+    "romanized": "kagoshima"
+  },
+  {
+    "code": "47000",
+    "kanji": "沖縄県",
+    "kana": "オキナワケン",
+    "romanized": "okinawa"
+  }
+]

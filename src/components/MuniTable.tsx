@@ -3,11 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { evaluate } from '../lang/evaluate'
 import { parseAndTypeCheck, referencesColumn } from '../lang/expr'
 import type { TypedExpr } from '../lang/expr'
+import { buildItems, baseItemEnv } from '../data/municipalities'
 import {
-  buildItems, fetchArea, fetchPopulation, fetchDesignations, fetchCoastal, fetchMunicipalityCodes, fetchRent,
-  fetchMinWages, baseItemEnv, areaSources, populationSources, officialCodes,
-  type PopulationRecord, type DesignationSets, type CodeEntry, type MinWageMap,
-} from '../data/municipalities'
+  fetchArea, fetchPopulation, fetchRent, fetchMinWages, fetchDesignations, fetchCoastal, fetchMunicipalityCodes,
+  officialCodes, defaultDataSelection,
+  type PopulationMap, type RentMap, type MinWageMap, type DesignationSets, type CodeEntry, type DataSelection,
+} from '../data/datasets'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import FilterBar from '@/components/FilterBar'
@@ -157,31 +158,24 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       : `${title} — 日本の自治体データ`
   }, [title, mapColumn])
 
-  const [selectedAreaPath, setSelectedAreaPath] = useState(areaSources[0].path)
-  const [selectedPopPath, setSelectedPopPath]   = useState(populationSources[0].path)
+  const [selection, setSelection]       = useState<DataSelection>(defaultDataSelection)
   const [areaMap, setAreaMap]           = useState(new Map<string, number>())
-  const [popMap, setPopMap]             = useState(new Map<string, PopulationRecord>())
+  const [popMap, setPopMap]             = useState<PopulationMap>(new Map())
   const [designations, setDesignations] = useState<DesignationSets | undefined>(undefined)
-  const [coastal, setCoastal] = useState<Set<string>>(new Set())
-  const [codes, setCodes] = useState<CodeEntry[]>([])
-  const [rentMap, setRentMap] = useState(new Map<string, { inc0: number; exc0: number }>())
-  const [minWageMap, setMinWageMap] = useState<MinWageMap>(new Map())
+  const [coastal, setCoastal]           = useState<Set<string>>(new Set())
+  const [codes, setCodes]               = useState<CodeEntry[]>([])
+  const [rentMap, setRentMap]           = useState<RentMap>(new Map())
+  const [minWageMap, setMinWageMap]     = useState<MinWageMap>(new Map())
 
-  useEffect(() => {
-    const src = areaSources.find(s => s.path === selectedAreaPath)
-    if (src) fetchArea(src).then(setAreaMap)
-  }, [selectedAreaPath])
-
-  useEffect(() => {
-    const src = populationSources.find(s => s.path === selectedPopPath)
-    if (src) fetchPopulation(src).then(setPopMap)
-  }, [selectedPopPath])
+  // The selectable datasets reload whenever データの選択 picks another edition.
+  useEffect(() => { fetchPopulation(selection.pop).then(setPopMap) }, [selection.pop])
+  useEffect(() => { fetchArea(selection.area).then(setAreaMap) }, [selection.area])
+  useEffect(() => { fetchRent(selection.rent).then(setRentMap) }, [selection.rent])
+  useEffect(() => { fetchMinWages(selection.minwage).then(setMinWageMap) }, [selection.minwage])
 
   useEffect(() => { fetchDesignations().then(setDesignations) }, [])
   useEffect(() => { fetchCoastal().then(setCoastal) }, [])
   useEffect(() => { fetchMunicipalityCodes().then(setCodes) }, [])
-  useEffect(() => { fetchRent().then(setRentMap) }, [])
-  useEffect(() => { fetchMinWages().then(setMinWageMap) }, [])
 
   // The full, unrestricted base — every downstream view narrows this its
   // own way, but none of them build items from anything smaller than this.
@@ -369,11 +363,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       )}
       {dataOpen && (
         <DataModal
-          selectedAreaPath={selectedAreaPath}
-          selectedPopPath={selectedPopPath}
-          onApply={(areaPath, popPath) => {
-            setSelectedAreaPath(areaPath)
-            setSelectedPopPath(popPath)
+          selection={selection}
+          onApply={next => {
+            setSelection(next)
             setDataOpen(false)
           }}
           onClose={() => setDataOpen(false)}
