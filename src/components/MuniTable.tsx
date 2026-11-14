@@ -197,7 +197,15 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
       : pageTitle(title)
   }, [title, mapColumn])
 
-  const { items: activeItems, designations, coastal } = useMunicipalityData(selection)
+  // The data the columns, filter, sort and map draw on: shown as chips and in
+  // 出典, and the census comparison is only fetched when something uses it.
+  const used = usedData([
+    ...columns.map(c => c.expression), filterExpression, sortState?.expression ?? '',
+    mapColumn?.expression ?? '',
+  ])
+  const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
+
+  const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.census)
 
   const editingColumn = modal?.kind === 'edit'
     ? columns.find(c => c.id === modal.id) ?? null
@@ -362,12 +370,6 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
     return `/m/${code}${q ? `?${q}` : ''}`
   }
 
-  const used = usedData([
-    ...columns.map(c => c.expression), filterExpression, sortState?.expression ?? '',
-    mapColumn?.expression ?? '',
-  ])
-  const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
-
   const handleSearchApply: Parameters<typeof SearchModal>[0]['onApply'] = (
     { filterExpression: fex, sortExpression, sortDirection, columns: cols }
   ) => {
@@ -460,7 +462,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // Map view: fills the screen below the header — no page scroll, so
         // drags and pinches always go to the map.
         <div className="fixed inset-x-0 top-11 bottom-0 flex flex-col">
-          <PageHeader title={title} used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
+          <PageHeader title={title} used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} compact />
           {toolbar}
           <div className="flex-1 min-h-0">
             <MapView
@@ -474,7 +476,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
               linkFor={detailLink}
             />
           </div>
-          <SourceNote used={usedKeys} selection={selection} designations={used.designations} map compact />
+          <SourceNote used={usedKeys} census={used.census} selection={selection} designations={used.designations} map compact />
         </div>
       ) : (
         // Table view: one scroll container for both axes, so the toolbar and
@@ -484,7 +486,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
         // slide away when a wide table scrolls sideways.
         <main className="fixed inset-x-0 top-11 bottom-0 overflow-auto [container-type:inline-size]">
           <div className="sticky left-0 w-[100cqw]">
-            <PageHeader title={title} description={description} used={usedKeys} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
+            <PageHeader title={title} description={description} used={usedKeys} census={used.census} selection={selection} onDataClick={k => setDataModal({ focus: k })} />
           </div>
           <div className="sticky top-0 left-0 z-40 w-[100cqw]">{toolbar}</div>
           <DataTable
@@ -499,7 +501,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
             envOf={envOf}
           />
           <div className="sticky left-0 w-[100cqw]">
-            <SourceNote used={usedKeys} selection={selection} designations={used.designations} map={used.coastal} />
+            <SourceNote used={usedKeys} census={used.census} selection={selection} designations={used.designations} map={used.coastal} />
           </div>
         </main>
       )}

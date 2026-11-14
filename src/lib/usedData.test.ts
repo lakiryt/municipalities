@@ -20,6 +20,13 @@ describe('usedData', () => {
     expect(u.designations).toBe(true)
     expect(u.coastal).toBe(true)
   })
+
+  it('treats the census comparison as its own fixed data, not the selectable population', () => {
+    const u = usedData(['ROUND(MULT(#census_change_rate, 100), 2)'])
+    expect(u.census).toBe(true)
+    expect(u.selectable.size).toBe(0)
+    expect(usedData(['#totalpop']).census).toBe(false)
+  })
 })
 
 describe('data selection in the URL', () => {

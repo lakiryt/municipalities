@@ -2,12 +2,15 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import App from './App'
 import HomePage from './components/pages/HomePage'
 import RankingPage from './components/pages/RankingPage'
-import DensityPage from './components/pages/DensityPage'
-import CityPopulationPage from './components/pages/CityPopulationPage'
-import AreaPage from './components/pages/AreaPage'
-import CityAreaPage from './components/pages/CityAreaPage'
+import { densityConfig } from './rankings/density'
+import { cityPopulationConfig } from './rankings/cityPopulation'
+import { areaConfig, cityAreaConfig } from './rankings/area'
 import FormulasPage from './components/pages/FormulasPage'
 import MunicipalityPage from './components/pages/MunicipalityPage'
+import PrefRankingPage from './components/pages/PrefRankingPage'
+import { populationChangeConfig } from './rankings/populationChange'
+import { designatedCitiesConfig, coreCitiesConfig } from './rankings/designatedCities'
+import { townVillageConfig } from './rankings/townsVillages'
 import MuniTable from './components/MuniTable'
 import Canonical from './components/Canonical'
 import populationOver500k from './rankings/populationOver500k'
@@ -20,10 +23,16 @@ import { initialColumns } from './data/municipalities'
 const router = createBrowserRouter([
   { path: '/',                                   element: <HomePage /> },
   { path: '/explore',                            element: <App /> },
-  { path: '/rankings/:pref/density',             element: <DensityPage /> },
-  { path: '/rankings/:pref/cities',              element: <CityPopulationPage /> },
-  { path: '/rankings/:pref/area',                element: <AreaPage /> },
-  { path: '/rankings/:pref/city-area',           element: <CityAreaPage /> },
+  { path: '/rankings/:pref/density',             element: <PrefRankingPage configFor={densityConfig} /> },
+  { path: '/rankings/:pref/cities',              element: <PrefRankingPage configFor={cityPopulationConfig} /> },
+  { path: '/rankings/:pref/area',                element: <PrefRankingPage configFor={areaConfig} /> },
+  { path: '/rankings/:pref/city-area',           element: <PrefRankingPage configFor={cityAreaConfig} /> },
+  { path: '/rankings/:pref/population-change',  element: <PrefRankingPage configFor={p => populationChangeConfig(p, 'growth')} /> },
+  { path: '/rankings/:pref/population-decline', element: <PrefRankingPage configFor={p => populationChangeConfig(p, 'decline')} /> },
+  { path: '/rankings/:pref/towns',              element: <PrefRankingPage configFor={p => townVillageConfig(p, '町')} /> },
+  { path: '/rankings/:pref/villages',           element: <PrefRankingPage configFor={p => townVillageConfig(p, '村')} /> },
+  { path: '/rankings/all/designated-cities',    element: <RankingPage config={designatedCitiesConfig} /> },
+  { path: '/rankings/all/core-cities',          element: <RankingPage config={coreCitiesConfig} /> },
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
   { path: '/rankings/all/elderly-ratio',        element: <RankingPage config={elderlyRatioConfig} /> },
   { path: '/rankings/all/rent',                  element: <RankingPage config={rentConfig} /> },

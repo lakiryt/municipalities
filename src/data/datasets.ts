@@ -269,6 +269,36 @@ export const fetchCoastal = (): Promise<Set<string>> =>
     Object.entries(data).filter(([, neighbors]) => neighbors.includes('coast')).map(([code]) => code)
   ))
 
+// ── Census comparison (人口増減, 国勢調査 2 回分) ───────────────────────────────
+
+// The two most recent 国勢調査 (one edition per date: the 確定 edition when it
+// is enabled, otherwise the 速報), newest first. Unlike the selectable
+// population, a change between two censuses always compares these two.
+export type CensusPair = { latest: Edition; prev: Edition }
+export const censusPair = (): CensusPair | undefined => {
+  const byDate: Edition[] = []
+  for (const e of dataset('kokusei').editions) {
+    if (!byDate.some(x => x.as_of === e.as_of)) byDate.push(e)
+  }
+  return byDate.length >= 2 ? { latest: byDate[0], prev: byDate[1] } : undefined
+}
+/** "2020→2025年" */
+export const censusPeriod = (p: CensusPair | undefined = censusPair()): string =>
+  p ? `${p.prev.as_of.slice(0, 4)}→${p.latest.as_of.slice(0, 4)}年` : ''
+
+export type CensusMap = Map<string, { prev: number; latest: number }>
+let censusPromise: Promise<CensusMap> | null = null
+export const fetchCensusChange = (): Promise<CensusMap> => {
+  const pair = censusPair()
+  if (!pair) return Promise.resolve(new Map())
+  return censusPromise ??= Promise.all([fetchCsv(pair.prev.path), fetchCsv(pair.latest.path)]).then(([prev, latest]) => {
+    const out: CensusMap = new Map()
+    const before = new Map(prev.map(r => [r.code, toNum(r.totalpop)]))
+    for (const r of latest) out.set(r.code, { prev: before.get(r.code) ?? NaN, latest: toNum(r.totalpop) })
+    return out
+  })
+}
+
 // ── Population series (detail page) ───────────────────────────────────────────
 
 export type SeriesPoint = { id: string; as_of: string; totalpop: number; setai: number }
