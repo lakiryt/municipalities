@@ -1,51 +1,28 @@
 import { Link } from 'react-router-dom'
-import type { SortState } from '../types'
 
-type Props = {
-  totalCount: number
-  filteredCount: number
-  filterActive: boolean
-  sortState: SortState | null
-  onSortClick: () => void
-  onFilterClick: () => void
-  onDataClick: () => void
-  onMapClick: () => void
-  onClose: () => void
-}
+type Props = { onClose: () => void }
 
-function Sidebar({ totalCount, filteredCount, filterActive, sortState, onSortClick, onFilterClick, onDataClick, onMapClick, onClose }: Props) {
-  const btnBase     = 'w-full px-3 py-2 rounded text-sm border text-left'
-  const btnActive   = 'bg-blue-600 text-white border-blue-600'
-  const btnInactive = 'border-gray-300 hover:bg-gray-50'
-
+// Site menu (the page's own controls are on the page, not in here).
+function Sidebar({ onClose }: Props) {
+  const link = 'block px-4 py-2.5 text-sm hover:bg-gray-50'
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-30" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full w-64 bg-white shadow-xl z-40 flex flex-col">
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <nav className="fixed top-0 right-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col" aria-label="メニュー">
         <div className="flex items-center justify-between h-11 px-4 border-b border-gray-200">
           <span className="text-sm font-semibold">メニュー</span>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 leading-none text-lg">✕</button>
+          <button onClick={onClose} aria-label="メニューを閉じる" className="text-gray-500 hover:text-gray-700 leading-none text-lg">✕</button>
         </div>
-
-        <div className="md:hidden flex flex-col gap-2 p-4">
-          <button className={`${btnBase} ${btnInactive}`} onClick={onDataClick}>データ選択</button>
-          <button className={`${btnBase} ${btnInactive}`} onClick={onMapClick}>地図表示</button>
-          <button className={`${btnBase} ${sortState ? btnActive : btnInactive}`} onClick={onSortClick}>並べ替え</button>
-          <button className={`${btnBase} ${filterActive ? btnActive : btnInactive}`} onClick={onFilterClick}>
-            絞り込み{filterActive ? `（${filteredCount} / ${totalCount}件）` : ''}
-          </button>
+        <div className="py-2">
+          <Link to="/" onClick={onClose} className={link}>トップ</Link>
+          <Link to="/search" onClick={onClose} className={link}>詳細検索</Link>
+          <Link to="/explore" onClick={onClose} className={link}>自由探索（列・条件を自由に設定）</Link>
+          <Link to="/formulas" onClick={onClose} className={link}>式の記述方法</Link>
         </div>
-
-        <div className="px-4 py-3 border-t border-gray-100">
-          <Link to="/formulas" onClick={onClose} className="text-sm text-blue-500 hover:underline">
-            式の記述方法 →
-          </Link>
-        </div>
-
         <div className="mt-auto p-4 text-xs text-gray-400">
           <p>© 2026 <a target="_blank" rel="noopener noreferrer" href="https://lakiryt.com">Lakiryt</a></p>
         </div>
-      </div>
+      </nav>
     </>
   )
 }

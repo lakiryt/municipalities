@@ -30,9 +30,9 @@ export function cityAreaConfig(pref: Pref | null): RankingConfig {
       ? `${pref.kanji}の市を面積（km²）の広い順に並べたランキングです。`
       : '全国の市を面積（km²）の広い順に並べたランキングです。',
     columns: [
-      { label: '都道府県', expression: '$prefkanji' },
-      { label: '自治体名', expression: '$kanji' },
-      { label: '面積(km²)', expression: '#area' },
+      { id: 1, label: '自治体名', expression: '$kanji' },
+      { id: 2, label: '面積(km²)', expression: '#area' },
+      { id: 0, label: '都道府県', expression: '$prefkanji' },
     ],
     filterExpression,
     sortExpression: '#area',

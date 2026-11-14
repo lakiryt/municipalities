@@ -7,7 +7,7 @@ type Props = { config: RankingConfig }
 
 function RankingPage({ config }: Props) {
   const columns: ColumnState[] = config.columns.map((col, i) => ({
-    id: i,
+    id: col.id ?? i,
     label: col.label,
     expression: col.expression,
     typed: parseAndTypeCheck(col.expression),
@@ -27,6 +27,7 @@ function RankingPage({ config }: Props) {
       {config.description && <meta name="description" content={config.description} />}
       <MuniTable
         title={config.title}
+        description={config.description}
         initialColumns={columns}
         initialFilter={initialFilter}
         initialSort={initialSort}

@@ -24,7 +24,10 @@ export type SortState = {
 export type RankingConfig = {
   title: string
   description?: string
-  columns: { label: string; expression: string }[]
+  // Shown in this order. `id` (default: the position) is what `@id`
+  // references in URLs point at — keep it fixed when reordering, so shared
+  // links (e.g. ?map=@4) keep pointing at the same column.
+  columns: { id?: number; label: string; expression: string }[]
   filterExpression?: string
   sortExpression: string
   sortDirection: 'asc' | 'desc'

@@ -9,10 +9,10 @@ export function densityConfig(pref: Pref | null): RankingConfig {
       ? `${pref.kanji}の市区町村を人口密度（人/km²）の高い順に並べたランキングです。`
       : '全国の市区町村を人口密度（人/km²）の高い順に並べたランキングです。',
     columns: [
-      { label: '自治体名',         expression: '$kanji' },
-      { label: '人口',             expression: '#totalpop' },
-      { label: '面積(km²)',        expression: '#area' },
-      { label: '人口密度(人/km²)', expression: 'ROUND(MULT(#totalpop, INV(#area)), 2)' },
+      { id: 0, label: '自治体名',         expression: '$kanji' },
+      { id: 3, label: '人口密度(人/km²)', expression: 'ROUND(MULT(#totalpop, INV(#area)), 2)' },
+      { id: 1, label: '人口',             expression: '#totalpop' },
+      { id: 2, label: '面積(km²)',        expression: '#area' },
     ],
     filterExpression: pref ? `EQ($prefkanji, "${pref.kanji}")` : undefined,
     sortExpression: 'MULT(#totalpop, INV(#area))',

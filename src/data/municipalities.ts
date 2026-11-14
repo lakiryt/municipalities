@@ -143,10 +143,12 @@ export const varCompletions: string[] = [
   ...Object.keys(baseItemEnv(_dummy, _dummyDesignations).boolvars).map(k => `&${k}`),
 ]
 
+// 自由探索's starting columns. Name first so it can stay pinned on narrow
+// screens; ids are fixed (not positions) so older `@id` URLs still resolve.
 export const initialColumns: ColumnState[] = [
-  { label: '自治体コード',     expression: '$code' },
-  { label: '都道府県名', expression: '$prefkanji' },
-  { label: '自治体名',   expression: '$kanji' },
-  { label: '総人口',     expression: '#totalpop' },
-  { label: '面積',       expression: '#area' },
-].map((col, i) => ({ id: i, ...col, typed: parseAndTypeCheck(col.expression) }))
+  { id: 2, label: '自治体名',   expression: '$kanji' },
+  { id: 1, label: '都道府県名', expression: '$prefkanji' },
+  { id: 3, label: '総人口',     expression: '#totalpop' },
+  { id: 4, label: '面積',       expression: '#area' },
+  { id: 0, label: '自治体コード', expression: '$code' },
+].map(col => ({ ...col, typed: parseAndTypeCheck(col.expression) }))

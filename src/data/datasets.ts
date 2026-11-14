@@ -61,12 +61,17 @@ const fetchCsv = (path: string) => fetch(`/${path}`).then(r => r.text()).then(pa
 // `label` is the dataset (住民基本台帳, 国勢調査, …); `name` tells its editions
 // apart — usually the date, but e.g. 国勢調査 has a 速報 and a 確定 edition
 // for the same date, and surveys read better as "令和5年" / "2026年度".
-export type Source = { label: string; name: string; as_of: string; path: string }
+// `key` identifies the edition in URLs (?pop=jumin:2025, ?area=2026-04-01).
+export type Source = { dataset: string; key: string; label: string; name: string; as_of: string; path: string }
 
 const NAMED_EDITIONS = new Set(['kokusei', 'rent', 'minwage'])
+// Population mixes two datasets, so its keys carry the dataset id.
+const PREFIXED_KEYS = new Set(['jumin', 'kokusei'])
 
 const sourcesOf = (id: string): Source[] =>
   dataset(id).editions.map(e => ({
+    dataset: id,
+    key: PREFIXED_KEYS.has(id) ? `${id}:${e.id}` : e.id,
     label: dataset(id).label,
     name: NAMED_EDITIONS.has(id) ? (e.label ?? e.as_of) : e.as_of,
     as_of: e.as_of,
@@ -81,12 +86,21 @@ export const populationSources: Source[] = [...sourcesOf('jumin'), ...sourcesOf(
 export const areaSources: Source[] = sourcesOf('area')
 export const rentSources: Source[] = sourcesOf('rent')
 export const minWageSources: Source[] = [
-  { label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE },
+  { dataset: 'minwage', key: MINWAGE_EFFECTIVE, label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE },
   ...sourcesOf('minwage'),
 ]
 
 /** Which edition of each selectable dataset the table/map uses, by path. */
 export type DataSelection = { pop: string; area: string; rent: string; minwage: string }
+export type DataKey = keyof DataSelection
+
+export const SELECTABLE: Record<DataKey, { title: string; sources: Source[] }> = {
+  pop:     { title: '人口',     sources: populationSources },
+  area:    { title: '面積',     sources: areaSources },
+  rent:    { title: '家賃',     sources: rentSources },
+  minwage: { title: '最低賃金', sources: minWageSources },
+}
+export const DATA_KEYS = Object.keys(SELECTABLE) as DataKey[]
 
 export const defaultDataSelection = (): DataSelection => ({
   pop: populationSources[0]?.path ?? '',
@@ -94,6 +108,33 @@ export const defaultDataSelection = (): DataSelection => ({
   rent: rentSources[0]?.path ?? '',
   minwage: minWageSources[0]?.path ?? '',
 })
+
+export const selectedSource = (key: DataKey, selection: DataSelection): Source | undefined =>
+  SELECTABLE[key].sources.find(s => s.path === selection[key])
+
+/**
+ * The selection lives in the URL (?pop=jumin:2025&area=2026-04-01) so that
+ * reloading or sharing a page keeps it. Only non-default choices appear;
+ * unknown keys (e.g. an edition since disabled) fall back to the default.
+ */
+export function selectionFromParams(params: URLSearchParams): DataSelection {
+  const selection = defaultDataSelection()
+  for (const k of DATA_KEYS) {
+    const src = SELECTABLE[k].sources.find(s => s.key === params.get(k))
+    if (src) selection[k] = src.path
+  }
+  return selection
+}
+
+export function writeSelectionParams(params: URLSearchParams, selection: DataSelection): URLSearchParams {
+  const defaults = defaultDataSelection()
+  for (const k of DATA_KEYS) {
+    const src = selectedSource(k, selection)
+    if (src && src.path !== defaults[k]) params.set(k, src.key)
+    else params.delete(k)
+  }
+  return params
+}
 
 // ── Population ────────────────────────────────────────────────────────────────
 

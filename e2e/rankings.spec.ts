@@ -26,8 +26,7 @@ test("/explore's map still colors designated-city wards even though its table is
 
   // Open the map for 総人口 via a column's own action, since it's not one of
   // the table's rows anymore.
-  await page.getByRole('columnheader', { name: '総人口', exact: true }).click()
-  await page.getByRole('button', { name: 'この列を地図に表示' }).click()
+  await page.getByRole('tab', { name: '地図', exact: true }).click()
   await page.waitForSelector('svg path')
 
   // If wards had been dropped along with the table's restriction, almost all
@@ -44,7 +43,7 @@ test('opening the map from a ranking page stays on that page instead of jumping 
   await expect(page.locator('tbody tr').first()).toBeVisible()
   const titleBeforeOpening = await page.title()
 
-  await page.getByRole('columnheader', { name: '人口(計)', exact: true }).click()
+  await page.getByRole('columnheader', { name: '人口(計)', exact: true }).getByRole('button', { name: '人口(計)', exact: true }).click()
   await page.getByRole('button', { name: 'この列を地図に表示' }).click()
   await expect(page.getByRole('heading', { name: '人口(計)の地図', exact: true })).toBeVisible()
 
@@ -53,21 +52,20 @@ test('opening the map from a ranking page stays on that page instead of jumping 
   expect(url.searchParams.get('map')).toMatch(/^@\d+$/)
   await expect(page).toHaveTitle(/^人口\(計\)の地図 — /)
 
-  await page.getByRole('button', { name: '閉じる', exact: true }).click()
+  await page.getByRole('tab', { name: '表', exact: true }).click()
   const closedUrl = new URL(page.url())
   expect(closedUrl.pathname).toBe('/list/all/population')
   expect(closedUrl.searchParams.get('map')).toBeNull()
   await expect(page).toHaveTitle(titleBeforeOpening)
 })
 
-test('the map picker (toolbar button) also stays on a ranking page', async ({ page }) => {
+test('the 地図 tab also stays on a ranking page', async ({ page }) => {
   await page.goto('/list/all/population')
   await expect(page.locator('tbody tr').first()).toBeVisible()
 
-  await page.getByRole('button', { name: '地図表示', exact: true }).click()
-  await page.getByRole('button', { name: '人口(計)', exact: true }).click()
+  await page.getByRole('tab', { name: '地図', exact: true }).click()
+  await page.getByRole('combobox', { name: '色分けする列' }).selectOption({ label: '人口(計)' })
   await expect(page.getByRole('heading', { name: '人口(計)の地図', exact: true })).toBeVisible()
-
   expect(new URL(page.url()).pathname).toBe('/list/all/population')
 })
 
@@ -77,8 +75,9 @@ test('the average rent (20m²) ranking page loads and sorts descending', async (
 
   await expect(page.getByRole('columnheader', { name: '平均家賃（20㎡）', exact: true })).toBeVisible()
 
-  const firstRowValue = await page.locator('tbody tr').first().locator('td').last().innerText()
-  const secondRowValue = await page.locator('tbody tr').nth(1).locator('td').last().innerText()
+  // Columns: #, 自治体名, 平均家賃（20㎡） (the ranked column, right after the name), …
+  const firstRowValue = await page.locator('tbody tr').first().locator('td').nth(2).innerText()
+  const secondRowValue = await page.locator('tbody tr').nth(1).locator('td').nth(2).innerText()
   const parse = (s: string) => Number(s.replace(/[^0-9.]/g, ''))
   expect(parse(firstRowValue)).toBeGreaterThanOrEqual(parse(secondRowValue))
 })

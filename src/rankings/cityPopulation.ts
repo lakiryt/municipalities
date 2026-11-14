@@ -16,10 +16,10 @@ export function cityPopulationConfig(pref: Pref | null): RankingConfig {
       ? `${pref.kanji}の市を人口の多い順に並べたランキングです。政令指定都市・中核市・施行時特例市の区分も表示しています。`
       : '全国の市を人口の多い順に並べたランキングです。政令指定都市・中核市・施行時特例市の区分も表示しています。',
     columns: [
-      { label: '都道府県', expression: '$prefkanji' },
-      { label: '自治体名', expression: '$kanji' },
-      { label: '区分',     expression: KUBUN },
-      { label: '総人口',   expression: '#totalpop' },
+      { id: 1, label: '自治体名', expression: '$kanji' },
+      { id: 3, label: '総人口',   expression: '#totalpop' },
+      { id: 2, label: '区分',     expression: KUBUN },
+      { id: 0, label: '都道府県', expression: '$prefkanji' },
     ],
     filterExpression,
     sortExpression: '#totalpop',

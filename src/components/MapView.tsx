@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { evaluate } from '@/lang/evaluate'
 import { baseItemEnv, type BaseItem } from '@/data/municipalities'
 import type { DesignationSets } from '@/data/datasets'
-import type { ColumnState } from '@/types'
+import type { ColumnState, ColumnRef } from '@/types'
+import { formatValue } from '@/lib/format'
 import {
   fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, VIEW_SIZE,
   type MuniPaths, type ColorSchemeKey,
@@ -10,11 +11,15 @@ import {
 
 type Props = {
   column: ColumnState
+  // Numeric columns the map can be colored by (the switcher's options).
+  columnOptions: ColumnRef[]
+  onSelectColumn: (id: number) => void
   displayItems: BaseItem[]
   designations: DesignationSets | undefined
   coastal: Set<string>
-  onClose: () => void
 }
+
+type Picked = { code: string; label: string; pref: string; value: number | undefined }
 
 const NO_DATA_FILL = '#e1e0d9'
 const MIN_SCALE = 1
@@ -32,9 +37,16 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
   return { scale, x: at.x - scale * worldX, y: at.y - scale * worldY }
 }
 
-function MapModal({ column, displayItems, designations, coastal, onClose }: Props) {
+// The map view: fills the content area below the toolbar (not a modal), so
+// "表 ｜ 地図" switches between two views of the same rows. Desktop hovers
+// for a tooltip; a click/tap pins a card (phones have no hover).
+function MapView({ column, columnOptions, onSelectColumn, displayItems, designations, coastal }: Props) {
   const [paths, setPaths] = useState<MuniPaths | null>(null)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number | undefined } | null>(null)
+  const [picked, setPicked] = useState<Picked | null>(null)
+  // A drag that ends over a municipality still fires a click — remember how
+  // far the pointer moved so a pan doesn't also pick.
+  const movedRef = useRef(0)
   const [view, setView] = useState<View>({ scale: 1, x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [schemeKey, setSchemeKey] = useState<ColorSchemeKey>('blue')
@@ -72,6 +84,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     const onMove = (e: MouseEvent) => {
       const drag = dragRef.current
       if (!drag) return
+      movedRef.current = Math.hypot(e.clientX - drag.startClientX, e.clientY - drag.startClientY)
       const dx = (e.clientX - drag.startClientX) * drag.unitsPerPixel
       const dy = (e.clientY - drag.startClientY) * drag.unitsPerPixel
       setView({ ...drag.startView, x: drag.startView.x + dx, y: drag.startView.y + dy })
@@ -164,6 +177,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     const ctm = svgRef.current?.getScreenCTM()
     if (!ctm) return
+    movedRef.current = 0
     dragRef.current = { startClientX: e.clientX, startClientY: e.clientY, startView: view, unitsPerPixel: 1 / ctm.a }
     setIsDragging(true)
   }
@@ -251,17 +265,30 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
     }
   }, [paths])
 
+  const pick = (code: string) => {
+    if (movedRef.current > 5) return
+    const item = itemByCode.get(code)
+    if (!item) { setPicked(null); return }
+    setPicked({ code, label: item.kanji || item.prefecture.kanji || '', pref: item.kanji ? item.prefecture.kanji ?? '' : '', value: values.get(code) })
+  }
+
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-white rounded-lg shadow-xl p-4 w-[92vw] h-[88vh] max-w-5xl flex flex-col">
-        <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-lg font-bold">{column.label}の地図</h3>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 text-sm ml-auto" onClick={onClose}>
-            閉じる
-          </button>
+    <div className="h-full w-full max-w-5xl mx-auto px-3 pb-3 flex flex-col">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+          <h2 className="text-sm font-semibold">{column.label}の地図</h2>
+          {columnOptions.length > 1 && (
+            <label className="flex items-center gap-1.5 text-xs text-gray-500 ml-auto">
+              色分けする列
+              <select
+                aria-label="色分けする列"
+                className="border border-gray-300 rounded px-1.5 py-1 text-sm text-gray-900 bg-white max-w-[55vw]"
+                value={column.id}
+                onChange={e => { setPicked(null); onSelectColumn(Number(e.target.value)) }}
+              >
+                {columnOptions.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+            </label>
+          )}
         </div>
 
         <div className="relative flex-1 min-h-0 touch-none" ref={mapAreaRef}>
@@ -285,8 +312,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
                       key={code}
                       d={d}
                       fill={fill}
-                      stroke="none"
-                      strokeWidth={0.5}
+                      strokeWidth={picked?.code === code ? 1.5 : 0.5}
                       vectorEffect="non-scaling-stroke"
                       onMouseMove={e => {
                         if (isDragging) return
@@ -300,11 +326,29 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
                         setHover({ x: e.clientX, y: e.clientY, label, value: v })
                       }}
                       onMouseLeave={() => setHover(null)}
+                      onClick={() => pick(code)}
+                      stroke={picked?.code === code ? '#111827' : 'none'}
                     />
                   )
                 })}
               </g>
             </svg>
+          )}
+          {picked && (
+            <div
+              data-testid="map-picked"
+              className="absolute top-2 left-2 z-20 bg-white/95 border border-gray-200 rounded-lg shadow-md px-3 py-2 text-sm max-w-[70%]"
+            >
+              <div className="flex items-start gap-3">
+                <div>
+                  <div className="font-semibold">{picked.label}<span className="ml-1.5 text-xs text-gray-400 font-normal">{picked.pref}</span></div>
+                  <div className="text-gray-600 tabular-nums">
+                    {column.label}: {picked.value !== undefined ? formatValue(picked.value) : 'データなし'}
+                  </div>
+                </div>
+                <button aria-label="閉じる" className="text-gray-400 hover:text-gray-700 leading-none" onClick={() => setPicked(null)}>✕</button>
+              </div>
+            </div>
           )}
           {hover && (
             <div
@@ -312,7 +356,7 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
               className="fixed pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 z-50"
               style={{ left: hover.x + 12, top: hover.y + 12 }}
             >
-              {hover.value !== undefined ? `${hover.label}: ${hover.value.toLocaleString('ja-JP')}` : `${hover.label}: データなし`}
+              {hover.value !== undefined ? `${hover.label}: ${formatValue(hover.value)}` : `${hover.label}: データなし`}
             </div>
           )}
 
@@ -410,9 +454,8 @@ function MapModal({ column, displayItems, designations, coastal, onClose }: Prop
             </div>
           )}
         </div>
-      </div>
     </div>
   )
 }
 
-export default MapModal
+export default MapView
