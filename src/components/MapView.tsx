@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { evaluate } from '@/lang/evaluate'
 import { baseItemEnv, type BaseItem } from '@/data/municipalities'
 import type { DesignationSets } from '@/data/datasets'
 import type { ColumnState, ColumnRef } from '@/types'
 import { formatValue } from '@/lib/format'
+import { fitBounds, type Box } from '@/lib/mapFit'
+import { makeScale, canLog, suggestScale, SCALE_LABELS, CLIP_PERCENT, type ScaleChoice } from '@/lib/colorScale'
 import {
   fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, VIEW_SIZE,
   type MuniPaths, type ColorSchemeKey,
@@ -17,7 +20,14 @@ type Props = {
   displayItems: BaseItem[]
   designations: DesignationSets | undefined
   coastal: Set<string>
+  // When the rows are filtered (e.g. to one prefecture), zoom to them.
+  fitToItems?: boolean
 }
+
+// Legend values are scale positions, not data: 3 significant figures
+// (13,988.7664 → 13,989; 4.4152 → 4.42).
+const legendValue = (v: number) =>
+  formatValue(Number(v.toPrecision(Math.max(3, Math.floor(Math.log10(Math.abs(v) || 1)) + 1))))
 
 type Picked = { code: string; label: string; pref: string; value: number | undefined }
 
@@ -40,7 +50,19 @@ function zoomAt(view: View, at: { x: number; y: number }, factor: number): View 
 // The map view: fills the content area below the toolbar (not a modal), so
 // "表 ｜ 地図" switches between two views of the same rows. Desktop hovers
 // for a tooltip; a click/tap pins a card (phones have no hover).
-function MapView({ column, columnOptions, onSelectColumn, displayItems, designations, coastal }: Props) {
+function MapView({ column, columnOptions, onSelectColumn, displayItems, designations, coastal, fitToItems = false }: Props) {
+  // The color scale (自動/線形/対数/順位) and outlier clipping are per map
+  // and kept in the URL (?scale=log&clip=1), like the map column itself.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const scaleParam = searchParams.get('scale')
+  const scaleChoice: ScaleChoice = scaleParam === 'linear' || scaleParam === 'log' || scaleParam === 'rank' ? scaleParam : 'auto'
+  const clip = searchParams.get('clip') === '1'
+  const setParam = (key: string, value: string | null) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev)
+    if (value === null) next.delete(key); else next.set(key, value)
+    return next
+  }, { replace: true })
+
   const [paths, setPaths] = useState<MuniPaths | null>(null)
   const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number | undefined } | null>(null)
   const [picked, setPicked] = useState<Picked | null>(null)
@@ -122,25 +144,21 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
     return map
   }, [itemByCode, column, designations, coastal, paths])
 
-  const [min, max] = useMemo(() => {
-    const vs = [...values.values()]
-    return vs.length ? [Math.min(...vs), Math.max(...vs)] : [0, 1]
-  }, [values])
+  const valueList = useMemo(() => [...values.values()], [values])
+  const scale = useMemo(() => makeScale(valueList, scaleChoice, clip), [valueList, scaleChoice, clip])
+  const logPossible = useMemo(() => canLog(valueList), [valueList])
+  const autoKind = useMemo(() => suggestScale(valueList), [valueList])
 
-  // Same domain as the map's color scale, so a bar's horizontal position
-  // lines up with where its value falls on the legend gradient below.
+  // Bins are equal steps along the color scale (not the raw values), so a
+  // bar's horizontal position lines up with its color on the legend below —
+  // on a log scale each bar covers the same ratio, not the same difference.
   const BIN_COUNT = 20
   const bins = useMemo(() => {
-    const vs = [...values.values()]
-    if (vs.length === 0) return []
-    const width = max === min ? 1 : (max - min) / BIN_COUNT
+    if (valueList.length === 0) return []
     const counts = new Array(BIN_COUNT).fill(0)
-    for (const v of vs) {
-      const idx = Math.min(BIN_COUNT - 1, Math.max(0, Math.floor((v - min) / width)))
-      counts[idx]++
-    }
-    return counts.map((count, i) => ({ x0: min + i * width, x1: min + (i + 1) * width, count }))
-  }, [values, min, max])
+    for (const v of valueList) counts[Math.min(BIN_COUNT - 1, Math.floor(scale.t(v) * BIN_COUNT))]++
+    return counts.map((count, i) => ({ x0: scale.valueAt(i / BIN_COUNT), x1: scale.valueAt((i + 1) / BIN_COUNT), count }))
+  }, [valueList, scale])
 
   const maxCount = Math.max(1, ...bins.map(b => b.count))
 
@@ -162,7 +180,37 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
     ro.observe(area)
     ro.observe(gradient)
     return () => ro.disconnect()
-  }, [min, max, schemeKey])
+  }, [scale, schemeKey])
+
+  // Zoom to the filtered rows (one prefecture, say): the union of their
+  // shapes' bounding boxes, in the map's own coordinates. Only when the
+  // filtered set changes — panning/zooming afterwards is left alone.
+  const fitKey = fitToItems ? [...itemByCode.keys()].join() : ''
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!paths || !svg) return
+    // Measured after the shapes are laid out (next frame), then applied.
+    const frame = requestAnimationFrame(() => {
+      if (!fitKey) { setView({ scale: 1, x: 0, y: 0 }); return }
+      // One box per municipality (a municipality may be several paths).
+      const boxes = new Map<string, Box>()
+      svg.querySelectorAll<SVGPathElement>('path[data-code]').forEach(el => {
+        const code = el.dataset.code!
+        if (!itemByCode.has(code)) return
+        const bb = el.getBBox()
+        const prev = boxes.get(code)
+        boxes.set(code, prev
+          ? { x0: Math.min(prev.x0, bb.x), y0: Math.min(prev.y0, bb.y), x1: Math.max(prev.x1, bb.x + bb.width), y1: Math.max(prev.y1, bb.y + bb.height) }
+          : { x0: bb.x, y0: bb.y, x1: bb.x + bb.width, y1: bb.y + bb.height })
+      })
+      const fit = fitBounds([...boxes.values()])
+      if (!fit) return
+      const sc = Math.min(MAX_SCALE, Math.max(MIN_SCALE, 0.9 * VIEW_SIZE / Math.max(fit.x1 - fit.x0, fit.y1 - fit.y0)))
+      setView({ scale: sc, x: VIEW_SIZE / 2 - sc * (fit.x0 + fit.x1) / 2, y: VIEW_SIZE / 2 - sc * (fit.y0 + fit.y1) / 2 })
+    })
+    return () => cancelAnimationFrame(frame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paths, fitKey])
 
   const clientToSvgPoint = (clientX: number, clientY: number) => {
     const svg = svgRef.current
@@ -306,10 +354,11 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
                 {[...paths.entries()].map(([code, d]) => {
                   const v = values.get(code)
                   const ramp = COLOR_SCHEMES[schemeKey].ramp
-                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(max === min ? 0.5 : (v - min) / (max - min), ramp)
+                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
                   return (
                     <path
                       key={code}
+                      data-code={code}
                       d={d}
                       fill={fill}
                       strokeWidth={picked?.code === code ? 1.5 : 0.5}
@@ -370,7 +419,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
                 <line x1={0} y1={190} x2={400} y2={190} stroke="#e5e7eb" strokeWidth={1} />
                 {bins.map((bin, i) => {
                   const ramp = COLOR_SCHEMES[schemeKey].ramp
-                  const fill = sequentialColor(max === min ? 0.5 : ((bin.x0 + bin.x1) / 2 - min) / (max - min), ramp)
+                  const fill = sequentialColor((i + 0.5) / BIN_COUNT, ramp)
                   const barWidth = 400 / BIN_COUNT
                   const barHeight = (bin.count / maxCount) * 178
                   return (
@@ -400,7 +449,8 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
             </div>
           )}
 
-          {paths && (
+          {paths && scale.kind !== 'rank' && (
+            // On a rank scale every bar would be the same height — no histogram.
             <button
               className="absolute bottom-3 right-3 z-20 px-3 py-1 border border-gray-300 rounded bg-white/90 hover:bg-gray-50 text-sm shadow-sm"
               onClick={() => setShowHistogram(h => !h)}
@@ -421,13 +471,13 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
             className="flex items-center gap-2 w-full border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-500 cursor-pointer shadow-sm hover:border-gray-400"
             onClick={() => setSchemeOpen(o => !o)}
           >
-            <span>{min.toLocaleString('ja-JP')}</span>
+            <span className="tabular-nums">{scale.clippedLow ? '≤ ' : ''}{legendValue(scale.lo)}</span>
             <span
               ref={gradientRef}
               className="h-2 flex-1 rounded-sm block"
               style={{ background: `linear-gradient(to right, ${COLOR_SCHEMES[schemeKey].ramp.join(', ')})` }}
             />
-            <span>{max.toLocaleString('ja-JP')}</span>
+            <span className="tabular-nums">{scale.clippedHigh ? '≥ ' : ''}{legendValue(scale.hi)}</span>
             <span className="text-gray-400">▾</span>
           </button>
           {schemeOpen && (
@@ -452,6 +502,35 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, designat
                 </button>
               ))}
             </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-600">
+          <label className="flex items-center gap-1.5">
+            目盛り
+            <select
+              aria-label="目盛り"
+              className="border border-gray-300 rounded px-1.5 py-0.5 bg-white text-gray-900"
+              value={scaleChoice}
+              onChange={e => setParam('scale', e.target.value === 'auto' ? null : e.target.value)}
+            >
+              <option value="auto">自動（{SCALE_LABELS[autoKind]}）</option>
+              <option value="linear">線形</option>
+              <option value="log" disabled={!logPossible}>対数{logPossible ? '' : '（0以下の値が多いため不可）'}</option>
+              <option value="rank">順位（パーセンタイル）</option>
+            </select>
+          </label>
+          <label className={`flex items-center gap-1.5 ${scale.kind === 'rank' ? 'opacity-40' : ''}`} title="極端に大きい・小さい値に色の範囲が引っ張られないよう、上下の値を両端の色でまとめて塗ります">
+            <input
+              type="checkbox"
+              checked={clip && scale.kind !== 'rank'}
+              disabled={scale.kind === 'rank'}
+              onChange={e => setParam('clip', e.target.checked ? '1' : null)}
+            />
+            外れ値を色の範囲から除く（上下{CLIP_PERCENT}%）
+          </label>
+          {scale.kind !== 'linear' && (
+            <span className="text-gray-400 tabular-nums">中央の色 ≒ {legendValue(scale.valueAt(0.5))}</span>
           )}
         </div>
     </div>

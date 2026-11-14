@@ -460,6 +460,7 @@ function MuniTable({ title, description, initialColumns, initialFilter = null, i
               displayItems={mapItems}
               designations={designations}
               coastal={coastal}
+              fitToItems={filterExpr !== null}
             />
           </div>
           <SourceNote used={usedKeys} selection={selection} designations={used.designations} map compact />

@@ -280,3 +280,42 @@ test('dragging the map pans it (translate changes) without leaving zoom stuck', 
   const after = await group.getAttribute('transform')
   expect(after).not.toBe(before)
 })
+
+test('the color scale is automatic per map (log for density), switchable, and kept in the URL with outlier clipping', async ({ page }) => {
+  await page.goto('/rankings/all/density?map=@3')
+  await expect(page.locator('svg path').first()).toBeVisible()
+  const scaleSelect = page.getByRole('combobox', { name: '目盛り' })
+  const legend = page.getByTestId('map-legend')
+
+  // Density spans orders of magnitude → automatic picks log.
+  await expect(scaleSelect.locator('option:checked')).toHaveText('自動（対数）')
+
+  await scaleSelect.selectOption('linear')
+  await expect(page).toHaveURL(/scale=linear/)
+  await expect(legend).not.toContainText('≥')
+
+  // The checkbox reflects the URL, which updates a moment after the click.
+  await page.getByLabel(/外れ値を色の範囲から除く/).click()
+  await expect(page.getByLabel(/外れ値を色の範囲から除く/)).toBeChecked()
+  await expect(page).toHaveURL(/clip=1/)
+  await expect(legend).toContainText('≥')
+
+  await page.reload()
+  await expect(scaleSelect.locator('option:checked')).toHaveText('線形')
+  await expect(page.getByLabel(/外れ値を色の範囲から除く/)).toBeChecked()
+})
+
+test('evenly spread data (aging rate) gets a linear automatic scale', async ({ page }) => {
+  await page.goto('/rankings/all/elderly-ratio?map=@4')
+  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.getByRole('combobox', { name: '目盛り' }).locator('option:checked')).toHaveText('自動（線形）')
+})
+
+test('a map filtered to one prefecture zooms to it', async ({ page }) => {
+  await page.goto('/rankings/tokyo/density?map=@3')
+  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(async () => {
+    const t = await page.locator('svg > g').getAttribute('transform')
+    expect(Number(t?.match(/scale\(([\d.]+)\)/)?.[1])).toBeGreaterThan(5)
+  }).toPass()
+})
