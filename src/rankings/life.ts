@@ -6,24 +6,33 @@ type Pref = { kanji: string }
 // Rankings that start from a question someone asks at a turn in their life,
 // computed from the same data as everything else.
 
-// 恋人を探すなら、ライバルは何人？ — men a few years older per woman. A
-// small town can have a handful of women in the bracket, so the starting
-// filter needs at least 100 of them (visible, removable like any filter).
-export const LOVE_RATIO = 'ROUND(MULT(#male25_29, INV(#female20_24)), 2)'
-export function loveCompetitionConfig(pref: Pref | null): RankingConfig {
+// 恋人を探すなら、ライバルは何人？ — a few years' age gap, seen from either
+// side: women 20〜24 per man 25〜29 (for women), or the other way round
+// (for men). A small town can have a handful of people in the bracket, so
+// the starting filter needs at least 100 of the other side (visible, and
+// removable like any filter).
+const LOVE_SIDES = {
+  women: { rivals: '#female20_24', partners: '#male25_29', rivalLabel: '20〜24歳の女性', partnerLabel: '25〜29歳の男性', seenBy: '女性', per: '男性1人あたりの女性' },
+  men:   { rivals: '#male25_29', partners: '#female20_24', rivalLabel: '25〜29歳の男性', partnerLabel: '20〜24歳の女性', seenBy: '男性', per: '女性1人あたりの男性' },
+}
+export type LoveSide = keyof typeof LOVE_SIDES
+export const loveRatio = (side: LoveSide) => `MULT(${LOVE_SIDES[side].rivals}, INV(${LOVE_SIDES[side].partners}))`
+
+export function loveCompetitionConfig(pref: Pref | null, side: LoveSide): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
+  const s = LOVE_SIDES[side]
   return {
-    title: `${scope}の恋愛競争率ランキング（25〜29歳の男性 ÷ 20〜24歳の女性）`,
-    description: `${scope}の市区町村を、20〜24歳の女性1人に対する25〜29歳の男性の人数が多い順に並べたランキングです。`,
+    title: `${scope}の恋愛競争率ランキング（${s.seenBy}から見て：${s.rivalLabel} ÷ ${s.partnerLabel}）`,
+    description: `${scope}の市区町村を、${s.partnerLabel}1人に対する${s.rivalLabel}の人数が多い順に並べたランキングです。`,
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
-      { id: 1, label: '競争率（女性1人あたりの男性）', expression: LOVE_RATIO },
-      { id: 2, label: '25〜29歳の男性', expression: '#male25_29' },
-      { id: 3, label: '20〜24歳の女性', expression: '#female20_24' },
+      { id: 1, label: `競争率（${s.per}）`, expression: `ROUND(${loveRatio(side)}, 2)` },
+      { id: 2, label: s.rivalLabel, expression: s.rivals },
+      { id: 3, label: s.partnerLabel, expression: s.partners },
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],
-    filterExpression: allOf(OFFICIAL, pref && inPref(pref), 'LEQ(100, #female20_24)'),
-    sortExpression: 'MULT(#male25_29, INV(#female20_24))',
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref), `LEQ(100, ${s.partners})`),
+    sortExpression: loveRatio(side),
     sortDirection: 'desc',
   }
 }

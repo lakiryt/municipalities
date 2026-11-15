@@ -13,13 +13,13 @@ test('the home page searches municipalities by name or reading and opens the cho
 test("the home carousel steps through picked rankings, each map leading to its ranking's map view", async ({ page }) => {
   await page.goto('/')
   const carousel = page.getByRole('region', { name: 'ピックアップ' })
-  await expect(carousel.getByText('1 / 5')).toBeVisible()
+  await expect(carousel.getByText('1 / 6')).toBeVisible()
   await carousel.getByRole('button', { name: '次へ' }).click()
-  await expect(carousel.getByText('2 / 5')).toBeVisible()
-  await carousel.getByRole('tab', { name: /ライバル/ }).click()
-  await expect(carousel.getByText('3 / 5')).toBeVisible()
-  await carousel.getByRole('link', { name: /ライバルは何人？（地図で見る）/ }).click()
-  await expect(page).toHaveURL(/\/rankings\/all\/love-competition\?map=@1$/)
+  await expect(carousel.getByText('2 / 6')).toBeVisible()
+  await carousel.getByRole('tab', { name: /年下の彼女/ }).click()
+  await expect(carousel.getByText('4 / 6')).toBeVisible()
+  await carousel.getByRole('link', { name: /年下の彼女を探すなら、ライバルは何人？（地図で見る）/ }).click()
+  await expect(page).toHaveURL(/\/rankings\/all\/love-competition-men\?map=@1$/)
 })
 
 test('the home page shows the brand in its hero, and in the bar only after scrolling', async ({ page }) => {

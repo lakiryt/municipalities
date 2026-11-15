@@ -101,8 +101,10 @@ test('the rent-vs-minimum-wage labor-days ranking page loads with all its column
 })
 
 test('the life-question rankings load, each ordered by its own figure', async ({ page }) => {
-  await page.goto('/rankings/all/love-competition')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('恋愛競争率ランキング')
+  await page.goto('/rankings/all/love-competition-women')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('恋愛競争率ランキング（女性から見て')
+  await page.goto('/rankings/all/love-competition-men')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('恋愛競争率ランキング（男性から見て')
   await page.goto('/rankings/shimane/pension-rent')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('島根県の「年金で家賃を払った残り」ランキング')
   await page.goto('/rankings/all/newcomers')

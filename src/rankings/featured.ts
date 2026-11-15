@@ -20,7 +20,7 @@ export type Featured = {
 export function featuredRankings(): Featured[] {
   return [
     {
-      question: '生まれたまちは、5年でどれだけ人が減った？',
+      question: 'この5年で、まちの人口はどれだけ減った？',
       note: `国勢調査（${changePeriod()}）の人口増減率`,
       config: populationChangeConfig(null, 'decline'),
       path: '/rankings/all/population-decline',
@@ -36,10 +36,18 @@ export function featuredRankings(): Featured[] {
       unit: '日',
     },
     {
-      question: '恋人を探すなら、ライバルは何人？',
+      question: '年上の彼を探すなら、ライバルは何人？',
+      note: '25〜29歳の男性1人あたりの、20〜24歳の女性の人数',
+      config: loveCompetitionConfig(null, 'women'),
+      path: '/rankings/all/love-competition-women',
+      mapColumn: 1,
+      unit: '人',
+    },
+    {
+      question: '年下の彼女を探すなら、ライバルは何人？',
       note: '20〜24歳の女性1人あたりの、25〜29歳の男性の人数',
-      config: loveCompetitionConfig(null),
-      path: '/rankings/all/love-competition',
+      config: loveCompetitionConfig(null, 'men'),
+      path: '/rankings/all/love-competition-men',
       mapColumn: 1,
       unit: '人',
     },
