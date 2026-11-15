@@ -124,7 +124,8 @@ test('a ranking page can be shared as it is on screen: link copy, X, LINE', asyn
   await page.getByRole('button', { name: '共有' }).click()
   await page.getByRole('menuitem', { name: 'リンクをコピー' }).click()
   await expect(page.getByRole('menuitem', { name: 'コピーしました' })).toBeVisible()
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/rankings\/shimane\/density\?map=%40?@?3$|\/rankings\/shimane\/density\?map=@3$/)
+  // Evaluated in the page (the e2e tsconfig has Node's types, not the DOM's).
+  expect(await page.evaluate<string>('navigator.clipboard.readText()')).toMatch(/\/rankings\/shimane\/density\?map=@3$/)
 
   const popup = page.waitForEvent('popup')
   await page.getByRole('menuitem', { name: 'X でポスト' }).click()
