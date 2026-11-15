@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('tbody tr').first()).toBeVisible()
   await page.getByRole('columnheader', { name: '総人口', exact: true }).click()
   await page.getByRole('button', { name: 'この列を地図に表示' }).click()
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 })
 
 // CDP's Input.dispatchTouchEvent drives real multi-touch input — the thing

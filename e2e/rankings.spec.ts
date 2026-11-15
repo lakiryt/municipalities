@@ -24,12 +24,12 @@ test("on the map, a designated city shown without its wards is drawn over its wa
   await page.goto('/explore')
   await expect(page.locator('tbody tr').first()).toBeVisible()
   await page.getByRole('tab', { name: '地図', exact: true }).click()
-  await page.waitForSelector('svg path')
+  await page.waitForSelector('svg path[data-code]')
 
   // Wards aren't rows here (&official), but their shapes still carry 横浜市's
   // value — only the handful of prefecture-coded islands are "no data".
-  const total = await page.locator('svg path').count()
-  const noData = await page.locator('svg path[fill="#e1e0d9"]').count()
+  const total = await page.locator('svg path[data-code]').count()
+  const noData = await page.locator('svg path[data-code][fill="#e1e0d9"]').count()
   expect(total).toBeGreaterThan(1000)
   expect(noData).toBeLessThan(20)
   const tsurumi = page.locator('svg path[data-code="14101"]')
@@ -113,4 +113,30 @@ test('the life-question rankings load, each ordered by its own figure', async ({
   await expect(page.getByRole('heading', { level: 1 })).toContainText('国外からの転入者の割合ランキング')
   await page.goto('/rankings/all/births')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('全国の1年間に生まれた赤ちゃんの数ランキング（少ない順）')
+})
+
+test('a ranking page can be shared as it is on screen: link copy, X, LINE', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await context.route(/^https:\/\/(x\.com|line\.me)\//, r => r.fulfill({ body: '' }))
+  await page.goto('/rankings/shimane/density?map=@3')
+  await expect(page.getByRole('banner').getByRole('heading')).toContainText('島根県')
+
+  await page.getByRole('button', { name: '共有' }).click()
+  await page.getByRole('menuitem', { name: 'リンクをコピー' }).click()
+  await expect(page.getByRole('menuitem', { name: 'コピーしました' })).toBeVisible()
+  // Evaluated in the page (the e2e tsconfig has Node's types, not the DOM's).
+  expect(await page.evaluate<string>('navigator.clipboard.readText()')).toMatch(/\/rankings\/shimane\/density\?map=@3$/)
+
+  const popup = page.waitForEvent('popup')
+  await page.getByRole('menuitem', { name: 'X でポスト' }).click()
+  const x = new URL((await popup).url())
+  expect(x.hostname).toBe('x.com')
+  expect(x.searchParams.get('url')).toMatch(/\/rankings\/shimane\/density\?map=@3$/)
+  expect(x.searchParams.get('text')).toContain('島根県の自治体の人口密度ランキング')
+  expect(x.searchParams.get('text')).toContain('霊智堂Atlas 自治体データ')
+
+  await page.getByRole('button', { name: '共有' }).click()
+  await expect(page.getByRole('menuitem', { name: 'LINE で送る' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu', { name: '共有' })).toHaveCount(0)
 })

@@ -451,7 +451,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         <SearchModal onApply={handleSearchApply} onClose={() => setSearchOpen(false)} />
       )}
       {sidebarOpen && <Sidebar onClose={() => setSidebarOpen(false)} />}
-      <AppHeader title={title} onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader title={title} onMenuClick={() => setSidebarOpen(true)} share />
       {mapColumn ? (
         // Map view: fills the screen below the header — no page scroll, so
         // drags and pinches always go to the map.
