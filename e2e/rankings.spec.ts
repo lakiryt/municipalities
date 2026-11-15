@@ -74,9 +74,9 @@ test('the average rent (20m²) ranking page loads and sorts descending', async (
   await page.goto('/rankings/all/rent')
   await expect(page.locator('tbody tr').first()).toBeVisible()
 
-  await expect(page.getByRole('columnheader', { name: '平均家賃（20㎡）', exact: true })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '民営借家の平均家賃（20㎡）', exact: true })).toBeVisible()
 
-  // Columns: #, 自治体名, 平均家賃（20㎡） (the ranked column, right after the name), …
+  // Columns: #, 自治体名, 民営借家の平均家賃（20㎡） (the ranked column, right after the name), …
   const firstRowValue = await page.locator('tbody tr').first().locator('td').nth(2).innerText()
   const secondRowValue = await page.locator('tbody tr').nth(1).locator('td').nth(2).innerText()
   const parse = (s: string) => Number(s.replace(/[^0-9.]/g, ''))
@@ -87,7 +87,7 @@ test('the rent-vs-minimum-wage labor-days ranking page loads with all its column
   await page.goto('/rankings/all/rent-labor-days')
   await expect(page.locator('tbody tr').first()).toBeVisible()
 
-  for (const label of ['都道府県', '自治体名', '平均家賃（30㎡）', '最低賃金', '平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数']) {
+  for (const label of ['都道府県', '自治体名', '民営借家の平均家賃（30㎡）', '最低賃金', '民営借家の平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数']) {
     await expect(page.getByRole('columnheader', { name: label, exact: true })).toBeVisible()
   }
 
@@ -98,4 +98,19 @@ test('the rent-vs-minimum-wage labor-days ranking page loads with all its column
 
   await expect(page).toHaveURL(/\/rankings\/all\/rent-labor-days\?map=@4/)
   await expect(page.getByRole('heading', { name: /平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数の地図/ })).toBeVisible()
+})
+
+test('the life-question rankings load, each ordered by its own figure', async ({ page }) => {
+  await page.goto('/rankings/all/love-competition-women')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('恋愛競争率ランキング（女性から見て')
+  await page.goto('/rankings/all/love-competition-men')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('恋愛競争率ランキング（男性から見て')
+  await page.goto('/rankings/shimane/pension-rent')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('島根県の「年金で家賃を払った残り」ランキング')
+  await page.goto('/rankings/all/newcomers')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('転入者の割合ランキング（去年国内から')
+  await page.goto('/rankings/all/from-abroad')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('国外からの転入者の割合ランキング')
+  await page.goto('/rankings/all/births')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('全国の1年間に生まれた赤ちゃんの数ランキング（少ない順）')
 })

@@ -17,8 +17,10 @@ import MuniTable from './components/MuniTable'
 import Canonical from './components/Canonical'
 import populationOver500k from './rankings/populationOver500k'
 import { populationConfig } from './rankings/population'
-import elderlyRatioConfig from './rankings/elderlyRatio'
-import rentConfig from './rankings/rent'
+import { elderlyRatioConfig } from './rankings/elderlyRatio'
+import { rentConfig } from './rankings/rent'
+import { municipalPopulationConfig, householdsConfig } from './rankings/municipalPopulation'
+import { loveCompetitionConfig, pensionRentConfig, newcomersConfig, fromAbroadConfig, birthsConfig } from './rankings/life'
 import rentLaborDaysConfig from './rankings/rentLaborDays'
 import { initialColumns } from './data/municipalities'
 
@@ -26,6 +28,16 @@ const router = createBrowserRouter([
   { path: '/',                                   element: <HomePage /> },
   { path: '/explore',                            element: <App /> },
   { path: '/rankings/:pref',                     element: <PrefHubPage /> },
+  { path: '/rankings/:pref/population',          element: <PrefRankingPage configFor={municipalPopulationConfig} /> },
+  { path: '/rankings/:pref/households',          element: <PrefRankingPage configFor={householdsConfig} /> },
+  { path: '/rankings/:pref/elderly-ratio',       element: <PrefRankingPage configFor={elderlyRatioConfig} /> },
+  { path: '/rankings/:pref/rent',                element: <PrefRankingPage configFor={rentConfig} /> },
+  { path: '/rankings/:pref/love-competition-women', element: <PrefRankingPage configFor={p => loveCompetitionConfig(p, 'women')} /> },
+  { path: '/rankings/:pref/love-competition-men',   element: <PrefRankingPage configFor={p => loveCompetitionConfig(p, 'men')} /> },
+  { path: '/rankings/:pref/pension-rent',        element: <PrefRankingPage configFor={pensionRentConfig} /> },
+  { path: '/rankings/:pref/newcomers',           element: <PrefRankingPage configFor={newcomersConfig} /> },
+  { path: '/rankings/:pref/from-abroad',         element: <PrefRankingPage configFor={fromAbroadConfig} /> },
+  { path: '/rankings/:pref/births',              element: <PrefRankingPage configFor={birthsConfig} /> },
   { path: '/rankings/:pref/density',             element: <PrefRankingPage configFor={densityConfig} /> },
   { path: '/rankings/:pref/cities',              element: <PrefRankingPage configFor={cityPopulationConfig} /> },
   { path: '/rankings/:pref/area',                element: <PrefRankingPage configFor={areaConfig} /> },
@@ -37,8 +49,6 @@ const router = createBrowserRouter([
   { path: '/rankings/all/designated-cities',    element: <RankingPage config={designatedCitiesConfig} /> },
   { path: '/rankings/all/core-cities',          element: <RankingPage config={coreCitiesConfig} /> },
   { path: '/rankings/all/population-over-500k', element: <RankingPage config={populationOver500k} /> },
-  { path: '/rankings/all/elderly-ratio',        element: <RankingPage config={elderlyRatioConfig} /> },
-  { path: '/rankings/all/rent',                  element: <RankingPage config={rentConfig} /> },
   { path: '/rankings/all/rent-labor-days',       element: <RankingPage config={rentLaborDaysConfig} /> },
   { path: '/list/all/population',              element: <RankingPage config={populationConfig} /> },
   { path: '/data',                               element: <DataSourcesPage /> },

@@ -7,12 +7,14 @@ export const CATALOG: CatalogGroup[] = [
   {
     title: '人口',
     entries: [
+      { slug: 'population', label: '市区町村の人口', perPref: true },
       { slug: 'population-change', label: '人口増加率', perPref: true },
       { slug: 'population-decline', label: '人口減少率', perPref: true },
       { slug: 'cities', label: '市の人口', perPref: true },
       { slug: 'towns', label: '町の人口', perPref: true },
       { slug: 'villages', label: '村の人口', perPref: true },
-      { slug: 'elderly-ratio', label: '老年人口比率', perPref: false },
+      { slug: 'households', label: '世帯数', perPref: true },
+      { slug: 'elderly-ratio', label: '老年人口比率', perPref: true },
     ],
   },
   {
@@ -26,8 +28,14 @@ export const CATALOG: CatalogGroup[] = [
   {
     title: '暮らし',
     entries: [
-      { slug: 'rent', label: '家賃', perPref: false },
+      { slug: 'rent', label: '家賃', perPref: true },
       { slug: 'rent-labor-days', label: '家賃を稼ぐのに必要な労働日数', perPref: false, query: '?map=@4' },
+      { slug: 'pension-rent', label: '年金で家賃を払った残り', perPref: true },
+      { slug: 'love-competition-women', label: '恋愛競争率（女性から見て）', perPref: true },
+      { slug: 'love-competition-men', label: '恋愛競争率（男性から見て）', perPref: true },
+      { slug: 'newcomers', label: '転入者の割合（国内から）', perPref: true },
+      { slug: 'from-abroad', label: '転入者の割合（国外から）', perPref: true },
+      { slug: 'births', label: '生まれた赤ちゃんの数', perPref: true },
     ],
   },
   {

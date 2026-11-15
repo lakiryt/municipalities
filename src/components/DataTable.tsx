@@ -2,6 +2,7 @@ import { evaluate } from '../lang/evaluate'
 import type { BaseItem } from '../data/municipalities'
 import type { Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { formatValue } from '@/lib/format'
 
@@ -18,6 +19,8 @@ type Props = {
   onSortColumn: (id: number) => void
   // Where a municipality's name links to (its detail page).
   linkFor: (code: string) => string
+  // A row to mark and scroll to (e.g. arriving from a municipality's rank).
+  highlight?: string
 }
 
 // Header labels wrap (max-w-44) so one long label — "平均家賃30㎡分を稼ぐの
@@ -33,9 +36,19 @@ const TD = 'border-b border-r border-gray-200 px-3 py-1.5'
 // page — the municipality name stay put while the rest scrolls sideways,
 // so a row is always identifiable on a narrow screen.
 function DataTable({
-  columns, displayItems, envOf, sortedColumnId, sortDirection, onEditColumn, onAddColumn, onSortColumn, linkFor,
+  columns, displayItems, envOf, sortedColumnId, sortDirection, onEditColumn, onAddColumn, onSortColumn, linkFor, highlight,
 }: Props) {
   const stickyName = columns[0]?.expression === '$kanji'
+
+  // Scroll the highlighted row into view once, as soon as it's rendered.
+  const highlightRef = useRef<HTMLTableRowElement>(null)
+  const scrolledTo = useRef<string | undefined>(undefined)
+  const highlightShown = !!highlight && displayItems.some(i => i.code === highlight)
+  useEffect(() => {
+    if (!highlightShown || scrolledTo.current === highlight) return
+    scrolledTo.current = highlight
+    highlightRef.current?.scrollIntoView({ block: 'center' })
+  }, [highlight, highlightShown])
 
   return (
     <div className="flex justify-center min-w-max md:px-4">
@@ -81,8 +94,14 @@ function DataTable({
         <tbody>
           {displayItems.map((item, i) => {
             const env = envOf(item)
+            const marked = item.code === highlight
             return (
-              <tr key={item.code} className="group">
+              <tr
+                key={item.code}
+                ref={marked ? highlightRef : undefined}
+                aria-current={marked ? 'true' : undefined}
+                className={`group ${marked ? '[&>td]:!bg-[#fdf3d0]' : ''}`}
+              >
                 <td className={`${TD} sticky left-0 z-10 bg-white group-hover:bg-gray-50 w-12 min-w-12 max-w-12 !px-2 text-right text-gray-400 tabular-nums text-xs`}>{i + 1}</td>
                 {columns.map((col, ci) => {
                   const numeric = col.typed.type === 'n'

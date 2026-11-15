@@ -28,6 +28,7 @@ export type BaseItem = {
   area: number
   rentInc0: number
   rentExc0: number
+  rentPrivate: number
   minWage: number
   // 人口増減: total population in the two compared editions (データの選択)
   popFrom: number
@@ -107,6 +108,7 @@ export const buildItems = (
     area: areaMap.get(item.code) ?? NaN,
     rentInc0: rentMap.get(item.code)?.inc0 ?? NaN,
     rentExc0: rentMap.get(item.code)?.exc0 ?? NaN,
+    rentPrivate: rentMap.get(item.code)?.private ?? NaN,
     minWage: minWageMap.get(item.code.slice(0, 2))?.min ?? NaN,
     popFrom: changeMap.get(item.code)?.from ?? NaN,
     popTo: changeMap.get(item.code)?.to ?? NaN,
@@ -119,6 +121,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     area: item.area,
     rent_inc0: item.rentInc0,
     rent_exc0: item.rentExc0,
+    rent_private: item.rentPrivate,
     minwage: item.minWage,
     pop_from: item.popFrom,
     pop_to: item.popTo,
@@ -165,6 +168,7 @@ const _dummy: BaseItem = {
   area: 0,
   rentInc0: 0,
   rentExc0: 0,
+  rentPrivate: 0,
   minWage: 0,
   popFrom: 0,
   popTo: 0,

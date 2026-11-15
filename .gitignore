@@ -31,3 +31,6 @@ dist-ssr
 
 # Raw downloads for the data pipeline (re-fetchable; see DATA_PIPELINE.md)
 /data/.cache
+
+# Prerendered home carousel (scripts/prerender-featured.mjs, run by dev and build)
+/public/featured
