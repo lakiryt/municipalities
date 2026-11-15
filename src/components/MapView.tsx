@@ -171,7 +171,9 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
       // would be just as misleading as including the total itself.
       if (!drawn.has(code) || code.endsWith('000')) continue
       const v = evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number
-      if (!isNaN(v)) map.set(code, v)
+      // ±∞ (a ratio over a zero, e.g. no men of an age in a small village)
+      // has no place on a color scale: drawn as no data, like a missing value.
+      if (Number.isFinite(v)) map.set(code, v)
     }
     return map
   }, [itemByCode, column, designations, coastal, paths, drawn])

@@ -58,7 +58,7 @@ export function evaluateFeatured(f: Featured, items: BaseItem[], designations: D
     const env = baseItemEnv(item, designations, coastal)
     if (filter && evaluate(filter, env) !== true) continue
     const v = evaluate(value, env) as number
-    if (Number.isNaN(v)) continue
+    if (!Number.isFinite(v)) continue   // missing, or a ratio over zero: no color (as in the map view)
     values.set(item.code, v)
     const key = evaluate(sort, env) as number
     if (!Number.isNaN(key)) ranked.push({ item, value: v, key })
