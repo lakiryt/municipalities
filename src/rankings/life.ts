@@ -58,22 +58,66 @@ export function pensionRentConfig(pref: Pref | null): RankingConfig {
   }
 }
 
-// よそ者でも、なじめるまち — 去年引っ越してきた人（国内・国外）の割合。
-export const NEWCOMER_RATIO = 'ROUND(MULT(#inc_mov, INV(#totalpop), 100), 2)'
+// よそ者でも、なじめるまち — 去年、国内から引っ越してきた人の割合。
+// Arrivals from abroad are their own ranking (below): in ski resorts and
+// farming villages they are mostly seasonal workers who leave again within
+// the year, a different story from settling in.
+export const NEWCOMER_RATIO = 'ROUND(MULT(#inc_mov_dom, INV(#totalpop), 100), 2)'
 export function newcomersConfig(pref: Pref | null): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
   return {
-    title: `${scope}の転入者の割合ランキング（去年引っ越してきた人 ÷ 人口）`,
-    description: `${scope}の市区町村を、去年1年間に転入した人（国内・国外）の人口に対する割合が高い順に並べたランキングです。`,
+    title: `${scope}の転入者の割合ランキング（去年国内から引っ越してきた人 ÷ 人口）`,
+    description: `${scope}の市区町村を、去年1年間に国内から転入した人の、人口に対する割合が高い順に並べたランキングです。`,
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
       { id: 1, label: '転入者の割合(%)', expression: NEWCOMER_RATIO },
-      { id: 2, label: '転入者数', expression: '#inc_mov' },
+      { id: 2, label: '転入者数（国内から）', expression: '#inc_mov_dom' },
       { id: 3, label: '総人口', expression: '#totalpop' },
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],
     filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
-    sortExpression: 'MULT(#inc_mov, INV(#totalpop))',
+    sortExpression: 'MULT(#inc_mov_dom, INV(#totalpop))',
+    sortDirection: 'desc',
+  }
+}
+
+// 世界中から、人がやってくるまち — 去年、国外から引っ越してきた人の割合。
+export const FROM_ABROAD_RATIO = 'ROUND(MULT(#inc_mov_intl, INV(#totalpop), 100), 2)'
+export function fromAbroadConfig(pref: Pref | null): RankingConfig {
+  const scope = pref ? pref.kanji : '全国'
+  return {
+    title: `${scope}の国外からの転入者の割合ランキング（去年国外から引っ越してきた人 ÷ 人口）`,
+    description: `${scope}の市区町村を、去年1年間に国外から転入した人の、人口に対する割合が高い順に並べたランキングです。`,
+    columns: [
+      { id: 0, label: '自治体名', expression: '$kanji' },
+      { id: 1, label: '国外からの転入者の割合(%)', expression: FROM_ABROAD_RATIO },
+      { id: 2, label: '転入者数（国外から）', expression: '#inc_mov_intl' },
+      { id: 3, label: '転出者数（国外へ）', expression: '#dec_mov_intl' },
+      { id: 4, label: '総人口', expression: '#totalpop' },
+      ...(pref ? [] : [{ id: 5, label: '都道府県', expression: '$prefkanji' }]),
+    ],
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
+    sortExpression: 'MULT(#inc_mov_intl, INV(#totalpop))',
+    sortDirection: 'desc',
+  }
+}
+
+// 公園で、同じくらいの子に会える？ — 1km²あたりの0〜4歳の人数。
+export const TODDLER_DENSITY = 'ROUND(MULT(#total0_4, INV(#area)), 1)'
+export function toddlerDensityConfig(pref: Pref | null): RankingConfig {
+  const scope = pref ? pref.kanji : '全国'
+  return {
+    title: `${scope}の0〜4歳の人口密度ランキング`,
+    description: `${scope}の市区町村を、1km²あたりの0〜4歳の人数が多い順に並べたランキングです。`,
+    columns: [
+      { id: 0, label: '自治体名', expression: '$kanji' },
+      { id: 1, label: '0〜4歳の人口密度（人/km²）', expression: TODDLER_DENSITY },
+      { id: 2, label: '0〜4歳', expression: '#total0_4' },
+      { id: 3, label: '面積(km²)', expression: '#area' },
+      ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
+    ],
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
+    sortExpression: 'MULT(#total0_4, INV(#area))',
     sortDirection: 'desc',
   }
 }

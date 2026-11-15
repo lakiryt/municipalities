@@ -1,7 +1,7 @@
 import type { RankingConfig } from '../types'
 import { populationChangeConfig, changePeriod } from './populationChange'
 import rentLaborDaysConfig from './rentLaborDays'
-import { loveCompetitionConfig, pensionRentConfig, newcomersConfig, PENSION_MONTHLY } from './life'
+import { loveCompetitionConfig, pensionRentConfig, newcomersConfig, fromAbroadConfig, toddlerDensityConfig, PENSION_MONTHLY } from './life'
 
 // The home page's carousel: rankings picked for the question behind them —
 // something a person wonders about at a turn in their life. Each slide is an
@@ -36,6 +36,22 @@ export function featuredRankings(): Featured[] {
       unit: '日',
     },
     {
+      question: 'よそ者でも、なじめるまちは？',
+      note: '去年1年間に国内から引っ越してきた人の、人口に対する割合',
+      config: newcomersConfig(null),
+      path: '/rankings/all/newcomers',
+      mapColumn: 1,
+      unit: '%',
+    },
+    {
+      question: '世界中から、人がやってくるまちは？',
+      note: '去年1年間に国外から引っ越してきた人の、人口に対する割合',
+      config: fromAbroadConfig(null),
+      path: '/rankings/all/from-abroad',
+      mapColumn: 1,
+      unit: '%',
+    },
+    {
       question: '年上の彼を探すなら、ライバルは何人？',
       note: '25〜29歳の男性1人あたりの、20〜24歳の女性の人数',
       config: loveCompetitionConfig(null, 'women'),
@@ -52,20 +68,20 @@ export function featuredRankings(): Featured[] {
       unit: '人',
     },
     {
+      question: '公園で、同じくらいの子に会える？',
+      note: '1km²あたりの、0〜4歳の子どもの人数',
+      config: toddlerDensityConfig(null),
+      path: '/rankings/all/toddler-density',
+      mapColumn: 1,
+      unit: '人/km²',
+    },
+    {
       question: '年金だけで暮らしたら、家賃を払っていくら残る？',
       note: `国民年金の満額（月${PENSION_MONTHLY.toLocaleString('ja-JP')}円）から、30m²の平均家賃を引いた額`,
       config: pensionRentConfig(null),
       path: '/rankings/all/pension-rent',
       mapColumn: 1,
       unit: '円',
-    },
-    {
-      question: 'よそ者でも、なじめるまちは？',
-      note: '去年1年間に引っ越してきた人の、人口に対する割合',
-      config: newcomersConfig(null),
-      path: '/rankings/all/newcomers',
-      mapColumn: 1,
-      unit: '%',
     },
   ]
 }

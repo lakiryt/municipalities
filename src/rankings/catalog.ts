@@ -33,7 +33,9 @@ export const CATALOG: CatalogGroup[] = [
       { slug: 'pension-rent', label: '年金で家賃を払った残り', perPref: true },
       { slug: 'love-competition-women', label: '恋愛競争率（女性から見て）', perPref: true },
       { slug: 'love-competition-men', label: '恋愛競争率（男性から見て）', perPref: true },
-      { slug: 'newcomers', label: '転入者の割合', perPref: true },
+      { slug: 'newcomers', label: '転入者の割合（国内から）', perPref: true },
+      { slug: 'from-abroad', label: '転入者の割合（国外から）', perPref: true },
+      { slug: 'toddler-density', label: '0〜4歳の人口密度', perPref: true },
     ],
   },
   {

@@ -56,6 +56,8 @@ const urls = [
   { path: '/rankings/all/love-competition-women', priority: '0.7', changefreq: 'monthly' },
   { path: '/rankings/all/love-competition-men',   priority: '0.7', changefreq: 'monthly' },
   { path: '/rankings/all/newcomers',             priority: '0.7', changefreq: 'monthly' },
+  { path: '/rankings/all/from-abroad',           priority: '0.7', changefreq: 'monthly' },
+  { path: '/rankings/all/toddler-density',       priority: '0.7', changefreq: 'monthly' },
   { path: '/rankings/all/population-over-500k', priority: '0.7', changefreq: 'monthly' },
   { path: '/list/all/population',               priority: '0.7', changefreq: 'monthly' },
   { path: '/explore',                           priority: '0.5', changefreq: 'monthly' },
@@ -78,6 +80,8 @@ const urls = [
     { path: `/rankings/${p.romanized}/love-competition-women`, priority: '0.6', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/love-competition-men`,   priority: '0.6', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/newcomers`,        priority: '0.6', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/from-abroad`,      priority: '0.6', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/toddler-density`,  priority: '0.6', changefreq: 'monthly' },
   ]),
   ...prefectures.filter(p => prefsWithVillages.has(p.code.slice(0, 2))).map(p =>
     ({ path: `/rankings/${p.romanized}/villages`, priority: '0.6', changefreq: 'monthly' })),
