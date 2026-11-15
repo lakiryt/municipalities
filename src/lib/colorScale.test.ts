@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { makeScale, suggestScale, quantile, canLog, canDiverge } from './colorScale'
+import {
+  makeScale as makeFiniteScale, asFinite, rampPosition, suggestScale, quantile, canLog, canDiverge,
+  type ScaleChoice, type ScaleKind,
+} from './colorScale'
+import { sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP } from './topoMap'
+
+// The scale takes Finite values and ramp positions; most tests here speak in
+// plain (finite) numbers, so this adapts them.
+function makeScale(values: number[], choice: ScaleChoice, clip?: number) {
+  const s = makeFiniteScale(values.map(v => asFinite(v)!), choice, clip)!
+  return { ...s, t: (v: number) => s.t(asFinite(v)!), valueAt: (t: number) => s.valueAt(rampPosition(t)) }
+}
 
 // Mostly decline, some growth, one extreme (+81%) — like a population change rate.
 const changeLike = [
@@ -27,11 +38,36 @@ describe('suggestScale', () => {
 })
 
 describe('makeScale', () => {
-  it('ignores infinite values (a ratio over zero), so every finite value still gets a color', () => {
-    const scale = makeScale([1, 2, 3, Infinity, -Infinity, NaN], 'auto')
-    expect(scale.lo).toBe(1)
-    expect(scale.hi).toBe(3)
-    for (const v of [1, 2, 3]) expect(Number.isFinite(scale.t(v))).toBe(true)
+  it('takes only finite values: NaN (missing) and ±∞ (a ratio over zero) never reach it', () => {
+    expect([1, 0, -2.5, Infinity, -Infinity, NaN].map(asFinite)).toEqual([1, 0, -2.5, undefined, undefined, undefined])
+  })
+
+  it('is null when there is nothing to span (no legend of NaN)', () => {
+    expect(makeFiniteScale([], 'auto')).toBeNull()
+    expect(makeFiniteScale([], 'linear', 10)).toBeNull()
+  })
+
+  // Whatever the data and settings, every value gets a position in 0..1 and a
+  // real color, and the legend's ends are numbers — the chain a map draws with.
+  it('gives every value a color, for awkward data and every setting', () => {
+    const awkward: Record<string, number[]> = {
+      one: [5], allEqual: [3, 3, 3], allZero: [0, 0], zeroAndPositive: [0, 0, 1], onlyNegative: [-5, -1],
+      negativeAndZero: [-3, 0], tiny: [1e-12, 2e-12], huge: [1e300, 1e301], negativeZero: [-0, 0, 1],
+      symmetric: [-1, -1, 1, 1], changeLike,
+    }
+    const choices: ScaleChoice[] = ['auto', 'linear', 'log', 'rank', 'diverging', 'symlog']
+    const signed = (k: ScaleKind) => k === 'diverging' || k === 'symlog'
+    for (const [name, values] of Object.entries(awkward)) for (const choice of choices) for (const clip of [0, 10]) {
+      const s = makeFiniteScale(values.map(v => asFinite(v)!), choice, clip)!
+      const where = `${name} / ${choice} / clip ${clip}`
+      expect(Number.isFinite(s.lo) && Number.isFinite(s.hi), where).toBe(true)
+      const ramp = signed(s.kind) ? DIVERGING_RAMP : COLOR_SCHEMES.blue.ramp
+      for (const v of values) {
+        const t = s.t(asFinite(v)!)
+        expect(t >= 0 && t <= 1, `${where}: t(${v}) = ${t}`).toBe(true)
+        expect(sequentialColor(t, ramp), where).toMatch(/^rgb\(\d+, \d+, \d+\)$/)
+      }
+    }
   })
 
   it('diverging puts 0 in the middle and stretches each side to its own extreme', () => {

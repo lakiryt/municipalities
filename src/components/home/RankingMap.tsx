@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 type Props = {
   // The prerendered map (scripts/prerender-featured.mjs); undefined while loading.
   src?: string
-  legend?: { lo: number; hi: number; zeroAt: number | null; ramp: string[] }
+  legend?: { lo: number; hi: number; zeroAt: number | null; ramp: readonly string[] }
   format: (v: number) => string
   // Where the whole map leads: the ranking's own map view.
   to: string

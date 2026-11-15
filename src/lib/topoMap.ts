@@ -2,6 +2,7 @@
 // projected with a plain spherical Mercator (no external geo library).
 
 import { mapTopojsonPath } from '@/data/datasets'
+import type { RampPosition } from './colorScale'
 
 export const VIEW_SIZE = 960
 
@@ -139,7 +140,10 @@ async function loadMunicipalityPaths(): Promise<MuniPaths> {
 // kept as the minimal/classic option (a ColorBrewer-style sequential scheme).
 export type ColorSchemeKey = 'viridis' | 'magma' | 'blue'
 
-export const COLOR_SCHEMES: Record<ColorSchemeKey, { label: string; ramp: string[] }> = {
+/** Colors from low to high (at least two, as #rrggbb). */
+export type Ramp = readonly [`#${string}`, `#${string}`, ...`#${string}`[]]
+
+export const COLOR_SCHEMES: Record<ColorSchemeKey, { label: string; ramp: Ramp }> = {
   viridis: {
     label: 'Viridis',
     ramp: [
@@ -166,7 +170,7 @@ export const COLOR_SCHEMES: Record<ColorSchemeKey, { label: string; ramp: string
 // Diverging (増減): decline in a warm hue, a light neutral at 0, growth in
 // blue ending in the brand navy — the same reading as the home page's
 // prefecture map. Lightness steps mirror each other around the middle.
-export const DIVERGING_RAMP = [
+export const DIVERGING_RAMP: Ramp = [
   '#8c2d16', '#b8502c', '#d9784f', '#efaa8a', '#f8d8c8',
   '#f5f4f0',
   '#cde2fb', '#86b6ef', '#3987e5', '#1c5cab', '#13294b',
@@ -185,10 +189,10 @@ function lerpHex(a: string, b: string, t: number): string {
   return `rgb(${r}, ${g}, ${bl})`
 }
 
-// t in [0, 1] -> a color along the given ramp.
-export function sequentialColor(t: number, ramp: string[]): string {
-  const clamped = Math.max(0, Math.min(1, t))
-  const scaled = clamped * (ramp.length - 1)
+// A position along the ramp -> its color. Total: every RampPosition is in
+// 0..1 and every Ramp has two ends, so there is always a pair to blend.
+export function sequentialColor(t: RampPosition, ramp: Ramp): string {
+  const scaled = t * (ramp.length - 1)
   const i = Math.min(Math.floor(scaled), ramp.length - 2)
   return lerpHex(ramp[i], ramp[i + 1], scaled - i)
 }
