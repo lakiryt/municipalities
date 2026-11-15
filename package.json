@@ -11,8 +11,8 @@
     "data": "node scripts/data/cli.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "node scripts/vitest.mjs run",
+    "test:watch": "node scripts/vitest.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

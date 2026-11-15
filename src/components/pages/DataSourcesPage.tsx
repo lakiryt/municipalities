@@ -27,7 +27,7 @@ function DataSourcesPage() {
             return (
               <li key={id} className="py-4" id={id}>
                 <h2 className="font-semibold">
-                  {ds.page ? <a href={ds.page} target="_blank" rel="noopener noreferrer" className="text-[#13294b] hover:underline">{ds.name ?? ds.label} ↗</a> : (ds.name ?? ds.label)}
+                  {ds.page ? <a href={ds.page} target="_blank" rel="noopener noreferrer" className="text-navy-900 hover:underline">{ds.name ?? ds.label} ↗</a> : (ds.name ?? ds.label)}
                 </h2>
                 {ds.agency && <p className="text-sm text-gray-600">{ds.agency}</p>}
                 {ds.editions.length > 0 && (

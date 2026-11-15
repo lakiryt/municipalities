@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { inPref, ofKind, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { inPref, ofKind, allOf, type Pref } from './filters'
 
 const KUBUN = 'IF(&seirei, "政令指定都市", IF(&chukaku, "中核市", IF(&tokurei, "施行時特例市", "")))'
 

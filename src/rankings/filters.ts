@@ -1,6 +1,7 @@
 // Building blocks for the rankings' starting filters — ordinary expressions,
 // shown in the filter chip and editable like any other.
-type Pref = { kanji: string }
+/** A prefecture, as rankings need it (null elsewhere = the whole country). */
+export type Pref = { kanji: string }
 
 /** Actual 地方公共団体 only: no designated-city wards (they'd double-count their city). */
 export const OFFICIAL = '&official'

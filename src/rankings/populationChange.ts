@@ -1,8 +1,6 @@
 import type { RankingConfig } from '../types'
-import { OFFICIAL, inPref, allOf } from './filters'
+import { OFFICIAL, inPref, allOf, type Pref } from './filters'
 import { selectedSource, defaultDataSelection, type DataSelection } from '../data/datasets'
-
-type Pref = { kanji: string }
 
 // 人口増減: the two editions compared come from データの選択 (by default the
 // last two 国勢調査), and the title and columns name that period. 増加率の

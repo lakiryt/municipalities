@@ -1,14 +1,12 @@
 import { useParams, useSearchParams } from 'react-router-dom'
-import { prefectures, selectionFromParams, type DataSelection } from '../../data/datasets'
-import type { RankingConfig } from '../../types'
+import { prefectures, selectionFromParams } from '../../data/datasets'
+import type { CatalogEntry } from '../../rankings/catalog'
 import RankingPage from './RankingPage'
 
-type Pref = (typeof prefectures)[number]
-// The config may depend on データの選択 (e.g. the period 人口増減 compares).
-type Props = { configFor: (pref: Pref | null, selection: DataSelection) => RankingConfig }
+type Props = { configFor: CatalogEntry['configFor'] }
 
-// A ranking under /rankings/:pref/… — `all` for the whole country, otherwise
-// a prefecture's URL slug.
+// A ranking under /rankings/:pref/… — `all` (or a national-only route, which
+// has no :pref) for the whole country, otherwise a prefecture's URL slug.
 function PrefRankingPage({ configFor }: Props) {
   const { pref } = useParams<{ pref: string }>()
   const [searchParams] = useSearchParams()

@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { OFFICIAL, inPref, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { OFFICIAL, inPref, allOf, type Pref } from './filters'
 
 export function rentConfig(pref: Pref | null): RankingConfig {
   const scope = pref ? pref.kanji : '全国'

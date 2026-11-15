@@ -4,14 +4,13 @@ import { prefectures, selectedSource, defaultDataSelection } from '@/data/datase
 import { changePeriod } from '@/rankings/populationChange'
 import { useCensusOverview, type CensusRow } from '@/data/useCensusOverview'
 import { changeClass, formatRate } from '@/lib/changeScale'
-import { CATALOG, rankingPath } from '@/rankings/catalog'
+import { prefRankings, rankingPath } from '@/rankings/catalog'
 import AppHeader from '@/components/AppHeader'
 import Sidebar from '@/components/Sidebar'
 import Canonical from '@/components/Canonical'
 import { pageTitle } from '@/lib/brand'
 import SiteFooter from '@/components/SiteFooter'
 
-const NAVY = '#13294b'
 const KINDS: { kind: CensusRow['kind']; label: string }[] = [
   { kind: '市', label: '市' }, { kind: '特別区', label: '特別区' }, { kind: '町', label: '町' }, { kind: '村', label: '村' },
 ]
@@ -30,11 +29,11 @@ function RateBadge({ rate }: { rate: number }) {
 // A headline figure; the whole card leads to the ranking behind it.
 function FigureCard({ to, label, note, children }: { to: string; label: string; note?: string; children: React.ReactNode }) {
   return (
-    <Link to={to} className="group flex flex-col rounded-lg border border-gray-200 p-3 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
+    <Link to={to} className="group flex flex-col rounded-lg border border-gray-200 p-3 hover:border-navy-500 hover:bg-navy-50">
       <span className="text-xs text-gray-500">{label}</span>
       <span className="mt-0.5 flex items-baseline text-lg font-semibold text-gray-900">
         {children}
-        <span className="ml-auto text-sm font-normal text-gray-300 group-hover:text-[#4a6fa5]" aria-hidden="true">›</span>
+        <span className="ml-auto text-sm font-normal text-gray-300 group-hover:text-navy-500" aria-hidden="true">›</span>
       </span>
       {note && <span className="text-xs text-gray-500">{note}</span>}
     </Link>
@@ -72,7 +71,6 @@ function PrefHubPage() {
   const counts = KINDS.map(k => ({ ...k, n: mine.filter(m => m.kind === k.kind).length })).filter(k => k.n > 0)
   const growing = mine.filter(m => m.rate > 0).length
   const title = `${pref.kanji}の市区町村 人口・面積ランキングと一覧`
-  const hasVillages = counts.some(k => k.kind === '村')
   const rank = (slug: string) => `/rankings/${pref.romanized}/${slug}`
 
   return (
@@ -88,7 +86,7 @@ function PrefHubPage() {
           <Link to="/" className="hover:underline">トップ</Link> › {pref.kanji}
         </nav>
         <div className="max-w-5xl mx-auto px-4 pt-3">
-          <h1 className="text-2xl md:text-3xl font-bold" style={{ color: NAVY }}>{pref.kanji}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-navy-900">{pref.kanji}</h1>
 
           <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="pref-figures">
             <FigureCard to={rank('population')} label={`人口（${year}年 国勢調査）`}>
@@ -107,18 +105,16 @@ function PrefHubPage() {
         </div>
 
         <section className="max-w-5xl mx-auto px-4 mt-8" aria-labelledby="pref-rankings">
-          <h2 id="pref-rankings" className="text-lg font-bold" style={{ color: NAVY }}>{pref.kanji}のランキング</h2>
+          <h2 id="pref-rankings" className="text-lg font-bold text-navy-900">{pref.kanji}のランキング</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {CATALOG.map(g => ({ ...g, entries: g.entries.filter(e => e.perPref && (e.slug !== 'villages' || hasVillages)) }))
-              .filter(g => g.entries.length > 0)
-              .map(g => (
+            {prefRankings(new Set(counts.map(k => k.kind))).map(g => (
                 <div key={g.title}>
                   <h3 className="text-xs font-semibold text-gray-500 mb-1.5">{g.title}</h3>
                   <ul className="grid gap-1.5">
                     {g.entries.map(e => (
                       <li key={e.slug}>
-                        <Link to={rankingPath(e, pref.romanized)} className="flex items-center rounded-lg border border-[#c9d6ea] bg-[#f4f7fb] px-3 py-2 hover:border-[#4a6fa5] hover:bg-[#e3ecf8]">
-                          <span className="text-[#13294b] font-medium">{e.label}</span>
+                        <Link to={rankingPath(e, pref.romanized)} className="flex items-center rounded-lg border border-navy-200 bg-navy-50 px-3 py-2 hover:border-navy-500 hover:bg-navy-100">
+                          <span className="text-navy-900 font-medium">{e.label}</span>
                           <span className="ml-auto text-gray-400" aria-hidden="true">›</span>
                         </Link>
                       </li>
@@ -145,7 +141,7 @@ function PrefHubPage() {
                       <tbody className="divide-y divide-gray-100">
                         {mine.filter(m => m.kind === k.kind).sort((a, b) => b.latest - a.latest).map(m => (
                           <tr key={m.code}>
-                            <td className="py-1"><Link to={`/m/${m.code}`} className="text-gray-700 hover:text-[#13294b] hover:underline">{m.name}</Link></td>
+                            <td className="py-1"><Link to={`/m/${m.code}`} className="text-gray-700 hover:text-navy-900 hover:underline">{m.name}</Link></td>
                             <td className="py-1 text-right tabular-nums text-gray-500">{m.latest.toLocaleString('ja-JP')}人</td>
                             <td className="py-1 pl-3 w-24 text-right text-xs text-gray-500"><RateBadge rate={m.rate} /></td>
                           </tr>

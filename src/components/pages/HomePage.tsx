@@ -13,7 +13,6 @@ import SiteFooter from '@/components/SiteFooter'
 import FeaturedCarousel from '@/components/home/FeaturedCarousel'
 import MuniSearch from '@/components/home/MuniSearch'
 
-const NAVY = '#13294b'
 
 function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -33,13 +32,13 @@ function HomePage() {
       <main>
         {/* Hero: what this is, and the quickest way in — a municipality's name.
             It runs up under the bar, which stays see-through until scrolled. */}
-        <section className="bg-[#f4f7fb] border-b border-[#e3eaf3]">
+        <section className="bg-navy-50 border-b border-navy-100">
           <div className="max-w-5xl mx-auto px-4 pt-14 pb-8 md:pt-20 md:pb-12">
             <div className="flex items-center gap-3 md:gap-4">
               <img src="/logo.svg" alt="" className="h-12 w-12 md:h-16 md:w-16 shrink-0" />
               <div>
                 <p className="text-xs tracking-widest text-gray-500">{BRAND_SERIES}</p>
-                <h1 className="mt-0.5 text-4xl md:text-5xl font-black tracking-tight" style={{ color: NAVY }}>{BRAND_NAME}</h1>
+                <h1 className="mt-0.5 text-4xl md:text-5xl font-black tracking-tight text-navy-900">{BRAND_NAME}</h1>
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-gray-700 leading-relaxed">
@@ -56,7 +55,7 @@ function HomePage() {
 
         <section className="bg-[#fafaf9] border-y border-gray-100" aria-labelledby="prefs">
           <div className="max-w-5xl mx-auto px-4 py-8">
-            <h2 id="prefs" className="text-xl font-bold" style={{ color: NAVY }}>都道府県からさがす</h2>
+            <h2 id="prefs" className="text-xl font-bold text-navy-900">都道府県からさがす</h2>
             <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
               {REGIONS.map(r => (
                 <div key={r.name} className="flex gap-3">
@@ -66,7 +65,7 @@ function HomePage() {
                       <Link
                         key={p.code}
                         to={`/rankings/${p.romanized}`}
-                        className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm text-[#13294b] hover:border-[#4a6fa5] hover:bg-[#eef3fa]"
+                        className="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-sm text-navy-900 hover:border-navy-500 hover:bg-navy-100"
                       >
                         {p.kanji}
                       </Link>
@@ -79,7 +78,7 @@ function HomePage() {
         </section>
 
         <section className="max-w-5xl mx-auto px-4 py-8" aria-labelledby="rankings">
-          <h2 id="rankings" className="text-xl font-bold" style={{ color: NAVY }}>全国のランキング</h2>
+          <h2 id="rankings" className="text-xl font-bold text-navy-900">全国のランキング</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {CATALOG.map(g => (
               <div key={g.title} className="rounded-xl border border-gray-200 p-4">
@@ -87,7 +86,7 @@ function HomePage() {
                 <ul className="space-y-1.5">
                   {g.entries.map(e => (
                     <li key={e.slug}>
-                      <Link to={rankingPath(e)} className="text-[#13294b] hover:underline">{e.label}</Link>
+                      <Link to={rankingPath(e)} className="text-navy-900 hover:underline">{e.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -95,14 +94,14 @@ function HomePage() {
             ))}
           </div>
 
-          <h2 className="mt-10 text-xl font-bold" style={{ color: NAVY }}>自分で表をつくる</h2>
+          <h2 className="mt-10 text-xl font-bold text-navy-900">自分で表をつくる</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Link to="/explore" className="rounded-xl border border-gray-200 p-4 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
-              <div className="font-semibold text-[#13294b]">自由探索</div>
+            <Link to="/explore" className="rounded-xl border border-gray-200 p-4 hover:border-navy-500 hover:bg-navy-50">
+              <div className="font-semibold text-navy-900">自由探索</div>
               <div className="text-sm text-gray-600">列・並べ替え・絞り込みを自由に</div>
             </Link>
-            <Link to="/search" className="rounded-xl border border-gray-200 p-4 hover:border-[#4a6fa5] hover:bg-[#f4f7fb]">
-              <div className="font-semibold text-[#13294b]">詳細検索</div>
+            <Link to="/search" className="rounded-xl border border-gray-200 p-4 hover:border-navy-500 hover:bg-navy-50">
+              <div className="font-semibold text-navy-900">詳細検索</div>
               <div className="text-sm text-gray-600">都道府県・種別・区分・よみかたで</div>
             </Link>
           </div>

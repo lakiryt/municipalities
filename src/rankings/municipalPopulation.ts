@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { OFFICIAL, inPref, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { OFFICIAL, inPref, allOf, type Pref } from './filters'
 
 // Every 市区町村 (市・町・村・特別区 together) by population — the ranking a
 // municipality's 人口 rank refers to.

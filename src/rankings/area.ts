@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { OFFICIAL, inPref, ofKind, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { OFFICIAL, inPref, ofKind, allOf, type Pref } from './filters'
 
 export function areaConfig(pref: Pref | null): RankingConfig {
   return {

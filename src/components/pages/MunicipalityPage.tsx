@@ -29,7 +29,7 @@ function RankButton({ to, scope, rank }: { to?: string; scope: string; rank: { r
   return (
     <Link
       to={to}
-      className="flex items-baseline gap-2 rounded-md bg-[#f4f7fb] px-2 py-1 text-gray-700 hover:bg-[#e3ecf8] hover:text-[#13294b] focus-visible:outline-2 focus-visible:outline-[#4a6fa5]"
+      className="flex items-baseline gap-2 rounded-md bg-navy-50 px-2 py-1 text-gray-700 hover:bg-navy-100 hover:text-navy-900 focus-visible:outline-2 focus-visible:outline-navy-500"
       aria-label={`${scope}のランキングで${rank.rank}位（${rank.of}中）`}
     >
       {body}
