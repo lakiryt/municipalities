@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BRAND_FULL, BRAND_NAME, BRAND_SERIES } from '../lib/brand'
+import ShareButton from './ShareButton'
 
 type Props = {
   onMenuClick: () => void
@@ -11,6 +12,8 @@ type Props = {
   // The home page already shows the brand large in its hero: the bar then
   // starts bare (just the menu) and brings the brand in once that's scrolled away.
   brandAfterScroll?: boolean
+  // A share button (link copy, X, LINE) for this page as it is on screen.
+  share?: boolean
 }
 
 const REVEAL_AT = 120 // px — about where the hero's title has left the screen
@@ -29,7 +32,7 @@ function useScrolledPast(px: number, enabled: boolean) {
 
 // The site bar on every page. Everything else page-specific (description,
 // data, view/sort/filter) lives in PageHeader and Toolbar below it.
-function AppHeader({ onMenuClick, title, brandAfterScroll = false }: Props) {
+function AppHeader({ onMenuClick, title, brandAfterScroll = false, share = false }: Props) {
   const showBrand = useScrolledPast(REVEAL_AT, brandAfterScroll)
   return (
     <header className={`fixed top-0 inset-x-0 z-40 h-11 flex items-center gap-2 px-3 border-b transition-colors duration-200 ${showBrand ? 'bg-white border-gray-200' : 'bg-transparent border-transparent'}`}>
@@ -54,8 +57,9 @@ function AppHeader({ onMenuClick, title, brandAfterScroll = false }: Props) {
           </span>
         </Link>
       )}
+      {share && <div className="ml-auto"><ShareButton /></div>}
       <button
-        className="ml-auto shrink-0 p-2 rounded hover:bg-gray-100 flex flex-col gap-1 justify-center"
+        className={`${share ? '' : 'ml-auto '}shrink-0 p-2 rounded hover:bg-gray-100 flex flex-col gap-1 justify-center`}
         onClick={onMenuClick}
         aria-label="メニュー"
       >

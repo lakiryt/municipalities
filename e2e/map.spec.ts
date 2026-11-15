@@ -14,7 +14,7 @@ const mapHeading = (page: Page, label: string) => page.getByRole('heading', { na
 // /explore has no sort, so the map starts on its first numeric column, 総人口.
 async function openMap(page: Page, label = '総人口') {
   await mapTab(page).click()
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
   if (label !== '総人口') await columnSelect(page).selectOption({ label })
   await expect(mapHeading(page, label)).toBeVisible()
 }
@@ -28,7 +28,7 @@ test('the 地図 tab shows the map, colored by the first numeric column when not
   await expect(mapHeading(page, '総人口')).toBeVisible()
   await expect(mapTab(page)).toHaveAttribute('aria-selected', 'true')
   await expect(page).toHaveTitle(/^総人口の地図 — /)
-  const paths = page.locator('svg path')
+  const paths = page.locator('svg path[data-code]')
   await expect(paths.first()).toBeVisible()
   expect(await paths.count()).toBeGreaterThan(1000)
   expect(errors).toEqual([])
@@ -87,7 +87,7 @@ test('visiting a URL with a map column already set shows the map immediately', a
   await page.goto(openUrl)
 
   await expect(mapHeading(page, '総人口')).toBeVisible()
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 })
 
 test('a column\'s "この列を地図に表示" action opens the map directly with that column', async ({ page }) => {
@@ -95,7 +95,7 @@ test('a column\'s "この列を地図に表示" action opens the map directly wi
   await page.getByRole('button', { name: 'この列を地図に表示' }).click()
 
   await expect(mapHeading(page, '面積')).toBeVisible()
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 })
 
 test('the map action is disabled for a non-numeric column', async ({ page }) => {
@@ -108,7 +108,7 @@ test('hovering a municipality shows a tooltip with its name and value', async ({
 
   // Any path that isn't the "no data" gray fill has a real value — a plain
   // CSS attribute selector finds one without needing DOM-typed evaluate().
-  const target = page.locator('svg path:not([fill="#e1e0d9"])').first()
+  const target = page.locator('svg path[data-code]:not([fill="#e1e0d9"])').first()
   const box = await target.boundingBox()
   if (!box) throw new Error('no colored municipality path found')
 
@@ -118,7 +118,7 @@ test('hovering a municipality shows a tooltip with its name and value', async ({
 
 test('clicking (tapping) a municipality pins a card with its name and value, which closes with ✕', async ({ page }) => {
   await openMap(page)
-  const target = page.locator('svg path:not([fill="#e1e0d9"])').nth(200)
+  const target = page.locator('svg path[data-code]:not([fill="#e1e0d9"])').nth(200)
   await target.dispatchEvent('click')
 
   const card = page.getByTestId('map-picked')
@@ -139,7 +139,7 @@ test('on a ranking page, the 地図 tab colors by the ranked column', async ({ p
 
 test('clicking the legend opens a color scheme picker that recolors the map without changing the data shown', async ({ page }) => {
   await openMap(page)
-  const target = page.locator('svg path:not([fill="#e1e0d9"])').first()
+  const target = page.locator('svg path[data-code]:not([fill="#e1e0d9"])').first()
   await expect(target).toBeVisible()
 
   const legend = page.getByTestId('map-legend')
@@ -160,7 +160,7 @@ test('clicking the legend opens a color scheme picker that recolors the map with
 
 test('the color scheme picker closes on an outside click without changing the selection', async ({ page }) => {
   await openMap(page)
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 
   const legend = page.getByTestId('map-legend')
   await legend.click()
@@ -172,7 +172,7 @@ test('the color scheme picker closes on an outside click without changing the se
 
 test('hovering a "no data" municipality still shows a tooltip with its name', async ({ page }) => {
   await openMap(page)
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 
   // "No data" codes are prefecture-level totals under which a handful of
   // remote islands are drawn, some as tiny slivers or scattered multi-part
@@ -181,7 +181,7 @@ test('hovering a "no data" municipality still shows a tooltip with its name', as
   // Dispatching the mousemove directly on the element sidesteps that and
   // tests the thing this test is actually about: that a "no data" path's own
   // handler still shows its name.
-  const target = page.locator('svg path[fill="#e1e0d9"]').first()
+  const target = page.locator('svg path[data-code][fill="#e1e0d9"]').first()
   await target.dispatchEvent('mousemove', { clientX: 100, clientY: 100, bubbles: true })
 
   await expect(page.getByTestId('map-tooltip')).toHaveText(/.+: データなし/)
@@ -189,7 +189,7 @@ test('hovering a "no data" municipality still shows a tooltip with its name', as
 
 test('the histogram button overlays a value histogram at the bottom without hiding the map, and closes it again', async ({ page }) => {
   await openMap(page)
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 
   const histogram = page.getByTestId('map-histogram-panel')
   await expect(histogram).toHaveCSS('height', '0px')
@@ -197,7 +197,7 @@ test('the histogram button overlays a value histogram at the bottom without hidi
   await page.getByRole('button', { name: 'ヒストグラムを見る', exact: true }).click()
   // The map stays up — this is an overlay, not a view switch.
   await expect(mapHeading(page, '総人口')).toBeVisible()
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
   await expect(histogram).toHaveCSS('height', '140px')
 
   const bars = page.locator('svg[data-testid="map-histogram"] rect')
@@ -222,7 +222,7 @@ test('the histogram button overlays a value histogram at the bottom without hidi
 test('wheel zoom pins the point under the cursor and clamps at the minimum scale', async ({ page }) => {
   await openMap(page)
   const group = page.locator('svg > g')
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
   await expect(group).toHaveAttribute('transform', /scale\(1\)/)
 
   const scaleOf = async () => {
@@ -266,7 +266,7 @@ test('wheeling over the map zooms it without scrolling the page away from the to
 test('dragging the map pans it (translate changes) without leaving zoom stuck', async ({ page }) => {
   await openMap(page)
   const group = page.locator('svg > g')
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
 
   const box = await page.getByTestId('map-svg').boundingBox()
   if (!box) throw new Error('svg not visible')
@@ -283,7 +283,7 @@ test('dragging the map pans it (translate changes) without leaving zoom stuck', 
 
 test('the color scale is automatic per map (log for density), switchable, and kept in the URL with outlier clipping', async ({ page }) => {
   await page.goto('/rankings/all/density?map=@3')
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
   const scaleSelect = page.getByRole('combobox', { name: '目盛り' })
   const legend = page.getByTestId('map-legend')
 
@@ -308,13 +308,13 @@ test('the color scale is automatic per map (log for density), switchable, and ke
 
 test('evenly spread data (aging rate) gets a linear automatic scale', async ({ page }) => {
   await page.goto('/rankings/all/elderly-ratio?map=@4')
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
   await expect(page.getByRole('combobox', { name: '目盛り' }).locator('option:checked')).toHaveText('自動（線形）')
 })
 
 test('a map filtered to one prefecture zooms to it', async ({ page }) => {
   await page.goto('/rankings/tokyo/density?map=@3')
-  await expect(page.locator('svg path').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
   await expect(async () => {
     const t = await page.locator('svg > g').getAttribute('transform')
     expect(Number(t?.match(/scale\(([\d.]+)\)/)?.[1])).toBeGreaterThan(5)
