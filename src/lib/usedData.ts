@@ -12,6 +12,7 @@ const NON_POPULATION: Record<string, DataKey> = {
   area: 'area',
   rent_inc0: 'rent',
   rent_exc0: 'rent',
+  rent_private: 'rent',
   minwage: 'minwage',
   pop_from: 'change',
   pop_to: 'change',

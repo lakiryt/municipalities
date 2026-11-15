@@ -39,7 +39,8 @@ const numVars = [
   { name: '#total0_4 … #total100_', desc: '5歳階級別人口（#male…・#female… も。住民基本台帳のみ）' },
   { name: '#pop_from', desc: '人口増減：比べる前の時点の総人口' },
   { name: '#pop_to', desc: '人口増減：比べた後の時点の総人口' },
-  { name: '#rent_exc0', desc: '延べ面積1m²あたり家賃（円、家賃0円の住宅を除く）' },
+  { name: '#rent_private', desc: '民営借家の延べ面積1m²あたり家賃（円、家賃0円の住宅を除く）' },
+  { name: '#rent_exc0', desc: '延べ面積1m²あたり家賃（円、家賃0円の住宅を除く。公営住宅・社宅なども含む）' },
   { name: '#rent_inc0', desc: '延べ面積1m²あたり家賃（円、家賃0円の住宅を含む）' },
   { name: '#minwage', desc: '地域別最低賃金（円、都道府県単位）'},
 ]

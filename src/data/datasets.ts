@@ -207,12 +207,14 @@ export const fetchArea = (path: string): Promise<Map<string, number>> =>
 
 // 住宅・土地統計調査 延べ面積１m²当たり家賃. The CSV has every 住宅の所有の関係
 // (total/public/ur/private/company) both including (inc0) and excluding (exc0)
-// zero-rent homes; only the totals are surfaced.
-export type RentMap = Map<string, { inc0: number; exc0: number }>
+// zero-rent homes. Surfaced: the totals, and 民営借家 (what someone looking
+// for a place to rent would pay — the total also averages in 公営住宅 and
+// 社宅, which are far cheaper).
+export type RentMap = Map<string, { inc0: number; exc0: number; private: number }>
 
 export const fetchRent = (path: string): Promise<RentMap> =>
   !path ? Promise.resolve(new Map()) : fetchCsv(path).then(rows => new Map(
-    rows.map((r): [string, { inc0: number; exc0: number }] => [r.code, { inc0: toNum(r.inc0_total), exc0: toNum(r.exc0_total) }])
+    rows.map((r): [string, { inc0: number; exc0: number; private: number }] => [r.code, { inc0: toNum(r.inc0_total), exc0: toNum(r.exc0_total), private: toNum(r.exc0_private) }])
   ))
 
 // ── Minimum wage ──────────────────────────────────────────────────────────────

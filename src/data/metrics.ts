@@ -25,7 +25,7 @@ export const DETAIL_METRICS: Metric[] = [
   { key: 'elderly', label: '老年人口比率', unit: '%', expr: 'ROUND(MULT(#elderly_total, INV(#totalpop), 100), 1)', ranking: 'elderly-ratio' },
   // The period compared is the 人口増減 chosen in データの選択 (its chip says which).
   { key: 'change', label: '人口増減率', unit: '%', expr: 'ROUND(MULT(#pop_change_rate, 100), 2)', ranking: 'population-change' },
-  { key: 'rent', label: '家賃（1m²あたり）', unit: '円', expr: '#rent_exc0', ranking: 'rent' },
+  { key: 'rent', label: '民営借家の家賃（1m²あたり）', unit: '円', expr: '#rent_private', ranking: 'rent' },
   { key: 'minwage', label: '最低賃金', unit: '円/時', expr: '#minwage', prefectureLevel: true },
 ]
 

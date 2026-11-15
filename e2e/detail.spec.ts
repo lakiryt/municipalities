@@ -53,3 +53,9 @@ test('a rank on the detail page opens its ranking with the municipality marked',
   await expect(row).toContainText('豊島区')
   await expect(row).toBeInViewport()
 })
+
+test('rent figures are what 民営借家 tenants pay, not an average that includes 公営住宅 and 社宅', async ({ page }) => {
+  await page.goto('/m/13111')
+  // 大田区, 住宅・土地統計調査 2023: 民営借家 2,513 円/m² (all rented homes: 2,324)
+  await expect(page.getByTestId('metric-rent')).toContainText('2,513')
+})

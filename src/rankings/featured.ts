@@ -29,7 +29,7 @@ export function featuredRankings(): Featured[] {
     },
     {
       question: '家賃を払うには、月に何日働けばいい？',
-      note: '最低賃金で1日8時間働いて、30m²の平均家賃を稼ぐのに要る日数',
+      note: '最低賃金で1日8時間働いて、民営借家の平均家賃（30m²分）を稼ぐのに要る日数',
       config: rentLaborDaysConfig,
       path: '/rankings/all/rent-labor-days',
       mapColumn: 4,
@@ -77,7 +77,7 @@ export function featuredRankings(): Featured[] {
     },
     {
       question: '年金だけで暮らしたら、家賃を払っていくら残る？',
-      note: `国民年金の満額（月${PENSION_MONTHLY.toLocaleString('ja-JP')}円）から、30m²の平均家賃を引いた額`,
+      note: `国民年金の満額（月${PENSION_MONTHLY.toLocaleString('ja-JP')}円）から、民営借家の平均家賃（30m²分）を引いた額`,
       config: pensionRentConfig(null),
       path: '/rankings/all/pension-rent',
       mapColumn: 1,
