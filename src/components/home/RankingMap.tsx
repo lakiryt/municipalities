@@ -22,13 +22,13 @@ function RankingMap({ src, legend, format, to, label, aspect, eager }: Props) {
     <figure className="m-0">
       <Link
         to={to}
-        className="group relative block rounded-xl bg-[#f7f7f5] outline-offset-2 hover:outline-2 hover:outline-[#c9a227] focus-visible:outline-2 focus-visible:outline-[#c9a227]"
+        className="group relative block rounded-xl bg-[#f7f7f5] outline-offset-2 hover:outline-2 hover:outline-gold focus-visible:outline-2 focus-visible:outline-gold"
         aria-label={`${label}（地図で見る）`}
       >
         <div className="w-full" style={{ aspectRatio: aspect }}>
           {src && <img src={src} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" className="block w-full h-full" />}
         </div>
-        <span className="absolute right-3 bottom-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-[#13294b] shadow-sm group-hover:bg-white">
+        <span className="absolute right-3 bottom-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-navy-900 shadow-sm group-hover:bg-white">
           地図で見る →
         </span>
       </Link>

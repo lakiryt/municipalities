@@ -50,7 +50,7 @@ function AppHeader({ onMenuClick, title, brandAfterScroll = false }: Props) {
           <img src="/logo.svg" alt="" className="h-6 w-6 shrink-0" />
           <span className="flex items-baseline gap-1.5 min-w-0 truncate">
             <span className="text-[11px] text-gray-400 tracking-wide">{BRAND_SERIES}</span>
-            <span className="font-bold text-[15px] text-[#13294b]">{BRAND_NAME}</span>
+            <span className="font-bold text-[15px] text-navy-900">{BRAND_NAME}</span>
           </span>
         </Link>
       )}

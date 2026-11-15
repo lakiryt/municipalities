@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { inPref, ofKind, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { inPref, ofKind, allOf, type Pref } from './filters'
 
 // 「〇〇県 町 人口 ランキング」「村 人口 少ない」向け: 町だけ・村だけの人口順。
 export function townVillageConfig(pref: Pref | null, kind: '町' | '村'): RankingConfig {

@@ -1,9 +1,9 @@
-import { readFileSync, writeFileSync } from 'fs'
-import { resolve, dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const root = resolve(__dirname, '..')
+// sitemap.xml and robots.txt for SITE_URL. The ranking pages come from the
+// app's own catalog (src/rankings/catalog.ts), so a new ranking is listed
+// without touching this file.
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { root, withAppModules } from './lib/app-modules.mjs'
 
 const SITE_URL = process.env.SITE_URL?.replace(/\/+$/, '')
 if (!SITE_URL) {
@@ -13,100 +13,58 @@ if (!SITE_URL) {
   process.exit(1)
 }
 
+const urls = await withAppModules(async load => {
+  const { RANKINGS, rankingPath } = await load('/src/rankings/catalog.ts')
+  const { prefectures, officialCodes, fetchMunicipalityCodes } = await load('/src/data/datasets.ts')
+  const { kindOf } = await load('/src/data/municipalities.ts')
+
+  // The kinds of municipality each prefecture has (a ranking that `needsKind`
+  // is listed only where there is one — several prefectures have no 村).
+  const kinds = new Map()
+  for (const c of await fetchMunicipalityCodes()) {
+    if (!officialCodes.has(c.code)) continue
+    const pref = c.code.slice(0, 2)
+    if (!kinds.has(pref)) kinds.set(pref, new Set())
+    kinds.get(pref).add(kindOf(c))
+  }
+  const page = (path, priority) => ({ path, priority })
+
+  return [
+    page('/', '1.0'),
+    page('/search', '0.8'),
+    ...RANKINGS.map(e => page(rankingPath(e, 'all', false), '0.8')),
+    page('/list/all/population', '0.7'),
+    page('/explore', '0.5'),
+    page('/data', '0.3'),
+    page('/formulas', '0.4'),
+    ...prefectures.flatMap(p => [
+      page(`/rankings/${p.romanized}`, '0.8'),
+      ...RANKINGS
+        .filter(e => e.perPref && (!e.needsKind || kinds.get(p.code.slice(0, 2))?.has(e.needsKind)))
+        .map(e => page(rankingPath(e, p.romanized, false), '0.6')),
+    ]),
+    // Every 地方公共団体 has a detail page.
+    ...[...officialCodes].map(code => page(`/m/${code}`, '0.6')),
+  ]
+})
+
 const today = new Date().toISOString().slice(0, 10)
-
-const prefectures = JSON.parse(
-  readFileSync(resolve(root, 'src/assets/prefectures.json'), 'utf-8')
-)
-
-// Every 地方公共団体 has a detail page (/m/:code).
-const municipalities = JSON.parse(
-  readFileSync(resolve(root, 'src/assets/dantai_codes.json'), 'utf-8')
-)
-
-// Prefectures that have at least one 村 (several have none — no empty pages in the sitemap).
-const codesPath = JSON.parse(readFileSync(resolve(root, 'src/assets/meta.json'), 'utf-8')).datasets.codes.editions[0].path
-const official = new Set(municipalities)
-const prefsWithVillages = new Set(
-  readFileSync(resolve(root, 'public', codesPath), 'utf-8').trim().split(/\r?\n/).slice(1)
-    .map(line => line.split(','))
-    .filter(([code, name]) => official.has(code) && name.endsWith('村'))
-    .map(([code]) => code.slice(0, 2))
-)
-
-const urls = [
-  { path: '/',                                  priority: '1.0', changefreq: 'monthly' },
-  { path: '/search',                            priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/population',           priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/households',           priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/density',              priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/cities',               priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/area',                 priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/city-area',            priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/population-change',    priority: '0.9', changefreq: 'monthly' },
-  { path: '/rankings/all/population-decline',   priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/towns',                priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/villages',             priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/designated-cities',    priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/core-cities',          priority: '0.8', changefreq: 'monthly' },
-  { path: '/rankings/all/elderly-ratio',        priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/rent',                  priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/rent-labor-days',       priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/pension-rent',          priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/love-competition-women', priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/love-competition-men',   priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/newcomers',             priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/from-abroad',           priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/births',                priority: '0.7', changefreq: 'monthly' },
-  { path: '/rankings/all/population-over-500k', priority: '0.7', changefreq: 'monthly' },
-  { path: '/list/all/population',               priority: '0.7', changefreq: 'monthly' },
-  { path: '/explore',                           priority: '0.5', changefreq: 'monthly' },
-  { path: '/data',                              priority: '0.3', changefreq: 'monthly' },
-  { path: '/formulas',                          priority: '0.4', changefreq: 'yearly'  },
-  ...prefectures.flatMap(p => [
-    { path: `/rankings/${p.romanized}`,           priority: '0.8', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/density`,   priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/cities`,    priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/area`,      priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/city-area`, priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/population-change`,  priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/population-decline`, priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/towns`,     priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/population`,    priority: '0.7', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/households`,    priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/elderly-ratio`, priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/rent`,          priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/pension-rent`,     priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/love-competition-women`, priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/love-competition-men`,   priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/newcomers`,        priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/from-abroad`,      priority: '0.6', changefreq: 'monthly' },
-    { path: `/rankings/${p.romanized}/births`,           priority: '0.6', changefreq: 'monthly' },
-  ]),
-  ...prefectures.filter(p => prefsWithVillages.has(p.code.slice(0, 2))).map(p =>
-    ({ path: `/rankings/${p.romanized}/villages`, priority: '0.6', changefreq: 'monthly' })),
-  ...municipalities.map(code => ({ path: `/m/${code}`, priority: '0.6', changefreq: 'monthly' })),
-]
-
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.map(u => `  <url>
     <loc>${SITE_URL}${u.path}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>${u.changefreq}</changefreq>
+    <changefreq>monthly</changefreq>
     <priority>${u.priority}</priority>
   </url>`).join('\n')}
 </urlset>
 `
-
 writeFileSync(resolve(root, 'public/sitemap.xml'), xml)
 console.log(`Sitemap: ${urls.length} URLs → public/sitemap.xml`)
 
-const robotsTxt = `User-agent: *
+writeFileSync(resolve(root, 'public/robots.txt'), `User-agent: *
 Allow: /
 
 Sitemap: ${SITE_URL}/sitemap.xml
-`
-
-writeFileSync(resolve(root, 'public/robots.txt'), robotsTxt)
+`)
 console.log('Robots: public/robots.txt')

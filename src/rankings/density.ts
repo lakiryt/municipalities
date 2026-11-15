@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { OFFICIAL, inPref, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { OFFICIAL, inPref, allOf, type Pref } from './filters'
 
 export function densityConfig(pref: Pref | null): RankingConfig {
   return {

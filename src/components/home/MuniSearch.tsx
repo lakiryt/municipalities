@@ -39,8 +39,8 @@ function MuniSearch({ entries }: Props) {
   return (
     <div className="relative">
       <label htmlFor={`${listId}-input`} className="sr-only">市区町村名で探す</label>
-      <div className="flex items-center gap-2 rounded-xl border-2 border-[#13294b]/20 bg-white px-3 focus-within:border-[#13294b] transition-colors">
-        <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[#4a6fa5]" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <div className="flex items-center gap-2 rounded-xl border-2 border-navy-900/20 bg-white px-3 focus-within:border-navy-900 transition-colors">
+        <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-navy-500" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
         </svg>
         <input
@@ -72,7 +72,7 @@ function MuniSearch({ entries }: Props) {
               id={`${listId}-${i}`}
               role="option"
               aria-selected={i === active}
-              className={`flex items-baseline gap-2 px-4 py-2 cursor-pointer ${i === active ? 'bg-[#eef3fa]' : ''}`}
+              className={`flex items-baseline gap-2 px-4 py-2 cursor-pointer ${i === active ? 'bg-navy-100' : ''}`}
               onMouseEnter={() => setActive(i)}
               onMouseDown={ev => { ev.preventDefault(); go(e) }}
             >

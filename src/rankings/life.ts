@@ -1,7 +1,5 @@
 import type { RankingConfig } from '../types'
-import { OFFICIAL, inPref, allOf } from './filters'
-
-type Pref = { kanji: string }
+import { OFFICIAL, inPref, allOf, type Pref } from './filters'
 
 // Rankings that start from a question someone asks at a turn in their life,
 // computed from the same data as everything else.

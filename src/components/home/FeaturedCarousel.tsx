@@ -5,7 +5,6 @@ import { featuredRankings, type Featured } from '@/rankings/featured'
 import type { FeaturedSnapshot } from '@/rankings/featuredSnapshot'
 import RankingMap from './RankingMap'
 
-const NAVY = '#13294b'
 // Auto-advance: every so often, unless paused, hovered, focused inside, or
 // the reader prefers reduced motion.
 const INTERVAL_MS = 20_000
@@ -28,7 +27,7 @@ function Slide({ f, index, count, data, aspect, eager }: { f: Featured; index: n
       aria-roledescription="スライド"
       aria-label={`${index + 1} / ${count}: ${f.question}`}
     >
-      <h3 className="text-xl md:text-2xl font-bold leading-snug" style={{ color: NAVY }}>{f.question}</h3>
+      <h3 className="text-xl md:text-2xl font-bold leading-snug text-navy-900">{f.question}</h3>
       <p className="mt-1 text-sm text-gray-600">{f.note}</p>
       <div className="mt-4 grid gap-6 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-start">
         <RankingMap
@@ -45,7 +44,7 @@ function Slide({ f, index, count, data, aspect, eager }: { f: Featured; index: n
             {data?.top.map((row, i) => (
               <li key={row.code} className="flex items-baseline gap-2 py-1.5 text-sm">
                 <span className="w-4 text-right text-xs text-gray-400 tabular-nums">{i + 1}</span>
-                <Link to={`/m/${row.code}`} className="font-medium text-[#13294b] hover:underline">{row.name}</Link>
+                <Link to={`/m/${row.code}`} className="font-medium text-navy-900 hover:underline">{row.name}</Link>
                 <span className="text-xs text-gray-500">{row.pref}</span>
                 <span className="ml-auto tabular-nums font-semibold">{format(row.value)}</span>
               </li>
@@ -53,7 +52,7 @@ function Slide({ f, index, count, data, aspect, eager }: { f: Featured; index: n
           </ol>
           <Link
             to={f.path}
-            className="mt-3 flex items-center rounded-lg border border-[#c9d6ea] bg-[#f4f7fb] px-3 py-2 text-sm font-medium text-[#13294b] hover:border-[#4a6fa5] hover:bg-[#e3ecf8]"
+            className="mt-3 flex items-center rounded-lg border border-navy-200 bg-navy-50 px-3 py-2 text-sm font-medium text-navy-900 hover:border-navy-500 hover:bg-navy-100"
           >
             ランキングを見る<span className="ml-auto text-gray-400" aria-hidden="true">›</span>
           </Link>
@@ -100,7 +99,7 @@ function FeaturedCarousel() {
     return () => clearTimeout(t)
   }, [active, playing, holding, count])
 
-  const arrow = 'absolute top-56 md:top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full border border-gray-200 bg-white/90 text-xl leading-none text-[#13294b] shadow-sm hover:border-[#4a6fa5] hover:bg-white'
+  const arrow = 'absolute top-56 md:top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full border border-gray-200 bg-white/90 text-xl leading-none text-navy-900 shadow-sm hover:border-navy-500 hover:bg-white'
   return (
     <section
       className="max-w-5xl mx-auto px-4 py-8"
@@ -120,7 +119,7 @@ function FeaturedCarousel() {
               aria-selected={i === active}
               aria-label={f.question}
               onClick={() => go(i)}
-              className={`h-2 rounded-full transition-all ${i === active ? 'w-6 bg-[#13294b]' : 'w-2 bg-gray-300 hover:bg-gray-400'}`}
+              className={`h-2 rounded-full transition-all ${i === active ? 'w-6 bg-navy-900' : 'w-2 bg-gray-300 hover:bg-gray-400'}`}
             />
           ))}
         </div>
