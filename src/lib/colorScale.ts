@@ -35,17 +35,37 @@ export const SCALE_LABELS: Record<ScaleKind, string> = {
 
 export const isSigned = (kind: ScaleKind) => kind === 'diverging' || kind === 'symlog'
 
+declare const finiteBrand: unique symbol
+/**
+ * A number that is neither NaN nor ±∞ — the only kind a color scale can
+ * place. Expressions produce both (a missing value; a ratio over zero), so
+ * values become Finite through asFinite, which makes the caller decide what
+ * the others are (on a map: no data).
+ */
+export type Finite = number & { readonly [finiteBrand]: true }
+export const asFinite = (v: number): Finite | undefined => (Number.isFinite(v) ? (v as Finite) : undefined)
+export const ZERO = 0 as Finite
+
+declare const positionBrand: unique symbol
+/** A position along a color ramp, within 0..1. */
+export type RampPosition = number & { readonly [positionBrand]: true }
+/** Clamps into 0..1; a NaN (none arise from a scale's own t) becomes 0. */
+export const rampPosition = (t: number): RampPosition => (Number.isNaN(t) ? 0 : Math.max(0, Math.min(1, t))) as RampPosition
+
 export type ColorScale = {
   kind: ScaleKind
   // Value range the colors span (after clipping); for rank, the data's min/max.
-  lo: number
-  hi: number
+  lo: Finite
+  hi: Finite
   clippedLow: boolean
   clippedHigh: boolean
-  /** Value → position 0..1 along the color ramp (clamped). */
-  t: (v: number) => number
-  /** Position 0..1 → the value at that point of the legend. */
-  valueAt: (t: number) => number
+  /** Value → position along the color ramp (clamped). */
+  t: (v: Finite) => RampPosition
+  /** Position → the value at that point of the legend. */
+  valueAt: (t: RampPosition) => number
+}
+type RawScale = Omit<ColorScale, 'lo' | 'hi' | 't' | 'valueAt'> & {
+  lo: number; hi: number; t: (v: number) => number; valueAt: (t: number) => number
 }
 
 /** The q-quantile (0..1) of sorted values, linearly interpolated. */
@@ -83,9 +103,18 @@ export function suggestScale(values: number[]): ScaleKind {
   return wideSpread(values.filter(v => v > 0)) ? 'log' : 'linear'
 }
 
-export function makeScale(values: number[], choice: ScaleChoice, clipPercent = 0): ColorScale {
-  // Only finite values span a scale (∞ would stretch it to nothing).
-  const sorted = values.filter(Number.isFinite).sort((a, b) => a - b)
+/**
+ * The color scale for `values`, or null when there are none (nothing to
+ * span — the caller shows "no data" rather than a legend of NaN).
+ */
+export function makeScale(values: readonly Finite[], choice: ScaleChoice, clipPercent = 0): ColorScale | null {
+  if (values.length === 0) return null
+  const raw = rawScale([...values].sort((a, b) => a - b), choice, clipPercent)
+  // lo/hi are values or quantiles of finite, non-empty data, so finite too.
+  return { ...raw, lo: raw.lo as Finite, hi: raw.hi as Finite, t: v => rampPosition(raw.t(v)), valueAt: t => raw.valueAt(t) }
+}
+
+function rawScale(sorted: number[], choice: ScaleChoice, clipPercent: number): RawScale {
   let kind: ScaleKind = choice === 'auto' ? suggestScale(sorted) : choice
   if (kind === 'log' && !canLog(sorted)) kind = 'linear'
   if (isSigned(kind) && !canDiverge(sorted)) kind = 'linear'

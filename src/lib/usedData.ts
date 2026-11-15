@@ -2,13 +2,15 @@
 // draws on — so the page can show "データ：…" chips and an 出典 line only for
 // the data on screen. Derived variables (#popdensity, #inc_rate, …) are
 // expanded into the variables they're defined from.
-import { derivedExpressions } from '@/data/municipalities'
+import { DERIVED, DATA_VARS } from '@/lang/variables'
 import type { DataKey } from '@/data/datasets'
 
-const DERIVED = new Map(derivedExpressions.map(d => [d.name, d.expr]))
+const DERIVED_EXPR = new Map<string, string>(DERIVED.map(d => [d.name, d.expr]))
 
-// Numeric variables that don't come from the population datasets.
-const NON_POPULATION: Record<string, DataKey> = {
+// The dataset each non-population number comes from — every one must say
+// (a new variable in DATA_VARS doesn't compile until it's listed here).
+type DataVar = typeof DATA_VARS[number]
+const DATASET_OF: Record<DataVar, DataKey> = {
   area: 'area',
   rent_inc0: 'rent',
   rent_exc0: 'rent',
@@ -17,6 +19,8 @@ const NON_POPULATION: Record<string, DataKey> = {
   pop_from: 'change',
   pop_to: 'change',
 }
+
+const isDataVar = (v: string): v is DataVar => (DATA_VARS as readonly string[]).includes(v)
 
 export type UsedData = {
   selectable: Set<DataKey>
@@ -32,14 +36,14 @@ export function usedData(expressions: string[]): UsedData {
     for (const m of expr.matchAll(/#([A-Za-z0-9_]+)/g)) {
       if (numeric.has(m[1])) continue
       numeric.add(m[1])
-      const def = DERIVED.get(m[1])
+      const def = DERIVED_EXPR.get(m[1])
       if (def) queue.push(def)
     }
   }
   const selectable = new Set<DataKey>()
   for (const v of numeric) {
-    if (DERIVED.has(v)) continue
-    selectable.add(NON_POPULATION[v] ?? 'pop')
+    if (DERIVED_EXPR.has(v)) continue
+    selectable.add(isDataVar(v) ? DATASET_OF[v] : 'pop')
   }
   const all = expressions.join(' ')
   return {

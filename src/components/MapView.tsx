@@ -6,7 +6,9 @@ import type { DesignationSets } from '@/data/datasets'
 import type { ColumnState, ColumnRef } from '@/types'
 import { formatValue } from '@/lib/format'
 import { fitBounds, type Box } from '@/lib/mapFit'
-import { makeScale, canLog, canDiverge, suggestScale, isSigned, SCALE_LABELS, type ScaleChoice } from '@/lib/colorScale'
+import {
+  makeScale, canLog, canDiverge, suggestScale, isSigned, asFinite, rampPosition, SCALE_LABELS, type ScaleChoice, type Finite,
+} from '@/lib/colorScale'
 import {
   fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP, VIEW_SIZE,
   type MuniPaths, type ColorSchemeKey,
@@ -160,8 +162,8 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
 
   // One value per shown row (a city drawn over its wards counts once).
   const values = useMemo(() => {
-    if (!paths) return new Map<string, number>()
-    const map = new Map<string, number>()
+    if (!paths) return new Map<string, Finite>()
+    const map = new Map<string, Finite>()
     for (const [code, item] of itemByCode) {
       // Codes without a drawn path would otherwise skew the color scale
       // toward values that never appear on the map itself. Prefecture-level
@@ -170,10 +172,10 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
       // than a municipality's, and coloring them by the prefecture's total
       // would be just as misleading as including the total itself.
       if (!drawn.has(code) || code.endsWith('000')) continue
-      const v = evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number
-      // ±∞ (a ratio over a zero, e.g. no men of an age in a small village)
-      // has no place on a color scale: drawn as no data, like a missing value.
-      if (Number.isFinite(v)) map.set(code, v)
+      // NaN (missing) and ±∞ (a ratio over a zero, e.g. no men of an age in a
+      // small village) have no place on a color scale: drawn as no data.
+      const v = asFinite(evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number)
+      if (v !== undefined) map.set(code, v)
     }
     return map
   }, [itemByCode, column, designations, coastal, paths, drawn])
@@ -182,8 +184,9 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
   const logPossible = useMemo(() => canLog(valueList), [valueList])
   const divergePossible = useMemo(() => canDiverge(valueList), [valueList])
   const autoKind = useMemo(() => suggestScale(valueList), [valueList])
+  // null: no value in this column can be drawn — every shape is "no data".
   const scale = useMemo(() => makeScale(valueList, scaleChoice, clipPercent), [valueList, scaleChoice, clipPercent])
-  const diverging = isSigned(scale.kind)
+  const diverging = scale !== null && isSigned(scale.kind)
   const ramp = diverging ? DIVERGING_RAMP : COLOR_SCHEMES[schemeKey].ramp
 
   // Bins are equal steps along the color scale (not the raw values), so a
@@ -191,10 +194,12 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
   // on a log scale each bar covers the same ratio, not the same difference.
   const BIN_COUNT = 20
   const bins = useMemo(() => {
-    if (valueList.length === 0) return []
+    if (!scale) return []
     const counts = new Array(BIN_COUNT).fill(0)
     for (const v of valueList) counts[Math.min(BIN_COUNT - 1, Math.floor(scale.t(v) * BIN_COUNT))]++
-    return counts.map((count, i) => ({ x0: scale.valueAt(i / BIN_COUNT), x1: scale.valueAt((i + 1) / BIN_COUNT), count }))
+    return counts.map((count, i) => ({
+      x0: scale.valueAt(rampPosition(i / BIN_COUNT)), x1: scale.valueAt(rampPosition((i + 1) / BIN_COUNT)), count,
+    }))
   }, [valueList, scale])
 
   const maxCount = Math.max(1, ...bins.map(b => b.count))
@@ -395,7 +400,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
                 {[...paths.entries()].map(([shape, d]) => {
                   const code = owner.get(shape) ?? shape
                   const v = values.get(code)
-                  const fill = v === undefined ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
+                  const fill = v === undefined || !scale ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
                   return (
                     <path
                       key={shape}
@@ -460,7 +465,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
               <svg data-testid="map-histogram" viewBox="0 0 400 200" preserveAspectRatio="none" className="w-full h-full">
                 <line x1={0} y1={190} x2={400} y2={190} stroke="#e5e7eb" strokeWidth={1} />
                 {bins.map((bin, i) => {
-                  const fill = sequentialColor((i + 0.5) / BIN_COUNT, ramp)
+                  const fill = sequentialColor(rampPosition((i + 0.5) / BIN_COUNT), ramp)
                   const barWidth = 400 / BIN_COUNT
                   const barHeight = (bin.count / maxCount) * 178
                   return (
@@ -490,7 +495,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
             </div>
           )}
 
-          {paths && scale.kind !== 'rank' && (
+          {paths && scale && scale.kind !== 'rank' && (
             // On a rank scale every bar would be the same height — no histogram.
             <button
               className="absolute bottom-3 right-3 z-20 px-3 py-1 border border-gray-300 rounded bg-white/90 hover:bg-gray-50 text-sm shadow-sm"
@@ -501,6 +506,9 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
           )}
         </div>
 
+        {!scale ? (
+          <p className="mt-3 text-xs text-gray-500" data-testid="map-legend">この列には地図に塗れる値がありません</p>
+        ) : (<>
         <div className="relative mt-3" ref={schemeRef}>
           <button
             type="button"
@@ -584,9 +592,10 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
             %
           </label>
           {scale.kind !== 'linear' && (
-            <span className="text-gray-400 tabular-nums">中央の色 ≒ {legendValue(scale.valueAt(0.5))}</span>
+            <span className="text-gray-400 tabular-nums">中央の色 ≒ {legendValue(scale.valueAt(rampPosition(0.5)))}</span>
           )}
         </div>
+        </>)}
     </div>
   )
 }

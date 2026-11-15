@@ -11,7 +11,7 @@ import {
   defaultDataSelection, type DesignationSets,
 } from '@/data/datasets'
 import { fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP } from '@/lib/topoMap'
-import { makeScale, isSigned } from '@/lib/colorScale'
+import { makeScale, isSigned, asFinite, rampPosition, ZERO, type Finite } from '@/lib/colorScale'
 import { featuredRankings, type Featured } from './featured'
 
 export type FeaturedSnapshot = {
@@ -22,7 +22,7 @@ export type FeaturedSnapshot = {
   slides: Record<string, {
     svg: string                // file name under /featured/
     top: { code: string; name: string; pref: string; value: number }[]
-    legend: { lo: number; hi: number; zeroAt: number | null; ramp: string[] }
+    legend: { lo: number; hi: number; zeroAt: number | null; ramp: readonly string[] }
   }>
 }
 
@@ -52,13 +52,13 @@ export function evaluateFeatured(f: Featured, items: BaseItem[], designations: D
   const sort = parseAndTypeCheck(f.config.sortExpression)
   const sign = f.config.sortDirection === 'desc' ? -1 : 1
 
-  const values = new Map<string, number>()
-  const ranked: { item: BaseItem; value: number; key: number }[] = []
+  const values = new Map<string, Finite>()
+  const ranked: { item: BaseItem; value: Finite; key: number }[] = []
   for (const item of items) {
     const env = baseItemEnv(item, designations, coastal)
     if (filter && evaluate(filter, env) !== true) continue
-    const v = evaluate(value, env) as number
-    if (!Number.isFinite(v)) continue   // missing, or a ratio over zero: no color (as in the map view)
+    const v = asFinite(evaluate(value, env) as number)
+    if (v === undefined) continue   // missing, or a ratio over zero: no color (as in the map view)
     values.set(item.code, v)
     const key = evaluate(sort, env) as number
     if (!Number.isNaN(key)) ranked.push({ item, value: v, key })
@@ -110,6 +110,9 @@ export async function featuredSnapshot(): Promise<{ snapshot: FeaturedSnapshot; 
   for (const f of featuredRankings()) {
     const { values, top } = evaluateFeatured(f, items, designations, coastal)
     const scale = makeScale([...values.values()], 'auto')
+    // A featured slide with nothing to color is broken (data or config):
+    // stop the build rather than ship an empty map.
+    if (!scale) throw new Error(`featured ranking ${f.path}: no value to map in column @${f.mapColumn}`)
     const signed = isSigned(scale.kind)
     const ramp = signed ? DIVERGING_RAMP : COLOR_SCHEMES.blue.ramp
 
@@ -119,7 +122,7 @@ export async function featuredSnapshot(): Promise<{ snapshot: FeaturedSnapshot; 
     for (const [code, rs] of rings) {
       if (rs.length === 0) continue
       const v = values.get(code) ?? values.get(parentOf.get(code) ?? '')
-      const fill = v === undefined ? NO_DATA_FILL : sequentialColor(Math.round(scale.t(v) * COLOR_STEPS) / COLOR_STEPS, ramp)
+      const fill = v === undefined ? NO_DATA_FILL : sequentialColor(rampPosition(Math.round(scale.t(v) * COLOR_STEPS) / COLOR_STEPS), ramp)
       const list = byFill.get(fill) ?? []
       for (const r of rs) list.push(ringPath(r))
       byFill.set(fill, list)
@@ -135,7 +138,7 @@ export async function featuredSnapshot(): Promise<{ snapshot: FeaturedSnapshot; 
     snapshot.slides[f.path] = {
       svg: name,
       top: top.map(({ item, value }) => ({ code: item.code, name: item.kanji, pref: item.prefecture.kanji ?? '', value })),
-      legend: { lo: scale.lo, hi: scale.hi, zeroAt: signed ? scale.t(0) : null, ramp },
+      legend: { lo: scale.lo, hi: scale.hi, zeroAt: signed ? scale.t(ZERO) : null, ramp },
     }
   }
   return { snapshot, svgs }

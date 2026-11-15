@@ -1,24 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { evaluate, type Env } from './evaluate'
+import { evaluate, blankEnv, type Env } from './evaluate'
 import { parseAndTypeCheck } from './expr'
 
+const blank = blankEnv()
 const baseEnv: Env = {
-  numvars: { totalpop: 100, area: 4, female: 60, male: 40 },
-  strvars: { kanji: '東京都', prefkanji: '東京都' },
-  boolvars: { seirei: true },
+  numvars: { ...blank.numvars, totalpop: 100, area: 4, femalepop: 60, malepop: 40 },
+  strvars: { ...blank.strvars, kanji: '東京都', prefkanji: '東京都' },
+  boolvars: { ...blank.boolvars, seirei: true },
 }
 
 describe('numeric evaluation', () => {
   it('evaluates SUM/MULT/NEG/INV', () => {
-    expect(evaluate(parseAndTypeCheck('SUM(#female, #male)'), baseEnv)).toBe(100)
+    expect(evaluate(parseAndTypeCheck('SUM(#femalepop, #malepop)'), baseEnv)).toBe(100)
     expect(evaluate(parseAndTypeCheck('MULT(#area, 2)'), baseEnv)).toBe(8)
     expect(evaluate(parseAndTypeCheck('NEG(#area)'), baseEnv)).toBe(-4)
     expect(evaluate(parseAndTypeCheck('INV(#area)'), baseEnv)).toBe(0.25)
   })
 
   it('evaluates MIN and MAX', () => {
-    expect(evaluate(parseAndTypeCheck('MIN(#female, #male, 10)'), baseEnv)).toBe(10)
-    expect(evaluate(parseAndTypeCheck('MAX(#female, #male, 10)'), baseEnv)).toBe(60)
+    expect(evaluate(parseAndTypeCheck('MIN(#femalepop, #malepop, 10)'), baseEnv)).toBe(10)
+    expect(evaluate(parseAndTypeCheck('MAX(#femalepop, #malepop, 10)'), baseEnv)).toBe(60)
   })
 
   it('MIN/MAX with no arguments matches JS Math.min/max identity (+/-Infinity)', () => {
@@ -30,8 +31,8 @@ describe('numeric evaluation', () => {
     expect(evaluate(parseAndTypeCheck('ROUND(MULT(#totalpop, INV(#area)), 2)'), baseEnv)).toBe(25)
   })
 
-  it('an unknown numvar evaluates to NaN', () => {
-    expect(evaluate(parseAndTypeCheck('#missing'), baseEnv)).toBeNaN()
+  it('a variable the data has no value for evaluates to NaN', () => {
+    expect(evaluate(parseAndTypeCheck('#rent_private'), baseEnv)).toBeNaN()
   })
 
   it('evaluates IF', () => {
@@ -51,8 +52,8 @@ describe('boolean evaluation', () => {
     expect(evaluate(parseAndTypeCheck('EQ(1, 2)'), baseEnv)).toBe(false)
   })
 
-  it('an unknown boolvar evaluates to false', () => {
-    expect(evaluate(parseAndTypeCheck('&missing'), baseEnv)).toBe(false)
+  it('a flag not set for the row is false', () => {
+    expect(evaluate(parseAndTypeCheck('&coastal'), baseEnv)).toBe(false)
   })
 })
 
@@ -64,22 +65,22 @@ describe('string evaluation', () => {
     expect(evaluate(parseAndTypeCheck('SUBSTR($kanji, NEG(1))'), baseEnv)).toBe('都')
   })
 
-  it('an unknown strvar evaluates to empty string', () => {
-    expect(evaluate(parseAndTypeCheck('$missing'), baseEnv)).toBe('')
+  it('a text the data has no value for is the empty string', () => {
+    expect(evaluate(parseAndTypeCheck('$prefkana'), baseEnv)).toBe('')
   })
 })
 
 describe('@id column references', () => {
   it('resolves a colref by evaluating the referenced column against the same env', () => {
-    const columns = [{ id: 0, typed: parseAndTypeCheck('SUM(#female, #male)') }]
+    const columns = [{ id: 0, typed: parseAndTypeCheck('SUM(#femalepop, #malepop)') }]
     const sortExpr = parseAndTypeCheck('@0', [{ id: 0, type: 'n' }])
     expect(evaluate(sortExpr, { ...baseEnv, columns })).toBe(100)
   })
 
   it('resolves a colref through a chain (column referencing base vars only, per the no-column-to-column-refs invariant)', () => {
     const columns = [
-      { id: 0, typed: parseAndTypeCheck('#female') },
-      { id: 1, typed: parseAndTypeCheck('#male') },
+      { id: 0, typed: parseAndTypeCheck('#femalepop') },
+      { id: 1, typed: parseAndTypeCheck('#malepop') },
     ]
     const expr = parseAndTypeCheck('LEQ(@0, @1)', [{ id: 0, type: 'n' }, { id: 1, type: 'n' }])
     expect(evaluate(expr, { ...baseEnv, columns })).toBe(false) // 60 <= 40 is false

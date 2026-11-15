@@ -1,9 +1,12 @@
 import type { NumExpr, BoolExpr, StrExpr, TypedExpr } from './expr'
+import { NUM_VARS, STR_VARS, BOOL_VARS, recordOf, type NumVarName, type StrVarName, type BoolVarName } from './variables'
 
+// A row's values for every declared variable (a missing number is NaN —
+// the data has no value there; the name itself always exists).
 export type Env = {
-  numvars: Record<string, number>
-  strvars: Record<string, string>
-  boolvars: Record<string, boolean>
+  numvars: Record<NumVarName, number>
+  strvars: Record<StrVarName, string>
+  boolvars: Record<BoolVarName, boolean>
   // Only populated when evaluating a filter/sort expression (the only place
   // `@id` col-refs can occur — a column's own TypedExpr never contains one,
   // so this never recurses back into itself).
@@ -17,7 +20,7 @@ function resolveColRef(id: number, env: Env): TypedExpr | undefined {
 function evaluateNum(expr: NumExpr, env: Env): number {
   switch (expr.kind) {
     case 'literal': return expr.value
-    case 'numvar':  return (env.numvars[expr.name] as number | undefined) ?? NaN
+    case 'numvar':  return env.numvars[expr.name]
     case 'SUM':     return expr.args.reduce((acc, a) => acc + evaluateNum(a, env), 0)
     case 'MULT':    return expr.args.reduce((acc, a) => acc * evaluateNum(a, env), 1)
     case 'MIN':     return Math.min(...expr.args.map(a => evaluateNum(a, env)))
@@ -37,7 +40,7 @@ function evaluateBool(expr: BoolExpr, env: Env): boolean {
     case 'NOT':     return !evaluateBool(expr.arg, env)
     case 'LEQ':     return evaluateNum(expr.left, env) <= evaluateNum(expr.right, env)
     case 'EQ':      return evaluate(expr.left, env) === evaluate(expr.right, env)
-    case 'boolvar': return (env.boolvars[expr.name] as boolean | undefined) ?? false
+    case 'boolvar': return env.boolvars[expr.name]
     case 'IF':      return evaluateBool(expr.cond, env) ? evaluateBool(expr.then, env) : evaluateBool(expr.else_, env)
     case 'colref':  { const t = resolveColRef(expr.id, env); return t?.type === 'b' ? evaluateBool(t.expr, env) : false }
   }
@@ -46,7 +49,7 @@ function evaluateBool(expr: BoolExpr, env: Env): boolean {
 function evaluateStr(expr: StrExpr, env: Env): string {
   switch (expr.kind) {
     case 'strlit': return expr.value
-    case 'strvar': return (env.strvars[expr.name] as string | undefined) ?? ''
+    case 'strvar': return env.strvars[expr.name]
     case 'SUBSTR': {
       const s = evaluateStr(expr.str, env)
       const n = Math.trunc(evaluateNum(expr.len, env))
@@ -64,3 +67,10 @@ export function evaluate(expr: TypedExpr, env: Env): number | boolean | string {
     case 's': return evaluateStr(expr.expr, env)
   }
 }
+
+/** Every variable missing (NaN / '' / false) — a starting point to fill in. */
+export const blankEnv = (): Env => ({
+  numvars: recordOf(NUM_VARS, () => NaN),
+  strvars: recordOf(STR_VARS, () => ''),
+  boolvars: recordOf(BOOL_VARS, () => false),
+})
