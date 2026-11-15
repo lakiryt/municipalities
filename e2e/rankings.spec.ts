@@ -99,3 +99,12 @@ test('the rent-vs-minimum-wage labor-days ranking page loads with all its column
   await expect(page).toHaveURL(/\/rankings\/all\/rent-labor-days\?map=@4/)
   await expect(page.getByRole('heading', { name: /平均家賃30㎡分を稼ぐのに必要な最低賃金労働日数の地図/ })).toBeVisible()
 })
+
+test('the life-question rankings load, each ordered by its own figure', async ({ page }) => {
+  await page.goto('/rankings/all/love-competition')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('恋愛競争率ランキング')
+  await page.goto('/rankings/shimane/pension-rent')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('島根県の「年金で家賃を払った残り」ランキング')
+  await page.goto('/rankings/all/newcomers')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('転入者の割合ランキング')
+})

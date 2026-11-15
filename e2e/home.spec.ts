@@ -10,10 +10,16 @@ test('the home page searches municipalities by name or reading and opens the cho
   await expect(page).toHaveURL(/\/m\/12220$/)
 })
 
-test('the home map leads to the population-change ranking, opened as a map', async ({ page }) => {
+test("the home carousel steps through picked rankings, each map leading to its ranking's map view", async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: /^市区町村の人口増減率/ }).click()
-  await expect(page).toHaveURL(/\/rankings\/all\/population-change\?map=@1$/)
+  const carousel = page.getByRole('region', { name: 'ピックアップ' })
+  await expect(carousel.getByText('1 / 5')).toBeVisible()
+  await carousel.getByRole('button', { name: '次へ' }).click()
+  await expect(carousel.getByText('2 / 5')).toBeVisible()
+  await carousel.getByRole('tab', { name: /ライバル/ }).click()
+  await expect(carousel.getByText('3 / 5')).toBeVisible()
+  await carousel.getByRole('link', { name: /ライバルは何人？（地図で見る）/ }).click()
+  await expect(page).toHaveURL(/\/rankings\/all\/love-competition\?map=@1$/)
 })
 
 test('the home page shows the brand in its hero, and in the bar only after scrolling', async ({ page }) => {

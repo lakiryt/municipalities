@@ -30,6 +30,9 @@ export const CATALOG: CatalogGroup[] = [
     entries: [
       { slug: 'rent', label: '家賃', perPref: true },
       { slug: 'rent-labor-days', label: '家賃を稼ぐのに必要な労働日数', perPref: false, query: '?map=@4' },
+      { slug: 'pension-rent', label: '年金で家賃を払った残り', perPref: true },
+      { slug: 'love-competition', label: '恋愛競争率', perPref: true },
+      { slug: 'newcomers', label: '転入者の割合', perPref: true },
     ],
   },
   {
