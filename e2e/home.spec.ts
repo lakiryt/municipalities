@@ -10,19 +10,25 @@ test('the home page searches municipalities by name or reading and opens the cho
   await expect(page).toHaveURL(/\/m\/12220$/)
 })
 
-test('the home tile map shows every prefecture and leads to its page', async ({ page }) => {
+test('the home map leads to the population-change ranking, opened as a map', async ({ page }) => {
   await page.goto('/')
-  const tiles = page.getByRole('list', { name: '都道府県の人口増減率' }).getByRole('listitem')
-  await expect(tiles).toHaveCount(47)
-  // Each tile spells out its value (color is not the only cue).
-  await expect(tiles.filter({ hasText: '東京' })).toHaveAttribute('aria-label', /^東京都 [+-]\d+\.\d%$/)
-  await tiles.filter({ hasText: '岐阜' }).click()
-  await expect(page).toHaveURL(/\/rankings\/gifu$/)
+  await page.getByRole('link', { name: /^市区町村の人口増減率/ }).click()
+  await expect(page).toHaveURL(/\/rankings\/all\/population-change\?map=@1$/)
+})
+
+test('the home page shows the brand in its hero, and in the bar only after scrolling', async ({ page }) => {
+  await page.goto('/')
+  const barBrand = page.getByRole('banner').getByRole('link', { name: /まちくらべ/ })
+  await expect(barBrand).toHaveCount(0)
+  await page.mouse.wheel(0, 600)
+  await expect(barBrand).toBeVisible()
 })
 
 test('a prefecture page lists its municipalities and its rankings', async ({ page }) => {
   await page.goto('/rankings/gifu')
   await expect(page.getByRole('heading', { level: 1, name: '岐阜県' })).toBeVisible()
+  // The list is folded away under the rankings.
+  await page.getByRole('heading', { name: /^岐阜県の市区町村一覧/ }).click()
   const list = page.getByTestId('pref-municipalities')
   await expect(list.getByRole('link', { name: '岐阜市', exact: true })).toBeVisible()
   await expect(list.getByRole('link')).toHaveCount(42)
@@ -33,7 +39,12 @@ test('a prefecture page lists its municipalities and its rankings', async ({ pag
 
 test('a prefecture without villages offers no village ranking', async ({ page }) => {
   await page.goto('/rankings/hyogo')
-  await expect(page.getByTestId('pref-municipalities')).toBeVisible()
   await expect(page.getByRole('link', { name: '町の人口', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: '村の人口', exact: true })).toHaveCount(0)
+})
+
+test("a prefecture page's headline figures lead to their rankings", async ({ page }) => {
+  await page.goto('/rankings/shimane')
+  await page.getByTestId('pref-figures').getByRole('link', { name: /^人口増減率/ }).click()
+  await expect(page).toHaveURL(/\/rankings\/shimane\/population-change$/)
 })

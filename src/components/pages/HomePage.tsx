@@ -11,7 +11,7 @@ import AppHeader from '@/components/AppHeader'
 import Sidebar from '@/components/Sidebar'
 import Canonical from '@/components/Canonical'
 import SiteFooter from '@/components/SiteFooter'
-import PrefTileMap from '@/components/home/PrefTileMap'
+import ChangeMap from '@/components/home/ChangeMap'
 import MuniSearch from '@/components/home/MuniSearch'
 
 const NAVY = '#13294b'
@@ -44,21 +44,34 @@ function HomePage() {
   const counted = municipalities.filter(m => !Number.isNaN(m.latest)).length
   const growingPrefs = prefs.filter(p => p.rate > 0).map(p => p.prefName)
   const growingMunis = withRate.filter(m => m.rate > 0).length
+  const nameByCode = new Map(municipalities.map(m => [m.code, m.name]))
+  // A ward's `parent` is its city's name; cities are unique by name within a prefecture.
+  const cityCode = new Map(municipalities.map(m => [`${m.prefCode}${m.name}`, m.code]))
+  const parentOf = new Map(places.flatMap(p => {
+    const city = p.parent && cityCode.get(`${p.prefCode}${p.parent}`)
+    return city ? [[p.code, city] as const] : []
+  }))
 
   return (
     <>
       <title>まちくらべ — 市区町村の人口・人口増減・面積のランキングと地図｜霊智堂Atlas</title>
       <meta name="description" content={`全国の市区町村を、人口・人口増減率（国勢調査${period}）・面積・人口密度・家賃などでくらべるランキングと地図。都道府県別のランキングや、市区町村ごとの詳しいデータも見られます。`} />
       <Canonical />
-      <AppHeader onMenuClick={() => setMenuOpen(true)} />
+      <AppHeader onMenuClick={() => setMenuOpen(true)} brandAfterScroll />
       {menuOpen && <Sidebar onClose={() => setMenuOpen(false)} />}
 
-      <main className="pt-11">
-        {/* Hero: what this is, and the quickest way in — a municipality's name. */}
+      <main>
+        {/* Hero: what this is, and the quickest way in — a municipality's name.
+            It runs up under the bar, which stays see-through until scrolled. */}
         <section className="bg-[#f4f7fb] border-b border-[#e3eaf3]">
-          <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
-            <p className="text-xs tracking-widest text-gray-500">{BRAND_SERIES}</p>
-            <h1 className="mt-1 text-4xl md:text-5xl font-black tracking-tight" style={{ color: NAVY }}>{BRAND_NAME}</h1>
+          <div className="max-w-5xl mx-auto px-4 pt-14 pb-8 md:pt-20 md:pb-12">
+            <div className="flex items-center gap-3 md:gap-4">
+              <img src="/logo.svg" alt="" className="h-12 w-12 md:h-16 md:w-16 shrink-0" />
+              <div>
+                <p className="text-xs tracking-widest text-gray-500">{BRAND_SERIES}</p>
+                <h1 className="mt-0.5 text-4xl md:text-5xl font-black tracking-tight" style={{ color: NAVY }}>{BRAND_NAME}</h1>
+              </div>
+            </div>
             <p className="mt-3 max-w-2xl text-gray-700 leading-relaxed">
               全国{counted > 0 ? counted.toLocaleString('ja-JP') : ''}市区町村のデータを、ランキングと地図で。
             </p>
@@ -76,10 +89,12 @@ function HomePage() {
             {loaded && <>人口が増えたのは{growingPrefs.length ? growingPrefs.join('・') : 'なし'}だけ、市区町村では{withRate.length.toLocaleString('ja-JP')}のうち{growingMunis}でした。</>}
           </p>
           <div className="mt-5 grid gap-8 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] items-start">
-            <PrefTileMap
-              rates={new Map(prefs.map(p => [p.prefCode, p.rate]))}
-              linkFor={r => `/rankings/${r}`}
-              caption="都道府県の人口増減率"
+            <ChangeMap
+              rates={new Map(municipalities.map(m => [m.code, m.rate]))}
+              parentOf={parentOf}
+              nameOf={c => nameByCode.get(c) ?? c}
+              to="/rankings/all/population-change?map=@1"
+              caption="市区町村の人口増減率"
             />
             <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-1">
               {loaded ? (

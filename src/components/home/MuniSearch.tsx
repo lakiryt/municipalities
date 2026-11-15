@@ -51,7 +51,7 @@ function MuniSearch({ entries }: Props) {
           aria-controls={listId}
           aria-activedescendant={open ? `${listId}-${active}` : undefined}
           autoComplete="off"
-          placeholder="市区町村名で探す（例：つくば市）"
+          placeholder="市区町村名で探す"
           className="w-full py-3 bg-transparent outline-none text-base placeholder:text-gray-400"
           value={q}
           onChange={e => { setQ(e.target.value); setActive(0) }}

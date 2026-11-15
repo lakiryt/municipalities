@@ -17,6 +17,27 @@ import TrendChart from '@/components/detail/TrendChart'
 import AgePyramid from '@/components/detail/AgePyramid'
 import LocatorMap from '@/components/detail/LocatorMap'
 
+// 「全国 135位 / 1,747」: a button into the ranking it refers to.
+function RankButton({ to, scope, rank }: { to?: string; scope: string; rank: { rank: number; of: number } }) {
+  const body = (
+    <>
+      <span className="text-gray-500">{scope}</span>
+      <span className="ml-auto"><b className="text-sm text-gray-900">{rank.rank.toLocaleString('ja-JP')}</b>位<span className="text-gray-400"> / {rank.of.toLocaleString('ja-JP')}</span></span>
+    </>
+  )
+  if (!to) return <div className="flex items-baseline gap-2 px-2 py-1">{body}</div>
+  return (
+    <Link
+      to={to}
+      className="flex items-baseline gap-2 rounded-md bg-[#f4f7fb] px-2 py-1 text-gray-700 hover:bg-[#e3ecf8] hover:text-[#13294b] focus-visible:outline-2 focus-visible:outline-[#4a6fa5]"
+      aria-label={`${scope}のランキングで${rank.rank}位（${rank.of}中）`}
+    >
+      {body}
+      <span className="text-gray-400" aria-hidden="true">›</span>
+    </Link>
+  )
+}
+
 // /m/:code — one municipality: its figures with national and in-prefecture
 // ranks, its population over the years, its age structure, and where it is
 // (with links to its neighbors). Uses the same データの選択 as the tables.
@@ -66,6 +87,12 @@ function MunicipalityPage() {
 
   const query = writeSelectionParams(new URLSearchParams(), selection).toString()
   const linkTo = (c: string) => `/m/${c}${query ? `?${query}` : ''}`
+  // The ranking a figure's rank refers to, with this municipality's row marked.
+  const rankingLink = (slug: string, scope: string) => {
+    const q = writeSelectionParams(new URLSearchParams(), selection)
+    q.set('at', code)
+    return `/rankings/${scope}/${slug}?${q}`
+  }
   const title = name ? `${name}（${pref?.kanji ?? ''}）` : ''
 
   useEffect(() => {
@@ -120,19 +147,16 @@ function MunicipalityPage() {
             {!loaded ? <p className="text-sm text-gray-400">読み込み中…</p> : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {metrics.map(({ metric, value, national, prefecture }) => (
-                  <div key={metric.key} className="rounded-lg border border-gray-200 p-3" data-testid={`metric-${metric.key}`}>
+                  <div key={metric.key} className="rounded-lg border border-gray-200 p-3 flex flex-col" data-testid={`metric-${metric.key}`}>
                     <div className="text-xs text-gray-500">{metric.label}</div>
                     <div className="mt-0.5 text-lg font-semibold tabular-nums">
                       {formatValue(value)}<span className="ml-1 text-xs font-normal text-gray-500">{Number.isNaN(value) ? '' : metric.unit}</span>
                     </div>
                     {national && (
-                      <div className="mt-1 text-xs text-gray-600 tabular-nums">
-                        全国 <b>{national.rank.toLocaleString('ja-JP')}</b>位 / {national.of.toLocaleString('ja-JP')}
-                        {prefecture && <><br />{pref?.kanji}内 <b>{prefecture.rank}</b>位 / {prefecture.of}</>}
+                      <div className="mt-auto pt-1.5 flex flex-col gap-1 text-xs tabular-nums">
+                        <RankButton to={metric.ranking && rankingLink(metric.ranking, 'all')} scope="全国" rank={national} />
+                        {prefecture && pref && <RankButton to={metric.ranking && rankingLink(metric.ranking, pref.romanized)} scope={pref.kanji} rank={prefecture} />}
                       </div>
-                    )}
-                    {metric.ranking && pref && official && (
-                      <Link to={metric.ranking(pref.romanized)} className="mt-1 inline-block text-[11px] text-blue-600 hover:underline">{pref.kanji}のランキング</Link>
                     )}
                   </div>
                 ))}

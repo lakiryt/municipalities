@@ -8,7 +8,7 @@ test('a name in a ranking links to its detail page, which shows its figures with
   await expect(page.getByRole('heading', { level: 1, name: '豊島区' })).toBeVisible()
   await expect(page).toHaveTitle(/^豊島区（東京都）の人口/)
   // The densest municipality in Japan.
-  await expect(page.getByTestId('metric-density')).toContainText('全国 1位 / 1,747')
+  await expect(page.getByTestId('metric-density')).toContainText(/全国\s*1位 \/ 1,747/)
   await expect(page.getByTestId('metric-pop')).toContainText(/\d{3},\d{3}\s*人/)
 })
 
@@ -42,4 +42,14 @@ test('the data selection carries over from a table to the detail page', async ({
 test('an unknown code shows a not-found message', async ({ page }) => {
   await page.goto('/m/99999')
   await expect(page.getByRole('heading', { name: '自治体が見つかりません' })).toBeVisible()
+})
+
+test('a rank on the detail page opens its ranking with the municipality marked', async ({ page }) => {
+  await page.goto('/m/13116')
+  await page.getByTestId('metric-setai').getByRole('link', { name: /^東京都のランキング/ }).click()
+  await expect(page).toHaveURL(/\/rankings\/tokyo\/households\?at=13116$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('東京都の市区町村の世帯数ランキング')
+  const row = page.locator('tr[aria-current="true"]')
+  await expect(row).toContainText('豊島区')
+  await expect(row).toBeInViewport()
 })

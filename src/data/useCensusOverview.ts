@@ -41,7 +41,7 @@ export function useCensusOverview() {
     // prefectures or grouping rows (郡・振興局).
     const places = codes
       .filter(c => !c.code.endsWith('000') && (officialCodes.has(c.code) || c.parent))
-      .map(c => ({ ...row(c.code, c.kanji, c.parent), kana: c.kana }))
+      .map(c => ({ ...row(c.code, c.kanji, c.parent), kana: c.kana, parent: c.parent }))
     // Rankings keep to actual 地方公共団体.
     const municipalities = places.filter(p => officialCodes.has(p.code))
     const prefs = prefectures.map(p => row(p.code, p.kanji))

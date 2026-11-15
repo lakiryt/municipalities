@@ -37,6 +37,8 @@ const prefsWithVillages = new Set(
 const urls = [
   { path: '/',                                  priority: '1.0', changefreq: 'monthly' },
   { path: '/search',                            priority: '0.8', changefreq: 'monthly' },
+  { path: '/rankings/all/population',           priority: '0.8', changefreq: 'monthly' },
+  { path: '/rankings/all/households',           priority: '0.7', changefreq: 'monthly' },
   { path: '/rankings/all/density',              priority: '0.8', changefreq: 'monthly' },
   { path: '/rankings/all/cities',               priority: '0.8', changefreq: 'monthly' },
   { path: '/rankings/all/area',                 priority: '0.8', changefreq: 'monthly' },
@@ -64,6 +66,10 @@ const urls = [
     { path: `/rankings/${p.romanized}/population-change`,  priority: '0.7', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/population-decline`, priority: '0.7', changefreq: 'monthly' },
     { path: `/rankings/${p.romanized}/towns`,     priority: '0.6', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/population`,    priority: '0.7', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/households`,    priority: '0.6', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/elderly-ratio`, priority: '0.6', changefreq: 'monthly' },
+    { path: `/rankings/${p.romanized}/rent`,          priority: '0.6', changefreq: 'monthly' },
   ]),
   ...prefectures.filter(p => prefsWithVillages.has(p.code.slice(0, 2))).map(p =>
     ({ path: `/rankings/${p.romanized}/villages`, priority: '0.6', changefreq: 'monthly' })),

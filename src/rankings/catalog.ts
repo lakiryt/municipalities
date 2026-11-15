@@ -7,12 +7,14 @@ export const CATALOG: CatalogGroup[] = [
   {
     title: '人口',
     entries: [
+      { slug: 'population', label: '市区町村の人口', perPref: true },
       { slug: 'population-change', label: '人口増加率', perPref: true },
       { slug: 'population-decline', label: '人口減少率', perPref: true },
       { slug: 'cities', label: '市の人口', perPref: true },
       { slug: 'towns', label: '町の人口', perPref: true },
       { slug: 'villages', label: '村の人口', perPref: true },
-      { slug: 'elderly-ratio', label: '老年人口比率', perPref: false },
+      { slug: 'households', label: '世帯数', perPref: true },
+      { slug: 'elderly-ratio', label: '老年人口比率', perPref: true },
     ],
   },
   {
@@ -26,7 +28,7 @@ export const CATALOG: CatalogGroup[] = [
   {
     title: '暮らし',
     entries: [
-      { slug: 'rent', label: '家賃', perPref: false },
+      { slug: 'rent', label: '家賃', perPref: true },
       { slug: 'rent-labor-days', label: '家賃を稼ぐのに必要な労働日数', perPref: false, query: '?map=@4' },
     ],
   },

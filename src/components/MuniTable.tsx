@@ -493,6 +493,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
             onSortColumn={handleSortColumn}
             linkFor={detailLink}
             envOf={envOf}
+            highlight={searchParams.get('at') ?? undefined}
           />
         </main>
       )}
