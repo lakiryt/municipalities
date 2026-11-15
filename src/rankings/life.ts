@@ -102,22 +102,24 @@ export function fromAbroadConfig(pref: Pref | null): RankingConfig {
   }
 }
 
-// 公園で、同じくらいの子に会える？ — 1km²あたりの0〜4歳の人数。
-export const TODDLER_DENSITY = 'ROUND(MULT(#total0_4, INV(#area)), 1)'
-export function toddlerDensityConfig(pref: Pref | null): RankingConfig {
+// この子の同級生は、何人になる？ — 去年1年間に生まれた赤ちゃんの数（住民
+// 票の出生届）, fewest first: close to the size of that child's school year.
+// The 北方領土 villages are 地方公共団体 with no residents; they're left out
+// by needing someone to live there.
+export function birthsConfig(pref: Pref | null): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
   return {
-    title: `${scope}の0〜4歳の人口密度ランキング`,
-    description: `${scope}の市区町村を、1km²あたりの0〜4歳の人数が多い順に並べたランキングです。`,
+    title: `${scope}の1年間に生まれた赤ちゃんの数ランキング（少ない順）`,
+    description: `${scope}の市区町村を、去年1年間の出生数が少ない順に並べたランキングです。`,
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
-      { id: 1, label: '0〜4歳の人口密度（人/km²）', expression: TODDLER_DENSITY },
+      { id: 1, label: '出生数（去年1年間）', expression: '#inc_born' },
       { id: 2, label: '0〜4歳', expression: '#total0_4' },
-      { id: 3, label: '面積(km²)', expression: '#area' },
+      { id: 3, label: '総人口', expression: '#totalpop' },
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],
-    filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
-    sortExpression: 'MULT(#total0_4, INV(#area))',
-    sortDirection: 'desc',
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref), 'LEQ(1, #totalpop)'),
+    sortExpression: '#inc_born',
+    sortDirection: 'asc',
   }
 }

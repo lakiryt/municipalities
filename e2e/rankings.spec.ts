@@ -111,6 +111,6 @@ test('the life-question rankings load, each ordered by its own figure', async ({
   await expect(page.getByRole('heading', { level: 1 })).toContainText('転入者の割合ランキング（去年国内から')
   await page.goto('/rankings/all/from-abroad')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('国外からの転入者の割合ランキング')
-  await page.goto('/rankings/all/toddler-density')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('全国の0〜4歳の人口密度ランキング')
+  await page.goto('/rankings/all/births')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('全国の1年間に生まれた赤ちゃんの数ランキング（少ない順）')
 })

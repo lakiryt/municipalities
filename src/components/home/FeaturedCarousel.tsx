@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { parseAndTypeCheck } from '@/lang/expr'
 import { evaluate } from '@/lang/evaluate'
@@ -11,6 +11,9 @@ import RankingMap from './RankingMap'
 
 const NAVY = '#13294b'
 const TOP = 5
+// Auto-advance: every so often, unless paused, hovered, focused inside, or
+// the reader prefers reduced motion.
+const INTERVAL_MS = 20_000
 
 type Row = { item: BaseItem; value: number }
 
@@ -94,21 +97,25 @@ function Slide({ f, index, count, items, designations, coastal, show }: {
   )
 }
 
-// The home page's picks, one ranking per slide: ‹ › (or a swipe) moves
-// between them. A slide's map is drawn once it's been near the screen.
+const scrollToSlide = (track: HTMLElement | null, i: number) =>
+  track?.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' })
+
+// The home page's picks, one ranking per slide: ‹ ›, the dots or a swipe
+// move between them, and they move on by themselves every INTERVAL_MS.
+// A slide's map is drawn once it's been near the screen.
 function FeaturedCarousel() {
   const featured = useMemo(() => featuredRankings(), [])
   const { items, designations, coastal } = useMunicipalityData(defaultDataSelection(), true)
   const trackRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
   const [seen, setSeen] = useState(() => new Set([0, 1]))
+  const [stopped, setStopped] = useState(false)   // the pause button
+  const [holding, setHolding] = useState(false)   // pointer over / focus inside
+  const [reduced] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  const playing = !stopped && !reduced
 
-  const go = (i: number) => {
-    const track = trackRef.current
-    if (!track) return
-    const next = (i + featured.length) % featured.length
-    track.scrollTo({ left: next * track.clientWidth, behavior: 'smooth' })
-  }
+  const count = featured.length
+  const go = (i: number) => scrollToSlide(trackRef.current, (i + count) % count)
   const onScroll = () => {
     const track = trackRef.current
     if (!track) return
@@ -118,9 +125,25 @@ function FeaturedCarousel() {
     if (!seen.has(i + 1) || !seen.has(i)) setSeen(s => new Set([...s, i, i + 1]))
   }
 
-  const arrow = 'h-9 w-9 shrink-0 rounded-full border border-gray-200 bg-white text-lg leading-none text-[#13294b] hover:border-[#4a6fa5] hover:bg-[#f4f7fb]'
+  // Restarts whenever the slide changes (by hand or by itself), so a slide
+  // the reader just moved to always gets the full interval.
+  useEffect(() => {
+    if (!playing || holding) return
+    const t = setTimeout(() => { if (!document.hidden) scrollToSlide(trackRef.current, (active + 1) % count) }, INTERVAL_MS)
+    return () => clearTimeout(t)
+  }, [active, playing, holding, count])
+
+  const arrow = 'absolute top-56 md:top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full border border-gray-200 bg-white/90 text-xl leading-none text-[#13294b] shadow-sm hover:border-[#4a6fa5] hover:bg-white'
   return (
-    <section className="max-w-5xl mx-auto px-4 py-8" aria-roledescription="カルーセル" aria-label="ピックアップ">
+    <section
+      className="max-w-5xl mx-auto px-4 py-8"
+      aria-roledescription="カルーセル"
+      aria-label="ピックアップ"
+      onMouseEnter={() => setHolding(true)}
+      onMouseLeave={() => setHolding(false)}
+      onFocus={() => setHolding(true)}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHolding(false) }}
+    >
       <div className="mb-3 flex items-center gap-2">
         <div className="flex gap-1.5" role="tablist" aria-label="スライドを選ぶ">
           {featured.map((f, i) => (
@@ -135,22 +158,33 @@ function FeaturedCarousel() {
           ))}
         </div>
         <span className="ml-auto text-xs tabular-nums text-gray-500">{active + 1} / {featured.length}</span>
-        <button className={arrow} onClick={() => go(active - 1)} aria-label="前へ">‹</button>
-        <button className={arrow} onClick={() => go(active + 1)} aria-label="次へ">›</button>
+        {!reduced && (
+          <button
+            onClick={() => setStopped(s => !s)}
+            aria-label={stopped ? '自動で進める' : '自動で進めるのを止める'}
+            className="h-7 w-7 rounded-full text-xs text-gray-500 hover:bg-gray-100"
+          >
+            {stopped ? '▶' : '❚❚'}
+          </button>
+        )}
       </div>
-      <div
-        ref={trackRef}
-        onScroll={onScroll}
-        className="flex overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {featured.map((f, i) => (
-          <Slide
-            key={f.path}
-            f={f} index={i} count={featured.length}
-            items={items} designations={designations} coastal={coastal}
-            show={seen.has(i)}
-          />
-        ))}
+      <div className="relative">
+        <button className={`${arrow} left-1 lg:-left-14`} onClick={() => go(active - 1)} aria-label="前へ">‹</button>
+        <div
+          ref={trackRef}
+          onScroll={onScroll}
+          className="flex overflow-x-auto snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {featured.map((f, i) => (
+            <Slide
+              key={f.path}
+              f={f} index={i} count={featured.length}
+              items={items} designations={designations} coastal={coastal}
+              show={seen.has(i)}
+            />
+          ))}
+        </div>
+        <button className={`${arrow} right-1 lg:-right-14`} onClick={() => go(active + 1)} aria-label="次へ">›</button>
       </div>
     </section>
   )

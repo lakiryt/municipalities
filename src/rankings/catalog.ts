@@ -35,7 +35,7 @@ export const CATALOG: CatalogGroup[] = [
       { slug: 'love-competition-men', label: '恋愛競争率（男性から見て）', perPref: true },
       { slug: 'newcomers', label: '転入者の割合（国内から）', perPref: true },
       { slug: 'from-abroad', label: '転入者の割合（国外から）', perPref: true },
-      { slug: 'toddler-density', label: '0〜4歳の人口密度', perPref: true },
+      { slug: 'births', label: '生まれた赤ちゃんの数', perPref: true },
     ],
   },
   {

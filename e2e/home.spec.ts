@@ -54,3 +54,39 @@ test("a prefecture page's headline figures lead to their rankings", async ({ pag
   await page.getByTestId('pref-figures').getByRole('link', { name: /^人口増減率/ }).click()
   await expect(page).toHaveURL(/\/rankings\/shimane\/population-change$/)
 })
+
+test('the carousel moves on by itself, and its pause button stops that', async ({ page }) => {
+  await page.clock.install()
+  await page.goto('/')
+  const carousel = page.getByRole('region', { name: 'ピックアップ' })
+  await expect(carousel.getByText('1 / 8')).toBeVisible()
+  await page.mouse.move(0, 0)
+  await page.clock.fastForward(21_000)
+  await expect(carousel.getByText('2 / 8')).toBeVisible()
+  await carousel.getByRole('button', { name: '自動で進めるのを止める' }).click()
+  await page.mouse.move(0, 0)
+  await page.clock.fastForward(60_000)
+  await expect(carousel.getByText('2 / 8')).toBeVisible()
+})
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('a swipe moves the carousel to the next slide', async ({ page }) => {
+    await page.goto('/')
+    const carousel = page.getByRole('region', { name: 'ピックアップ' })
+    await expect(carousel.getByText('1 / 8')).toBeVisible()
+    const box = (await carousel.getByRole('heading', { level: 3 }).first().boundingBox())!
+    const y = Math.round(box.y + 150)
+    const cdp = await page.context().newCDPSession(page)
+    // A finger dragged right to left across the map.
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 320, y }] })
+    for (let x = 300; x >= 60; x -= 20) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] })
+      await page.waitForTimeout(16)
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect(carousel.getByText('2 / 8')).toBeVisible()
+    await expect(carousel.getByRole('button', { name: '次へ' })).toBeVisible()
+  })
+})

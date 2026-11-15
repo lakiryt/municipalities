@@ -1,7 +1,7 @@
 import type { RankingConfig } from '../types'
 import { populationChangeConfig, changePeriod } from './populationChange'
 import rentLaborDaysConfig from './rentLaborDays'
-import { loveCompetitionConfig, pensionRentConfig, newcomersConfig, fromAbroadConfig, toddlerDensityConfig, PENSION_MONTHLY } from './life'
+import { loveCompetitionConfig, pensionRentConfig, newcomersConfig, fromAbroadConfig, birthsConfig, PENSION_MONTHLY } from './life'
 
 // The home page's carousel: rankings picked for the question behind them —
 // something a person wonders about at a turn in their life. Each slide is an
@@ -68,12 +68,12 @@ export function featuredRankings(): Featured[] {
       unit: '人',
     },
     {
-      question: '公園で、同じくらいの子に会える？',
-      note: '1km²あたりの、0〜4歳の子どもの人数',
-      config: toddlerDensityConfig(null),
-      path: '/rankings/all/toddler-density',
+      question: 'この子の同級生は、何人になる？',
+      note: '去年1年間に生まれた赤ちゃんの数（少ない順）',
+      config: birthsConfig(null),
+      path: '/rankings/all/births',
       mapColumn: 1,
-      unit: '人/km²',
+      unit: '人',
     },
     {
       question: '年金だけで暮らしたら、家賃を払っていくら残る？',
