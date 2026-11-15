@@ -60,9 +60,9 @@ function RankingMap({ values, parentOf, nameOf, format, to, label }: Props) {
                   <path
                     key={code}
                     d={d}
+                    // No borders, as in the map view: at this size they'd only
+                    // wash the colors out.
                     fill={v === undefined || Number.isNaN(v) ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)}
-                    stroke="#ffffff"
-                    strokeWidth={0.3}
                   >
                     {v !== undefined && <title>{`${nameOf(own)} ${format(v)}`}</title>}
                   </path>
