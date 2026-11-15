@@ -84,7 +84,8 @@ export function suggestScale(values: number[]): ScaleKind {
 }
 
 export function makeScale(values: number[], choice: ScaleChoice, clipPercent = 0): ColorScale {
-  const sorted = [...values].sort((a, b) => a - b)
+  // Only finite values span a scale (∞ would stretch it to nothing).
+  const sorted = values.filter(Number.isFinite).sort((a, b) => a - b)
   let kind: ScaleKind = choice === 'auto' ? suggestScale(sorted) : choice
   if (kind === 'log' && !canLog(sorted)) kind = 'linear'
   if (isSigned(kind) && !canDiverge(sorted)) kind = 'linear'

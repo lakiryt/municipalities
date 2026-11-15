@@ -320,3 +320,18 @@ test('a map filtered to one prefecture zooms to it', async ({ page }) => {
     expect(Number(t?.match(/scale\(([\d.]+)\)/)?.[1])).toBeGreaterThan(5)
   }).toPass()
 })
+
+test('a ratio column that divides by zero somewhere still maps (that municipality as no data)', async ({ page }) => {
+  // 渡名喜村 has women aged 20–24 but no men: female ÷ male is ∞ there.
+  const s = JSON.stringify({
+    columns: [
+      { id: 0, label: '自治体名', expression: '$kanji' },
+      { id: 1, label: '20-24', expression: 'MULT(#female20_24, INV(#male20_24))' },
+    ],
+    filterExpression: '', sortExpression: '#totalpop', sortDirection: 'desc',
+  })
+  await page.goto('/explore?' + new URLSearchParams({ s, map: '@1' }))
+  await expect(page.locator('svg path[data-code]').first()).toBeVisible()
+  await expect(page.locator('svg path[data-code="47356"]')).toHaveAttribute('fill', '#e1e0d9')
+  await expect(page.getByText('Unexpected Application Error')).toHaveCount(0)
+})

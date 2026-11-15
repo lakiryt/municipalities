@@ -27,6 +27,13 @@ describe('suggestScale', () => {
 })
 
 describe('makeScale', () => {
+  it('ignores infinite values (a ratio over zero), so every finite value still gets a color', () => {
+    const scale = makeScale([1, 2, 3, Infinity, -Infinity, NaN], 'auto')
+    expect(scale.lo).toBe(1)
+    expect(scale.hi).toBe(3)
+    for (const v of [1, 2, 3]) expect(Number.isFinite(scale.t(v))).toBe(true)
+  })
+
   it('diverging puts 0 in the middle and stretches each side to its own extreme', () => {
     const s = makeScale([-20, -10, -5, 0, 2, 4], 'diverging')
     expect(s.t(0)).toBe(0.5)
