@@ -67,7 +67,6 @@ export function metricValues(
 
 // Age brackets as in the 住民基本台帳 age table (population columns
 // total0_4 … total100_, male…, female…).
-export const AGE_BRACKETS = ['0_4', '5_9', '10_14', '15_19', '20_24', '25_29', '30_34', '35_39', '40_44', '45_49',
-  '50_54', '55_59', '60_64', '65_69', '70_74', '75_79', '80_84', '85_89', '90_94', '95_99', '100_']
+export { AGE_BRACKETS } from '@/lang/variables'
 
 export const ageLabel = (b: string) => b.endsWith('_') ? `${b.slice(0, -1)}歳以上` : `${b.replace('_', '〜')}歳`

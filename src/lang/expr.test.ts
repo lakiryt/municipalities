@@ -1,7 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import { parseAndTypeCheck, referencesColumn, ParseError, TypeCheckError } from './expr'
+import { VAR_COMPLETIONS } from './variables'
 
 describe('literals and variables', () => {
+  it('rejects a variable that is not declared (a typo is an error, not a column of NaN)', () => {
+    expect(() => parseAndTypeCheck('#rent_privat')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('$kanjii')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('&offical')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('SUM(#totalpop, #totalpopp)')).toThrow(/#totalpopp/)
+  })
+
+  it('accepts every declared variable, derived ones included', () => {
+    for (const v of VAR_COMPLETIONS) expect(() => parseAndTypeCheck(v)).not.toThrow()
+  })
+
   it('parses a numeric literal', () => {
     expect(parseAndTypeCheck('42')).toEqual({ type: 'n', expr: { kind: 'literal', value: 42 } })
   })
@@ -41,13 +53,13 @@ describe('literals and variables', () => {
 
 describe('function calls', () => {
   it('type-checks SUM over numvars', () => {
-    const t = parseAndTypeCheck('SUM(#female, #male)')
+    const t = parseAndTypeCheck('SUM(#femalepop, #malepop)')
     expect(t.type).toBe('n')
   })
 
   it('type-checks MIN and MAX over numvars, variadic like SUM/MULT', () => {
-    expect(parseAndTypeCheck('MIN(#female, #male)').type).toBe('n')
-    expect(parseAndTypeCheck('MAX(#female, #male, 100)').type).toBe('n')
+    expect(parseAndTypeCheck('MIN(#femalepop, #malepop)').type).toBe('n')
+    expect(parseAndTypeCheck('MAX(#femalepop, #malepop, 100)').type).toBe('n')
   })
 
   it('rejects a non-numeric argument to MIN/MAX', () => {

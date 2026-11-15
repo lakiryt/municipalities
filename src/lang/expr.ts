@@ -1,3 +1,4 @@
+import { isNumVar, isStrVar, isBoolVar, type NumVarName, type StrVarName, type BoolVarName } from './variables'
 // ── Raw parse tree (untyped) ──────────────────────────────────────────────────
 
 type RawCall    = { kind: 'call';    name: string; args: RawExpr[] }
@@ -12,7 +13,7 @@ type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoo
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
 export type NumLiteral = { kind: 'literal'; value: number }
-export type NumVar     = { kind: 'numvar';  name: string }
+export type NumVar     = { kind: 'numvar';  name: NumVarName }
 export type NumSum     = { kind: 'SUM';     args: NumExpr[] }
 export type NumMult    = { kind: 'MULT';    args: NumExpr[] }
 export type NumMin     = { kind: 'MIN';     args: NumExpr[] }
@@ -29,13 +30,13 @@ export type BoolOr   = { kind: 'OR';      args: BoolExpr[] }
 export type BoolNot  = { kind: 'NOT';     arg: BoolExpr }
 export type BoolLeq  = { kind: 'LEQ';     left: NumExpr;   right: NumExpr }
 export type BoolEq   = { kind: 'EQ';      left: TypedExpr; right: TypedExpr }
-export type BoolVar  = { kind: 'boolvar'; name: string }
+export type BoolVar  = { kind: 'boolvar'; name: BoolVarName }
 export type BoolIf   = { kind: 'IF'; cond: BoolExpr; then: BoolExpr; else_: BoolExpr }
 export type BoolColRef = { kind: 'colref'; id: number }
 export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar | BoolIf | BoolColRef
 
 export type StrLiteral = { kind: 'strlit'; value: string }
-export type StrVar     = { kind: 'strvar'; name: string }
+export type StrVar     = { kind: 'strvar'; name: StrVarName }
 export type StrSubstr  = { kind: 'SUBSTR'; str: StrExpr;   len: NumExpr }
 export type StrIf      = { kind: 'IF'; cond: BoolExpr; then: StrExpr;  else_: StrExpr }
 export type StrColRef  = { kind: 'colref'; id: number }
@@ -285,7 +286,10 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
     return { type: 'n', expr: { kind: 'literal', value: raw.value } }
   }
 
+  // A variable must be one of the declared ones (lang/variables.ts): a typo
+  // is an error here rather than a value that is silently always missing.
   if (raw.kind === 'numvar') {
+    if (!isNumVar(raw.name)) throw new TypeCheckError(`数値変数「#${raw.name}」はありません`)
     return { type: 'n', expr: { kind: 'numvar', name: raw.name } }
   }
 
@@ -294,10 +298,12 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
   }
 
   if (raw.kind === 'strvar') {
+    if (!isStrVar(raw.name)) throw new TypeCheckError(`文字列変数「$${raw.name}」はありません`)
     return { type: 's', expr: { kind: 'strvar', name: raw.name } }
   }
 
   if (raw.kind === 'boolvar') {
+    if (!isBoolVar(raw.name)) throw new TypeCheckError(`真偽値変数「&${raw.name}」はありません`)
     return { type: 'b', expr: { kind: 'boolvar', name: raw.name } }
   }
 
