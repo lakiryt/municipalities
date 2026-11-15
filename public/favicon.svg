@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- まちくらべ: タイルで描いた日本列島。紺の濃淡のなか一マスだけ金＝「選んだまち」 -->
+  <!-- 霊智堂Atlas 自治体データ: タイルで描いた日本列島。紺の濃淡のなか一マスだけ金＝「選んだまち」 -->
   <style>
     .t1{fill:#13294b}.t2{fill:#2c4a7c}.t3{fill:#4a6fa5}.t4{fill:#7a9cc6}.t5{fill:#b3c7e0}.g{fill:#c9a227}
     @media (prefers-color-scheme: dark){.t1{fill:#dbe5f2}.t2{fill:#b3c7e0}.t3{fill:#8eabd3}.t4{fill:#6a8cbb}.t5{fill:#4a6fa5}.g{fill:#e9cf72}}

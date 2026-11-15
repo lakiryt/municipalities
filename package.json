@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "node scripts/generate-sitemap.mjs && tsc -b && vite build",
+    "dev": "node scripts/prerender-featured.mjs && vite",
+    "build": "node scripts/generate-sitemap.mjs && node scripts/prerender-featured.mjs && tsc -b && vite build",
+    "featured": "node scripts/prerender-featured.mjs",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "data": "node scripts/data/cli.mjs",
     "lint": "eslint .",

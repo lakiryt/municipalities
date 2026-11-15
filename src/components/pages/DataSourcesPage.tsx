@@ -4,6 +4,7 @@ import { dataset } from '@/data/datasets'
 import AppHeader from '@/components/AppHeader'
 import Sidebar from '@/components/Sidebar'
 import Canonical from '@/components/Canonical'
+import { pageTitle } from '@/lib/brand'
 import SiteFooter from '@/components/SiteFooter'
 
 const ids = Object.keys((meta as unknown as { datasets: Record<string, unknown> }).datasets)
@@ -15,7 +16,7 @@ function DataSourcesPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
     <>
-      <title>データと出典 — まちくらべ</title>
+      <title>{pageTitle('データと出典')}</title>
       <Canonical />
       <AppHeader title="データと出典" onMenuClick={() => setMenuOpen(true)} />
       {menuOpen && <Sidebar onClose={() => setMenuOpen(false)} />}

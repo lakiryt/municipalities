@@ -24,7 +24,7 @@ function HomePage() {
 
   return (
     <>
-      <title>まちくらべ — 市区町村の人口・人口増減・面積のランキングと地図｜霊智堂Atlas</title>
+      <title>霊智堂Atlas 自治体データ — 市区町村のランキングと地図</title>
       <meta name="description" content={`全国の市区町村を、人口・人口増減率（国勢調査${period}）・面積・人口密度・家賃などでくらべるランキングと地図。都道府県別のランキングや、市区町村ごとの詳しいデータも見られます。`} />
       <Canonical />
       <AppHeader onMenuClick={() => setMenuOpen(true)} brandAfterScroll />

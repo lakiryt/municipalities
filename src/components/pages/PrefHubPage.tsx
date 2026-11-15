@@ -8,6 +8,7 @@ import { CATALOG, rankingPath } from '@/rankings/catalog'
 import AppHeader from '@/components/AppHeader'
 import Sidebar from '@/components/Sidebar'
 import Canonical from '@/components/Canonical'
+import { pageTitle } from '@/lib/brand'
 import SiteFooter from '@/components/SiteFooter'
 
 const NAVY = '#13294b'
@@ -76,7 +77,7 @@ function PrefHubPage() {
 
   return (
     <>
-      <title>{`${title} — まちくらべ`}</title>
+      <title>{pageTitle(title)}</title>
       <meta name="description" content={`${pref.kanji}の市区町村の一覧と、人口・人口増減率（国勢調査${period}）・人口密度・面積のランキング。`} />
       <Canonical />
       <AppHeader onMenuClick={() => setMenuOpen(true)} />

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test('the home page searches municipalities by name or reading and opens the chosen one', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1, name: 'まちくらべ' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: '自治体データ' })).toBeVisible()
   const box = page.getByRole('combobox', { name: '市区町村名で探す' })
   await box.fill('ながれやま')
   await expect(page.getByRole('option').first()).toContainText('流山市')
@@ -24,7 +24,7 @@ test("the home carousel steps through picked rankings, each map leading to its r
 
 test('the home page shows the brand in its hero, and in the bar only after scrolling', async ({ page }) => {
   await page.goto('/')
-  const barBrand = page.getByRole('banner').getByRole('link', { name: /まちくらべ/ })
+  const barBrand = page.getByRole('banner').getByRole('link', { name: /自治体データ/ })
   await expect(barBrand).toHaveCount(0)
   await page.mouse.wheel(0, 600)
   await expect(barBrand).toBeVisible()
@@ -89,4 +89,15 @@ test.describe('on a phone', () => {
     await expect(carousel.getByText('2 / 8')).toBeVisible()
     await expect(carousel.getByRole('button', { name: '次へ' })).toBeVisible()
   })
+})
+
+test('the home page shows prerendered maps, without loading the boundary or full population data', async ({ page }) => {
+  const requested: string[] = []
+  page.on('request', r => requested.push(new URL(r.url()).pathname))
+  await page.goto('/')
+  const carousel = page.getByRole('region', { name: 'ピックアップ' })
+  await expect(carousel.locator('img[src="/featured/population-decline.svg"]')).toBeVisible()
+  await expect(carousel.getByRole('link', { name: '珠洲市' })).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  expect(requested.filter(p => p.startsWith('/data/map/') || p.startsWith('/data/jumin/'))).toEqual([])
 })
