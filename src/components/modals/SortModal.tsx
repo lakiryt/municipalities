@@ -38,7 +38,7 @@ function SortModal({ initialExpression, initialDirection, columns = [], onApply,
         <ExprEditor
           ref={editorRef}
           initialExpression={initialExpression}
-          placeholder='ROUND(MULT(#totalpop, INV(#area)), 2)'
+          placeholder='ROUND(#totalpop / #area, 2)'
           columns={columns}
           onValidExpr={e => setValidExpr(e && (['n', 's'] as string[]).includes(e.type) ? e : null)}
           onExpressionChange={setExpression}

@@ -47,7 +47,7 @@ function ColumnModal({ initialLabel, initialExpression, isNew, onSave, onDelete,
         <label className="block text-sm font-medium mb-1">式</label>
         <ExprEditor
           initialExpression={initialExpression}
-          placeholder='SUM(#inc_mov, NEG(#dec_mov))'
+          placeholder='#inc_mov - #dec_mov'
           onValidExpr={setValidExpr}
           onExpressionChange={setExpression}
         />

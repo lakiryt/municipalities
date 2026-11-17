@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test('adding a column shows it in the table and moves the URL to /explore?s=', async ({ page }) => {
   await page.getByRole('columnheader', { name: '+', exact: true }).click()
   await page.getByPlaceholder('列名').fill('テスト列')
-  await page.getByPlaceholder(/SUM\(#inc_mov/).fill('#area')
+  await page.getByPlaceholder(/#inc_mov - /).fill('#area')
   await page.getByRole('button', { name: '保存' }).click()
 
   await expect(page.getByRole('columnheader', { name: 'テスト列' })).toBeVisible()
@@ -81,7 +81,7 @@ test('canceling the delete-confirmation warning keeps the column', async ({ page
 test('deleting a column referenced by the filter also warns', async ({ page }) => {
   await page.getByRole('button', { name: '絞り込み', exact: true }).click()
   // Column ids for the default seeded columns are 0..4 in order; "総人口" is id 3.
-  await page.getByPlaceholder(/AND\(EQ/).fill('LEQ(@3, 1000000)')
+  await page.getByPlaceholder(/ AND #totalpop/).fill('@3 <= 1000000')
   await page.getByRole('button', { name: '適用' }).click()
 
   await page.getByRole('columnheader', { name: '総人口', exact: true }).click()

@@ -9,10 +9,10 @@ const COMPLETIONS = [
 ]
 
 // The current token is everything between the last delimiter and the cursor.
-// Delimiters: ( ) , and whitespace.
+// Delimiters: ( ) , operators and whitespace.
 function tokenAtCursor(text: string, cursor: number): { token: string; start: number } {
   let start = cursor
-  while (start > 0 && !/[(),\s]/.test(text[start - 1])) start--
+  while (start > 0 && !/[(),+\-*/=<>!\s]/.test(text[start - 1])) start--
   return { token: text.slice(start, cursor), start }
 }
 

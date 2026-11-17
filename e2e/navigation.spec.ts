@@ -19,7 +19,7 @@ test('browser back/forward replays column edits made while staying on /explore',
   const addColumn = async (label: string) => {
     await page.getByRole('columnheader', { name: '+', exact: true }).click()
     await page.getByPlaceholder('列名').fill(label)
-    await page.getByPlaceholder(/SUM\(#inc_mov/).fill('#area')
+    await page.getByPlaceholder(/#inc_mov - /).fill('#area')
     await page.getByRole('button', { name: '保存' }).click()
     await expect(page.getByRole('columnheader', { name: label })).toBeVisible()
   }
@@ -48,9 +48,9 @@ test('the filter modal offers a column-reference picker that inserts @id at the 
 
   await page.getByRole('button', { name: '絞り込み', exact: true }).click()
   // /explore starts with &official; start from an empty filter here.
-  await page.getByPlaceholder(/AND\(EQ/).fill('')
+  await page.getByPlaceholder(/ AND #totalpop/).fill('')
   // Default seeded columns are id 0..4 in order; "総人口" is the 4th (id 3).
   await page.getByRole('button', { name: /^@\d+\s+総人口$/ }).click()
 
-  await expect(page.getByPlaceholder(/AND\(EQ/)).toHaveValue('@3')
+  await expect(page.getByPlaceholder(/ AND #totalpop/)).toHaveValue('@3')
 })
