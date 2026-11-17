@@ -5,6 +5,21 @@ import { derivedExpressions } from '@/data/municipalities'
 import Canonical from '@/components/Canonical'
 import { pageTitle } from '@/lib/brand'
 
+// Each operator is the function beside it, written between its operands.
+const operators = [
+  { sig: 'n + n',   ret: 'n', fn: 'SUM(n, n)' },
+  { sig: 'n - n',   ret: 'n', fn: 'SUM(n, NEG(n))' },
+  { sig: 'n * n',   ret: 'n', fn: 'MULT(n, n)' },
+  { sig: 'n / n',   ret: 'n', fn: 'MULT(n, INV(n))' },
+  { sig: '-n',      ret: 'n', fn: 'NEG(n)' },
+  { sig: 'n <= n',  ret: 'b', fn: 'LEQ(n, n)' },
+  { sig: 'n >= n',  ret: 'b', fn: 'LEQ(第2項, 第1項)' },
+  { sig: 'a = a',   ret: 'b', fn: 'EQ(a, a)' },
+  { sig: 'a != a',  ret: 'b', fn: 'NOT(EQ(a, a))' },
+  { sig: 'b AND b', ret: 'b', fn: 'AND(b, b)' },
+  { sig: 'b OR b',  ret: 'b', fn: 'OR(b, b)' },
+]
+
 const functions = [
   { sig: 'AND(b…)',    ret: 'b', desc: 'すべて真のとき真' },
   { sig: 'OR(b…)',     ret: 'b', desc: 'いずれか真のとき真' },
@@ -97,6 +112,30 @@ function FormulasPage() {
             </tbody>
           </table>
           <p className="mt-2 text-xs text-gray-400">b… や n… は1つ以上の引数を表します。</p>
+        </Section>
+
+        <Section title="演算子">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 border-b border-gray-200">
+                <th className="pb-1 pr-6 font-normal">式</th>
+                <th className="pb-1 pr-6 font-normal">戻り値</th>
+                <th className="pb-1 font-normal">関数で書くと</th>
+              </tr>
+            </thead>
+            <tbody>
+              {operators.map(o => (
+                <tr key={o.sig} className="border-b border-gray-100 last:border-0">
+                  <td className="py-1.5 pr-6 font-mono text-gray-700 whitespace-nowrap">{o.sig}</td>
+                  <td className="py-1.5 pr-6 font-mono text-gray-500">{o.ret}</td>
+                  <td className="py-1.5 font-mono text-gray-500 whitespace-nowrap">{o.fn}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-gray-400">
+            結びつきの強い順に「-n」「* /」「+ -」「比較」「AND」「OR」。比較は続けて書けないので、括弧でくくります。
+          </p>
         </Section>
 
         <Section title="関数">

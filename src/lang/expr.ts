@@ -1,7 +1,9 @@
 import { isNumVar, isStrVar, isBoolVar, type NumVarName, type StrVarName, type BoolVarName } from './variables'
 // ── Raw parse tree (untyped) ──────────────────────────────────────────────────
 
-type RawCall    = { kind: 'call';    name: string; args: RawExpr[] }
+// `op` is set when the call was written as an operator (`a + b` is SUM(a, b)):
+// it names what the user wrote, for error messages.
+type RawCall    = { kind: 'call';    name: string; args: RawExpr[]; op?: string }
 type RawLiteral = { kind: 'literal'; value: number }
 type RawVar     = { kind: 'numvar';     name: string }
 type RawStrLit  = { kind: 'strlit';  value: string }
@@ -64,8 +66,12 @@ type TokColRef  = { kind: 'colref'; id: number }
 type TokLParen  = { kind: 'lparen' }
 type TokRParen  = { kind: 'rparen' }
 type TokComma   = { kind: 'comma' }
+type TokOp      = { kind: 'op'; value: SymbolOp }
 type TokEof     = { kind: 'eof' }
-type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokBoolVar | TokColRef | TokLParen | TokRParen | TokComma | TokEof
+type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokBoolVar | TokColRef | TokLParen | TokRParen | TokComma | TokOp | TokEof
+
+type SymbolOp = '+' | '-' | '*' | '/' | '=' | '!=' | '<=' | '>='
+type InfixOp = SymbolOp | 'AND' | 'OR'
 
 const japaneseDescriptions: Record<Token['kind'], string> = {
   ident:   '識別子',
@@ -78,8 +84,12 @@ const japaneseDescriptions: Record<Token['kind'], string> = {
   lparen:  '左括弧',
   rparen:  '右括弧',
   comma:   'カンマ',
+  op:      '演算子',
   eof:     '式の終わり',
 }
+
+const describe = (tok: Token): string =>
+  tok.kind === 'op' ? `演算子「${tok.value}」` : japaneseDescriptions[tok.kind]
 
 export class ParseError extends Error {}
 export class TypeCheckError extends Error {}
@@ -162,6 +172,14 @@ function tokenize(input: string): Token[] {
     if (ch === ')') { tokens.push({ kind: 'rparen' }); i++; continue }
     if (ch === ',') { tokens.push({ kind: 'comma'  }); i++; continue }
 
+    const two = input.slice(i, i + 2)
+    if (two === '!=' || two === '<=' || two === '>=') { tokens.push({ kind: 'op', value: two }); i += 2; continue }
+    if (ch === '+' || ch === '-' || ch === '*' || ch === '/' || ch === '=') { tokens.push({ kind: 'op', value: ch }); i++; continue }
+    // `a < b` as NOT(b <= a) would be true when either side is missing (NaN),
+    // so it isn't offered until the core has a comparison of its own.
+    if (ch === '<' || ch === '>')
+      throw new ParseError(`「${ch}」は使えません。「<=」か「>=」を使ってください（${i + 1}文字目）`)
+
     throw new ParseError(`式に使用できない文字「${ch}」が用いられています（${i + 1}文字目）`)
   }
 
@@ -169,7 +187,54 @@ function tokenize(input: string): Token[] {
   return tokens
 }
 
-// ── Recursive descent parser ──────────────────────────────────────────────────
+// ── Parser (recursive descent, operators by binding power) ──────────────────
+
+// Operators are notation for the core functions: `a - b` is SUM(a, NEG(b)),
+// `a / b` is MULT(a, INV(b)), `a >= b` is LEQ(b, a). The typed AST and the
+// evaluator know nothing of them. A higher binding power binds tighter;
+// comparisons don't associate (`a <= b <= c` is an error, not a guess).
+const INFIX: Record<InfixOp, { bp: number; assoc: 'left' | 'none' }> = {
+  'OR':  { bp: 1, assoc: 'left' },
+  'AND': { bp: 2, assoc: 'left' },
+  '=':   { bp: 3, assoc: 'none' },
+  '!=':  { bp: 3, assoc: 'none' },
+  '<=':  { bp: 3, assoc: 'none' },
+  '>=':  { bp: 3, assoc: 'none' },
+  '+':   { bp: 4, assoc: 'left' },
+  '-':   { bp: 4, assoc: 'left' },
+  '*':   { bp: 5, assoc: 'left' },
+  '/':   { bp: 5, assoc: 'left' },
+}
+const PREFIX_MINUS_BP = 6
+
+// What an error message calls each operator's operands.
+const ADD = '足し算・引き算'
+const MUL = '掛け算・割り算'
+
+const call = (name: string, args: RawExpr[], op: string): RawCall => ({ kind: 'call', name, args, op })
+
+// `a + b + c` is one SUM(a, b, c), as one would write it by hand. Only the
+// left operand is merged, so the terms are still taken left to right.
+function extend(name: string, op: string, left: RawExpr, right: RawExpr): RawCall {
+  return left.kind === 'call' && left.name === name && left.op === op
+    ? call(name, [...left.args, right], op)
+    : call(name, [left, right], op)
+}
+
+function infix(op: InfixOp, left: RawExpr, right: RawExpr): RawExpr {
+  switch (op) {
+    case '+':   return extend('SUM', ADD, left, right)
+    case '-':   return extend('SUM', ADD, left, call('NEG', [right], '引き算'))
+    case '*':   return extend('MULT', MUL, left, right)
+    case '/':   return extend('MULT', MUL, left, call('INV', [right], '割り算'))
+    case 'AND': return extend('AND', '「AND」', left, right)
+    case 'OR':  return extend('OR', '「OR」', left, right)
+    case '=':   return call('EQ', [left, right], '「=」')
+    case '!=':  return call('NOT', [call('EQ', [left, right], '「!=」')], '「!=」')
+    case '<=':  return call('LEQ', [left, right], '「<=」')
+    case '>=':  return call('LEQ', [right, left], '「>=」')
+  }
+}
 
 class Parser {
   private pos = 0
@@ -185,11 +250,33 @@ class Parser {
 
   private expect(kind: Token['kind']): Token {
     const tok = this.consume()
-    if (tok.kind !== kind) throw new ParseError(`〈${japaneseDescriptions[kind]}〉が来るべきところ〈${japaneseDescriptions[tok.kind]}〉でした`)
+    if (tok.kind !== kind) throw new ParseError(`〈${japaneseDescriptions[kind]}〉が来るべきところ〈${describe(tok)}〉でした`)
     return tok
   }
 
-  parseExpr(): RawExpr {
+  // AND and OR are words: after an operand they are operators, and before
+  // `(` at the start of an operand they are still the functions.
+  private infixOp(tok: Token): InfixOp | null {
+    if (tok.kind === 'op') return tok.value
+    if (tok.kind === 'ident' && (tok.value === 'AND' || tok.value === 'OR')) return tok.value
+    return null
+  }
+
+  parseExpr(minBp = 0): RawExpr {
+    let left = this.parseOperand()
+    for (;;) {
+      const op = this.infixOp(this.peek())
+      if (op === null || INFIX[op].bp < minBp) return left
+      this.consume()
+      const { bp, assoc } = INFIX[op]
+      left = infix(op, left, this.parseExpr(bp + 1))
+      const next = this.infixOp(this.peek())
+      if (assoc === 'none' && next !== null && INFIX[next].bp === bp)
+        throw new ParseError(`「${op}」と「${next}」は続けて書けません。括弧でくくってください`)
+    }
+  }
+
+  private parseOperand(): RawExpr {
     const tok = this.peek()
 
     if (tok.kind === 'number') {
@@ -222,6 +309,25 @@ class Parser {
       return { kind: 'colref', id: tok.id }
     }
 
+    if (tok.kind === 'op' && tok.value === '-') {
+      this.consume()
+      const operand = this.parseExpr(PREFIX_MINUS_BP)
+      // `-3` is the number -3 (so ROUND(x, -2) reads as written).
+      return operand.kind === 'literal'
+        ? { kind: 'literal', value: -operand.value }
+        : call('NEG', [operand], '符号の「-」')
+    }
+
+    if (tok.kind === 'lparen') {
+      this.consume()
+      const inner = this.parseExpr()
+      const closing = this.peek()
+      if (closing.kind !== 'rparen')
+        throw new ParseError(`(...)を閉じる〈右括弧〉がないまま〈${describe(closing)}〉となりました`)
+      this.consume()
+      return inner
+    }
+
     if (tok.kind === 'ident') {
       this.consume()
       this.expect('lparen')
@@ -235,19 +341,19 @@ class Parser {
       }
       const closing = this.peek()
       if (closing.kind !== 'rparen')
-        throw new ParseError(`${tok.value}(...)を閉じる〈右括弧〉がないまま〈${japaneseDescriptions[closing.kind]}〉となりました`)
+        throw new ParseError(`${tok.value}(...)を閉じる〈右括弧〉がないまま〈${describe(closing)}〉となりました`)
       this.consume()
       return { kind: 'call', name: tok.value, args }
     }
 
-    throw new ParseError(`〈${japaneseDescriptions[tok.kind]}〉が正しくない場所で使用されています`)
+    throw new ParseError(`〈${describe(tok)}〉が正しくない場所で使用されています`)
   }
 
   parse(): RawExpr {
     const expr = this.parseExpr()
     const remaining = this.peek()
     if (remaining.kind !== 'eof') {
-      throw new ParseError(`式が終了しているにもかかわらず、後ろに〈${japaneseDescriptions[remaining.kind]}〉が続いています`)
+      throw new ParseError(`式が終了しているにもかかわらず、後ろに〈${describe(remaining)}〉が続いています`)
     }
     return expr
   }
@@ -316,7 +422,9 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
     return { type: 's', expr: { kind: 'colref', id: raw.id } }
   }
 
-  const { name, args } = raw
+  const { name, args, op } = raw
+  // What an error points at: the operator as written, or the function's argument.
+  const at = (i: number) => op ? `${op}の項` : `${name}の${i + 1}番目の引数`
 
   const arity = (n: number) => {
     if (args.length !== n)
@@ -325,48 +433,48 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
 
   switch (name) {
     case 'AND':
-      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, `ANDの${i + 1}番目の引数`, columns)) } }
+      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, at(i), columns)) } }
     case 'OR':
-      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, `ORの${i + 1}番目の引数`, columns)) } }
+      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, at(i), columns)) } }
     case 'NOT':
       arity(1)
-      return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], 'NOTの1番目の引数', columns) } }
+      return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], at(0), columns) } }
     case 'LEQ':
       arity(2)
-      return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], 'LEQの1番目の引数', columns), right: requireNum(args[1], 'LEQの2番目の引数', columns) } }
+      return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], at(0), columns), right: requireNum(args[1], at(1), columns) } }
     case 'EQ': {
       arity(2)
       const left = typeCheck(args[0], columns)
       const right = typeCheck(args[1], columns)
-      if (left.type !== right.type) throw new TypeCheckError(`EQ: 両辺の型が一致していません（左辺: ${typeLabel(left)}、右辺: ${typeLabel(right)}）`)
+      if (left.type !== right.type) throw new TypeCheckError(`${op ?? 'EQ'}: 両辺の型が一致していません（左辺: ${typeLabel(left)}、右辺: ${typeLabel(right)}）`)
       return { type: 'b', expr: { kind: 'EQ', left, right } }
     }
     case 'SUM':
-      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, `SUMの${i + 1}番目の引数`, columns)) } }
+      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'MULT':
-      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, `MULTの${i + 1}番目の引数`, columns)) } }
+      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'MIN':
-      return { type: 'n', expr: { kind: 'MIN',  args: args.map((a: RawExpr, i: number) => requireNum(a, `MINの${i + 1}番目の引数`, columns)) } }
+      return { type: 'n', expr: { kind: 'MIN',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'MAX':
-      return { type: 'n', expr: { kind: 'MAX',  args: args.map((a: RawExpr, i: number) => requireNum(a, `MAXの${i + 1}番目の引数`, columns)) } }
+      return { type: 'n', expr: { kind: 'MAX',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'NEG':
       arity(1)
-      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], 'NEGの1番目の引数', columns) } }
+      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], at(0), columns) } }
     case 'INV':
       arity(1)
-      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], 'INVの1番目の引数', columns) } }
+      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], at(0), columns) } }
     case 'ROUND':
       arity(2)
-      return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], 'ROUNDの1番目の引数', columns), digits: requireNum(args[1], 'ROUNDの2番目の引数', columns) } }
+      return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], at(0), columns), digits: requireNum(args[1], at(1), columns) } }
     case 'SUBSTR': {
       arity(2)
-      const str = requireStr(args[0], 'SUBSTRの1番目の引数', columns)
-      const len = requireNum(args[1], 'SUBSTRの2番目の引数', columns)
+      const str = requireStr(args[0], at(0), columns)
+      const len = requireNum(args[1], at(1), columns)
       return { type: 's', expr: { kind: 'SUBSTR', str, len } }
     }
     case 'IF': {
       arity(3)
-      const cond  = requireBool(args[0], 'IFの1番目の引数', columns)
+      const cond  = requireBool(args[0], at(0), columns)
       const then_ = typeCheck(args[1], columns)
       const else_ = typeCheck(args[2], columns)
       if (then_.type !== else_.type)

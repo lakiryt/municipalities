@@ -32,7 +32,7 @@ function FilterModal({ initialExpression, columns = [], onApply, onClear, onClos
         <ExprEditor
           ref={editorRef}
           initialExpression={initialExpression}
-          placeholder='AND(EQ($prefkanji, "東京都"), LEQ(#totalpop, 100000))'
+          placeholder='$prefkanji = "東京都" AND #totalpop <= 100000'
           requiredType="b"
           columns={columns}
           onValidExpr={setValidExpr}

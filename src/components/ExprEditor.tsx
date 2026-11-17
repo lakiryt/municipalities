@@ -77,7 +77,7 @@ const ExprEditor = forwardRef<ExprInputHandle, Props>(function ExprEditor(
       <ExprInput
         ref={ref}
         initialExpression={initialExpression}
-        placeholder={placeholder ?? 'SUM(#female, NEG(#male))'}
+        placeholder={placeholder ?? '#femalepop - #malepop'}
         onChange={raw => { onExpressionChange?.(raw); runCheck(raw) }}
       />
       <div className="mt-1 min-h-[1.25rem] text-sm">
