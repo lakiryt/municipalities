@@ -1,6 +1,6 @@
 import { parseAndTypeCheck } from '@/lang/expr'
 import { normalizeKana } from '@/data/municipalities'
-import type { TypedExpr } from '@/lang/expr'
+import type { TypedExpr, Closed } from '@/lang/expr'
 
 const KUBUN_EXPR = 'IF(&seirei, "政令指定都市", IF(&chukaku, "中核市", IF(&tokurei, "施行時特例市", "")))'
 
@@ -35,7 +35,7 @@ export const COL_MAP = Object.fromEntries(ALL_COL_DEFS.map(c => [c.key, c])) as 
 
 export const COL_TYPED = Object.fromEntries(
   ALL_COL_DEFS.map(c => [c.key, parseAndTypeCheck(c.expr)])
-) as Record<ColKey, TypedExpr>
+) as Record<ColKey, TypedExpr<Closed>>
 
 export const GROUPS = [...new Set(ALL_COL_DEFS.map(c => c.group))]
 
@@ -49,7 +49,7 @@ export type SortOption = {
   key: string
   label: string
   expr: string
-  typed: TypedExpr
+  typed: TypedExpr<Closed>
   mode: SortMode
 }
 

@@ -11,14 +11,6 @@ export type Env = {
   numvars: Record<NumVarName, Num>
   strvars: Record<StrVarName, Str>
   boolvars: Record<BoolVarName, Bool>
-  // Only populated when evaluating a filter/sort expression (the only place
-  // `@id` col-refs can occur — a column's own TypedExpr never contains one,
-  // so this never recurses back into itself).
-  columns?: { id: number; typed: TypedExpr }[]
-}
-
-function resolveColRef(id: number, env: Env): TypedExpr | undefined {
-  return env.columns?.find(c => c.id === id)?.typed
 }
 
 // Evaluates every operand; the numbers if all are present, otherwise why not.
@@ -49,7 +41,7 @@ function evaluateNum(expr: NumExpr, env: Env): Num {
       return isMissing(v) ? v : checked(Math.round(v * f) / f)
     }
     case 'IF':      { const c = evaluateBool(expr.cond, env); return isMissing(c) ? c : c ? evaluateNum(expr.then, env) : evaluateNum(expr.else_, env) }
-    case 'colref':  { const t = resolveColRef(expr.id, env); return t?.type === 'n' ? evaluateNum(t.expr, env) : nodata(`@${expr.id}`) }
+    case 'colref':  return evaluateNum(expr.target, env)   // a column's own expression: closed, so this ends
   }
 }
 
@@ -86,7 +78,7 @@ function evaluateBool(expr: BoolExpr, env: Env): Bool {
     }
     case 'boolvar': return env.boolvars[expr.name]
     case 'IF':      { const c = evaluateBool(expr.cond, env); return isMissing(c) ? c : c ? evaluateBool(expr.then, env) : evaluateBool(expr.else_, env) }
-    case 'colref':  { const t = resolveColRef(expr.id, env); return t?.type === 'b' ? evaluateBool(t.expr, env) : nodata(`@${expr.id}`) }
+    case 'colref':  return evaluateBool(expr.target, env)
   }
 }
 
@@ -103,7 +95,7 @@ function evaluateStr(expr: StrExpr, env: Env): Str {
       return n >= 0 ? s.slice(0, n) : s.slice(n)
     }
     case 'IF': { const c = evaluateBool(expr.cond, env); return isMissing(c) ? c : c ? evaluateStr(expr.then, env) : evaluateStr(expr.else_, env) }
-    case 'colref': { const t = resolveColRef(expr.id, env); return t?.type === 's' ? evaluateStr(t.expr, env) : nodata(`@${expr.id}`) }
+    case 'colref': return evaluateStr(expr.target, env)
   }
 }
 

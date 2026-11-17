@@ -15,49 +15,60 @@ type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoo
 
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
+// `S` is which `@id` column references can occur, per type. A column's own
+// expression is Closed (none): it can't refer to a column, so references
+// never form a cycle. Filter, sort and map expressions are Open. A reference
+// carries the referenced column's (closed) typed expression itself, so
+// evaluating it looks nothing up — there is nothing to dangle or go stale.
+// (Closed's `never`s make a closed expression an open one as well.)
+export type Open = { n: NumColRef; b: BoolColRef; s: StrColRef }
+export type Closed = { n: never; b: never; s: never }
+
 export type NumLiteral = { kind: 'literal'; value: Finite }
 export type NumVar     = { kind: 'numvar';  name: NumVarName }
-export type NumSum     = { kind: 'SUM';     args: NumExpr[] }
-export type NumMult    = { kind: 'MULT';    args: NumExpr[] }
-export type NumMin     = { kind: 'MIN';     args: NumExpr[] }
-export type NumMax     = { kind: 'MAX';     args: NumExpr[] }
-export type NumNeg     = { kind: 'NEG';     arg: NumExpr }
-export type NumInv     = { kind: 'INV';     arg: NumExpr }
+export type NumSum<S extends Open = Open>   = { kind: 'SUM';  args: NumExpr<S>[] }
+export type NumMult<S extends Open = Open>  = { kind: 'MULT'; args: NumExpr<S>[] }
+export type NumMin<S extends Open = Open>   = { kind: 'MIN';  args: NumExpr<S>[] }
+export type NumMax<S extends Open = Open>   = { kind: 'MAX';  args: NumExpr<S>[] }
+export type NumNeg<S extends Open = Open>   = { kind: 'NEG';  arg: NumExpr<S> }
+export type NumInv<S extends Open = Open>   = { kind: 'INV';  arg: NumExpr<S> }
 // `digits` is written as an integer literal within ±ROUND_DIGITS: a number
 // has about 15 significant decimal digits, and past them rounding means
 // nothing (or overflows) — so other digits are a type error, not a NaN.
 export const ROUND_DIGITS = 15
-export type NumRound   = { kind: 'ROUND';   arg: NumExpr; digits: number }
-export type NumIf      = { kind: 'IF'; cond: BoolExpr; then: NumExpr;  else_: NumExpr }
-export type NumColRef  = { kind: 'colref'; id: number }
-export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumMin | NumMax | NumNeg | NumInv | NumRound | NumIf | NumColRef
+export type NumRound<S extends Open = Open> = { kind: 'ROUND'; arg: NumExpr<S>; digits: number }
+export type NumIf<S extends Open = Open>    = { kind: 'IF'; cond: BoolExpr<S>; then: NumExpr<S>; else_: NumExpr<S> }
+export type NumColRef  = { kind: 'colref'; id: number; target: NumExpr<Closed> }
+export type NumExpr<S extends Open = Open> =
+  | NumLiteral | NumVar | NumSum<S> | NumMult<S> | NumMin<S> | NumMax<S> | NumNeg<S> | NumInv<S> | NumRound<S> | NumIf<S>
+  | S['n']
 
-export type BoolAnd  = { kind: 'AND';     args: BoolExpr[] }
-export type BoolOr   = { kind: 'OR';      args: BoolExpr[] }
-export type BoolNot  = { kind: 'NOT';     arg: BoolExpr }
-export type BoolLeq  = { kind: 'LEQ';     left: NumExpr;   right: NumExpr }
-export type BoolEq   = { kind: 'EQ';      left: TypedExpr; right: TypedExpr }
+export type BoolAnd<S extends Open = Open> = { kind: 'AND'; args: BoolExpr<S>[] }
+export type BoolOr<S extends Open = Open>  = { kind: 'OR';  args: BoolExpr<S>[] }
+export type BoolNot<S extends Open = Open> = { kind: 'NOT'; arg: BoolExpr<S> }
+export type BoolLeq<S extends Open = Open> = { kind: 'LEQ'; left: NumExpr<S>; right: NumExpr<S> }
+export type BoolEq<S extends Open = Open>  = { kind: 'EQ';  left: TypedExpr<S>; right: TypedExpr<S> }
 export type BoolVar  = { kind: 'boolvar'; name: BoolVarName }
-export type BoolIf   = { kind: 'IF'; cond: BoolExpr; then: BoolExpr; else_: BoolExpr }
-export type BoolColRef = { kind: 'colref'; id: number }
-export type BoolExpr = BoolAnd | BoolOr | BoolNot | BoolLeq | BoolEq | BoolVar | BoolIf | BoolColRef
+export type BoolIf<S extends Open = Open>  = { kind: 'IF'; cond: BoolExpr<S>; then: BoolExpr<S>; else_: BoolExpr<S> }
+export type BoolColRef = { kind: 'colref'; id: number; target: BoolExpr<Closed> }
+export type BoolExpr<S extends Open = Open> =
+  | BoolAnd<S> | BoolOr<S> | BoolNot<S> | BoolLeq<S> | BoolEq<S> | BoolVar | BoolIf<S>
+  | S['b']
 
 export type StrLiteral = { kind: 'strlit'; value: string }
 export type StrVar     = { kind: 'strvar'; name: StrVarName }
-export type StrSubstr  = { kind: 'SUBSTR'; str: StrExpr;   len: NumExpr }
-export type StrIf      = { kind: 'IF'; cond: BoolExpr; then: StrExpr;  else_: StrExpr }
-export type StrColRef  = { kind: 'colref'; id: number }
-export type StrExpr    = StrLiteral | StrVar | StrSubstr | StrIf | StrColRef
+export type StrSubstr<S extends Open = Open> = { kind: 'SUBSTR'; str: StrExpr<S>; len: NumExpr<S> }
+export type StrIf<S extends Open = Open>     = { kind: 'IF'; cond: BoolExpr<S>; then: StrExpr<S>; else_: StrExpr<S> }
+export type StrColRef  = { kind: 'colref'; id: number; target: StrExpr<Closed> }
+export type StrExpr<S extends Open = Open> = StrLiteral | StrVar | StrSubstr<S> | StrIf<S> | S['s']
 
-// Type of the column being referenced by `@id` — supplied by the caller
-// (only where column references are allowed) so the type checker can
-// resolve `@id`'s type without needing to know the whole column's AST.
-export type ColumnTypeInfo = { id: number; type: 'n' | 'b' | 's' }
+export type TypedNum<S extends Open = Open>  = { type: 'n'; expr: NumExpr<S> }
+export type TypedBool<S extends Open = Open> = { type: 'b'; expr: BoolExpr<S> }
+export type TypedStr<S extends Open = Open>  = { type: 's'; expr: StrExpr<S> }
+export type TypedExpr<S extends Open = Open> = TypedNum<S> | TypedBool<S> | TypedStr<S>
 
-export type TypedNum  = { type: 'n'; expr: NumExpr }
-export type TypedBool = { type: 'b'; expr: BoolExpr }
-export type TypedStr  = { type: 's'; expr: StrExpr }
-export type TypedExpr = TypedNum | TypedBool | TypedStr
+/** A column `@id` can refer to: its id and its own (closed) typed expression. */
+export type ColumnInfo = { id: number; typed: TypedExpr<Closed> }
 
 // ── Tokenizer ─────────────────────────────────────────────────────────────────
 
@@ -370,33 +381,47 @@ class Parser {
 
 // ── Type checker ──────────────────────────────────────────────────────────────
 
-const typeLabel = (t: TypedExpr): string =>
+const typeLabel = <S extends Open>(t: TypedExpr<S>): string =>
   t.type === 'n' ? '数値' : t.type === 'b' ? '真偽値' : '文字列'
 
-function requireNum(raw: RawExpr, context: string, columns: ColumnTypeInfo[] | undefined): NumExpr {
-  const t = typeCheck(raw, columns)
+function requireNum<S extends Open>(raw: RawExpr, context: string, ref: RefResolver<S>): NumExpr<S> {
+  const t = typeCheck(raw, ref)
   if (t.type !== 'n') throw new TypeCheckError(`${context}: 数値であるべきところ、${typeLabel(t)}になっています`)
   return t.expr
 }
 
-function requireBool(raw: RawExpr, context: string, columns: ColumnTypeInfo[] | undefined): BoolExpr {
-  const t = typeCheck(raw, columns)
+function requireBool<S extends Open>(raw: RawExpr, context: string, ref: RefResolver<S>): BoolExpr<S> {
+  const t = typeCheck(raw, ref)
   if (t.type !== 'b') throw new TypeCheckError(`${context}: 真偽値であるべきところ、${typeLabel(t)}になっています`)
   return t.expr
 }
 
-function requireStr(raw: RawExpr, context: string, columns: ColumnTypeInfo[] | undefined): StrExpr {
-  const t = typeCheck(raw, columns)
+function requireStr<S extends Open>(raw: RawExpr, context: string, ref: RefResolver<S>): StrExpr<S> {
+  const t = typeCheck(raw, ref)
   if (t.type !== 's') throw new TypeCheckError(`${context}: 文字列であるべきところ、${typeLabel(t)}になっています`)
   return t.expr
 }
 
-// `columns` is only passed by callers where `@id` column references are
-// allowed (filter/sort expressions); when it's undefined, `@id` is rejected
-// outright. This keeps column expressions themselves free of the concept
-// entirely, which is what makes them safe from reference cycles — a column
-// can never depend on another column, only on filter/sort can depend on columns.
-function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedExpr {
+// How `@id` is typed: for a closed expression it is an error; for an open one
+// it becomes a reference carrying the column's expression.
+type RefResolver<S extends Open> = (id: number) => TypedExpr<S>
+
+const noRefs: RefResolver<Closed> = () => {
+  throw new TypeCheckError('「@」列参照はフィルター・並べ替えの式でのみ使用できます')
+}
+
+const refsTo = (columns: readonly ColumnInfo[]): RefResolver<Open> => id => {
+  const col = columns.find(c => c.id === id)
+  if (!col) throw new TypeCheckError(`列ID「@${id}」に対応する列が見つかりません`)
+  const t = col.typed
+  switch (t.type) {
+    case 'n': return { type: 'n', expr: { kind: 'colref', id, target: t.expr } }
+    case 'b': return { type: 'b', expr: { kind: 'colref', id, target: t.expr } }
+    case 's': return { type: 's', expr: { kind: 'colref', id, target: t.expr } }
+  }
+}
+
+function typeCheck<S extends Open>(raw: RawExpr, ref: RefResolver<S>): TypedExpr<S> {
   if (raw.kind === 'literal') {
     return { type: 'n', expr: { kind: 'literal', value: raw.value } }
   }
@@ -422,14 +447,7 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
     return { type: 'b', expr: { kind: 'boolvar', name: raw.name } }
   }
 
-  if (raw.kind === 'colref') {
-    if (!columns) throw new TypeCheckError('「@」列参照はフィルター・並べ替えの式でのみ使用できます')
-    const col = columns.find(c => c.id === raw.id)
-    if (!col) throw new TypeCheckError(`列ID「@${raw.id}」に対応する列が見つかりません`)
-    if (col.type === 'n') return { type: 'n', expr: { kind: 'colref', id: raw.id } }
-    if (col.type === 'b') return { type: 'b', expr: { kind: 'colref', id: raw.id } }
-    return { type: 's', expr: { kind: 'colref', id: raw.id } }
-  }
+  if (raw.kind === 'colref') return ref(raw.id)
 
   const { name, args, op } = raw
   // What an error points at: the operator as written, or the function's argument.
@@ -446,41 +464,41 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
 
   switch (name) {
     case 'AND':
-      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, at(i), columns)) } }
+      return { type: 'b', expr: { kind: 'AND', args: args.map((a: RawExpr, i: number) => requireBool(a, at(i), ref)) } }
     case 'OR':
-      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, at(i), columns)) } }
+      return { type: 'b', expr: { kind: 'OR',  args: args.map((a: RawExpr, i: number) => requireBool(a, at(i), ref)) } }
     case 'NOT':
       arity(1)
-      return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], at(0), columns) } }
+      return { type: 'b', expr: { kind: 'NOT', arg: requireBool(args[0], at(0), ref) } }
     case 'LEQ':
       arity(2)
-      return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], at(0), columns), right: requireNum(args[1], at(1), columns) } }
+      return { type: 'b', expr: { kind: 'LEQ', left: requireNum(args[0], at(0), ref), right: requireNum(args[1], at(1), ref) } }
     case 'EQ': {
       arity(2)
-      const left = typeCheck(args[0], columns)
-      const right = typeCheck(args[1], columns)
+      const left = typeCheck(args[0], ref)
+      const right = typeCheck(args[1], ref)
       if (left.type !== right.type) throw new TypeCheckError(`${op ?? 'EQ'}: 両辺の型が一致していません（左辺: ${typeLabel(left)}、右辺: ${typeLabel(right)}）`)
       return { type: 'b', expr: { kind: 'EQ', left, right } }
     }
     case 'SUM':
-      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
+      return { type: 'n', expr: { kind: 'SUM',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), ref)) } }
     case 'MULT':
-      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
+      return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), ref)) } }
     case 'MIN':
       atLeastOne()
-      return { type: 'n', expr: { kind: 'MIN',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
+      return { type: 'n', expr: { kind: 'MIN',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), ref)) } }
     case 'MAX':
       atLeastOne()
-      return { type: 'n', expr: { kind: 'MAX',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
+      return { type: 'n', expr: { kind: 'MAX',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), ref)) } }
     case 'NEG':
       arity(1)
-      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], at(0), columns) } }
+      return { type: 'n', expr: { kind: 'NEG',   arg: requireNum(args[0], at(0), ref) } }
     case 'INV':
       arity(1)
-      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], at(0), columns) } }
+      return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], at(0), ref) } }
     case 'ROUND': {
       arity(2)
-      const arg = requireNum(args[0], at(0), columns)
+      const arg = requireNum(args[0], at(0), ref)
       const d = args[1]
       if (d.kind !== 'literal' || !Number.isInteger(d.value) || Math.abs(d.value) > ROUND_DIGITS)
         throw new TypeCheckError(`${at(1)}: 桁数は -${ROUND_DIGITS}〜${ROUND_DIGITS} の整数で書いてください`)
@@ -488,15 +506,15 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
     }
     case 'SUBSTR': {
       arity(2)
-      const str = requireStr(args[0], at(0), columns)
-      const len = requireNum(args[1], at(1), columns)
+      const str = requireStr(args[0], at(0), ref)
+      const len = requireNum(args[1], at(1), ref)
       return { type: 's', expr: { kind: 'SUBSTR', str, len } }
     }
     case 'IF': {
       arity(3)
-      const cond  = requireBool(args[0], at(0), columns)
-      const then_ = typeCheck(args[1], columns)
-      const else_ = typeCheck(args[2], columns)
+      const cond  = requireBool(args[0], at(0), ref)
+      const then_ = typeCheck(args[1], ref)
+      const else_ = typeCheck(args[2], ref)
       if (then_.type !== else_.type)
         throw new TypeCheckError(`IF: 第2・第3引数の型が一致していません（真の場合: ${typeLabel(then_)}、偽の場合: ${typeLabel(else_)}）`)
       if (then_.type === 'n' && else_.type === 'n')
@@ -514,10 +532,14 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export function parseAndTypeCheck(input: string, columns?: ColumnTypeInfo[]): TypedExpr {
+// Without columns, `@id` is an error and the result is closed (a column's own
+// expression); with them, `@id` refers to one of those columns.
+export function parseAndTypeCheck(input: string): TypedExpr<Closed>
+export function parseAndTypeCheck(input: string, columns: readonly ColumnInfo[] | undefined): TypedExpr
+export function parseAndTypeCheck(input: string, columns?: readonly ColumnInfo[]): TypedExpr {
   const tokens = tokenize(input.trim())
   const raw = new Parser(tokens).parse()
-  return typeCheck(raw, columns)
+  return columns ? typeCheck(raw, refsTo(columns)) : typeCheck(raw, noRefs)
 }
 
 // Walks the already-typed AST looking for an `@id` node — used to warn

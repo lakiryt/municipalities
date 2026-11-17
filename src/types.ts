@@ -1,15 +1,16 @@
-import type { TypedExpr, ColumnTypeInfo } from './lang/expr'
+import type { TypedExpr, ColumnInfo, Closed } from './lang/expr'
 
 export type ColumnState = {
   id: number
   label: string
   expression: string
-  typed: TypedExpr
+  // Closed: a column's expression can't refer to another column.
+  typed: TypedExpr<Closed>
 }
 
-// Enough to both type-check `@id` references (ColumnTypeInfo) and render a
+// Enough to both type-check `@id` references (ColumnInfo) and render a
 // human-readable picker for them (label) in the filter/sort UI.
-export type ColumnRef = ColumnTypeInfo & { label: string }
+export type ColumnRef = ColumnInfo & { label: string }
 
 export type ModalState =
   | { kind: 'edit'; id: number }

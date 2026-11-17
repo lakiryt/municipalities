@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef } from 'react'
-import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr, type ColumnTypeInfo } from '../lang/expr'
+import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr, type ColumnInfo } from '../lang/expr'
 import ExprInput, { type ExprInputHandle } from './ExprInput'
 
 type LiveResult =
@@ -14,7 +14,7 @@ type Props = {
   requiredType?: 'n' | 'b' | 's'
   // Only passed where `@id` column references are meaningful (filter/sort
   // editors) — omitting it (as ColumnModal does) keeps them rejected there.
-  columns?: ColumnTypeInfo[]
+  columns?: ColumnInfo[]
   onValidExpr?: (expr: TypedExpr | null) => void
   onExpressionChange?: (raw: string) => void
 }

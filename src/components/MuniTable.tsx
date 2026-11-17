@@ -106,10 +106,9 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // Includes labels (beyond what type-checking needs) so filter/sort modals
   // can render a human-readable picker for `@id` references.
   const columnRefs: ColumnRef[] = useMemo(
-    () => columns.map(c => ({ id: c.id, label: c.label, type: c.typed.type })),
+    () => columns.map(c => ({ id: c.id, label: c.label, typed: c.typed })),
     [columns]
   )
-  const colEnv = useMemo(() => columns.map(c => ({ id: c.id, typed: c.typed })), [columns])
 
   const filterExpr: TypedBool | null = useMemo(() => {
     if (!effectiveState.filterExpression) return null
@@ -222,10 +221,8 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     () => new Map(activeItems.map(item => [item.code, baseItemEnv(item, designations, coastal)])),
     [activeItems, designations, coastal]
   )
-  const envOf = useMemo(
-    () => (item: BaseItem): Env => ({ ...envs.get(item.code)!, columns: colEnv }),
-    [envs, colEnv]
-  )
+  // (A filter or sort's `@id` carries its column's expression: no column env.)
+  const envOf = useMemo(() => (item: BaseItem): Env => envs.get(item.code)!, [envs])
 
   const filteredItems = useMemo(
     () => filterExpr !== null ? tableBaseItems.filter(item => keeps(filterExpr, envOf(item))) : tableBaseItems,
@@ -337,7 +334,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   }
 
   const sortedColumn = sortedColumnOf(sortState, columns)
-  const numericColumns = columnRefs.filter(c => c.type === 'n')
+  const numericColumns = columnRefs.filter(c => c.typed.type === 'n')
 
   // 表/地図: the map view is just `map=@id` on the URL. Switching to it
   // colors by the column the rows are ranked by when that's numeric (what

@@ -133,18 +133,13 @@ describe('three-valued logic', () => {
 })
 
 describe('@id column references', () => {
-  it('resolves a colref through a chain (column referencing base vars only, per the no-column-to-column-refs invariant)', () => {
+  it('evaluates the referenced column expression', () => {
     const columns = [
       { id: 0, typed: parseAndTypeCheck('#femalepop') },
       { id: 1, typed: parseAndTypeCheck('#malepop') },
     ]
-    const expr = parseAndTypeCheck('LEQ(@0, @1)', [{ id: 0, type: 'n' }, { id: 1, type: 'n' }])
-    expect(evaluate(expr, { ...baseEnv, columns })).toBe(false) // 60 <= 40 is false
-  })
-
-  it('a dangling colref (column deleted) is missing instead of throwing', () => {
-    const danglingRef = { type: 'n' as const, expr: { kind: 'colref' as const, id: 99 } }
-    expect(evaluate(danglingRef, { ...baseEnv, columns: [] })).toEqual(nodata('@99'))
+    expect(evaluate(parseAndTypeCheck('@0 <= @1', columns), baseEnv)).toBe(false) // 60 <= 40 is false
+    expect(evaluate(parseAndTypeCheck('@0 / @1', columns), baseEnv)).toBe(1.5)
   })
 })
 
