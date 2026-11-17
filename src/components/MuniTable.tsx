@@ -192,10 +192,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   // The data the columns, filter, sort and map draw on: shown as chips and in
   // 出典, and 人口増減 is only fetched when something uses it.
-  const used = usedData([
-    ...columns.map(c => c.expression), filterExpression, sortState?.expression ?? '',
-    mapColumn?.expression ?? '',
-  ])
+  const used = usedData([...columns.map(c => c.typed), filterExpr, sortState?.typed, mapState?.typed])
   const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
 
   const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.selectable.has('change'))

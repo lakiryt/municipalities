@@ -1,11 +1,12 @@
 // Which datasets a set of expressions (columns, filter, sort, map) actually
 // draws on — so the page can show "データ：…" chips and an 出典 line only for
-// the data on screen. Derived variables (#popdensity, #inc_rate, …) are
-// expanded into the variables they're defined from.
-import { DERIVED, DATA_VARS } from '@/lang/variables'
+// the data on screen. Read from the typed expressions (not their text), with
+// derived variables (#popdensity, #inc_rate, …) expanded into the variables
+// they're defined from and a column reference into its column's expression.
+import { DATA_VARS, type NumVarName } from '@/lang/variables'
+import { variablesOf, type TypedExpr } from '@/lang/expr'
+import { derivedDef } from '@/lang/derived'
 import type { DataKey } from '@/data/datasets'
-
-const DERIVED_EXPR = new Map<string, string>(DERIVED.map(d => [d.name, d.expr]))
 
 // The dataset each non-population number comes from — every one must say
 // (a new variable in DATA_VARS doesn't compile until it's listed here).
@@ -28,27 +29,29 @@ export type UsedData = {
   coastal: boolean        // &coastal (from the map's adjacency data)
 }
 
-export function usedData(expressions: string[]): UsedData {
-  const numeric = new Set<string>()
-  const queue = [...expressions]
+/** What the given expressions use (an absent one — none, or invalid — uses nothing). */
+export function usedData(expressions: (TypedExpr | null | undefined)[]): UsedData {
+  const numeric = new Set<NumVarName>()
+  const bools = new Set<string>()
+  const queue = expressions.filter((t): t is TypedExpr => t != null)
   while (queue.length) {
-    const expr = queue.pop()!
-    for (const m of expr.matchAll(/#([A-Za-z0-9_]+)/g)) {
-      if (numeric.has(m[1])) continue
-      numeric.add(m[1])
-      const def = DERIVED_EXPR.get(m[1])
-      if (def) queue.push(def)
+    const vars = variablesOf(queue.pop()!)
+    for (const b of vars.bool) bools.add(b)
+    for (const v of vars.num) {
+      if (numeric.has(v)) continue
+      numeric.add(v)
+      const def = derivedDef(v)
+      if (def) queue.push(def.typed)
     }
   }
   const selectable = new Set<DataKey>()
   for (const v of numeric) {
-    if (DERIVED_EXPR.has(v)) continue
+    if (derivedDef(v)) continue
     selectable.add(isDataVar(v) ? DATASET_OF[v] : 'pop')
   }
-  const all = expressions.join(' ')
   return {
     selectable,
-    designations: /&(seirei|chukaku|tokurei)\b/.test(all),
-    coastal: /&coastal\b/.test(all),
+    designations: bools.has('seirei') || bools.has('chukaku') || bools.has('tokurei'),
+    coastal: bools.has('coastal'),
   }
 }

@@ -1,5 +1,6 @@
-import { parseAndTypeCheck, type TypedNum } from '../lang/expr'
+import { parseAndTypeCheck } from '../lang/expr'
 import { evalNum, type Env } from '../lang/evaluate'
+import { DERIVED_DEFS } from '../lang/derived'
 import { fromData, nodata, type Num, type Str, type Bool } from '../lang/value'
 import {
   DERIVED, DATA_VARS, POPULATION_VARS, VAR_COMPLETIONS, recordOf, type NumVarName, type StrVarName, type BoolVarName,
@@ -44,12 +45,7 @@ export type BaseItem = {
 // Declared in lang/variables.ts (with every other variable); parsed once here.
 export const derivedExpressions = DERIVED
 
-const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: numeric(d.name, parseAndTypeCheck(d.expr)) }))
 
-function numeric(name: string, t: ReturnType<typeof parseAndTypeCheck>): TypedNum {
-  if (t.type !== 'n') throw new Error(`派生変数 #${name} が数値ではありません`)
-  return t
-}
 
 // ── Kana normalization ────────────────────────────────────────────────────────
 
@@ -125,7 +121,9 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
   const numvars: Record<NumVarName, Num> = {
     ...recordOf(POPULATION_VARS, k => fromData(item.population[k], `#${k}`)),
     ...recordOf(DATA_VARS, k => fromData(data[k], `#${k}`)),
-    ...recordOf(DERIVED.map(d => d.name), k => nodata(`#${k}`)),   // computed below
+    // Computed below. Each derived variable uses only earlier ones (checked in
+    // lang/derived.ts), so these placeholders are never read.
+    ...recordOf(DERIVED.map(d => d.name), k => nodata(`#${k}`)),
   }
   const strvars: Record<StrVarName, Str> = {
     code:      item.code,
@@ -143,8 +141,7 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     coastal: member(coastal, item.code, '&coastal'),
     official: item.official,
   }
-  // In declaration order: a derived variable may use an earlier one.
-  for (const { name, typed } of derivedDefs) {
+  for (const { name, typed } of DERIVED_DEFS) {
     numvars[name] = evalNum(typed, { numvars, strvars, boolvars })
   }
   return { numvars, strvars, boolvars }

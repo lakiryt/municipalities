@@ -542,46 +542,72 @@ export function parseAndTypeCheck(input: string, columns?: readonly ColumnInfo[]
   return columns ? typeCheck(raw, refsTo(columns)) : typeCheck(raw, noRefs)
 }
 
-// Walks the already-typed AST looking for an `@id` node — used to warn
-// before deleting a column that a filter/sort expression depends on.
-// Deliberately walks the parsed tree rather than searching the source text,
-// since a string literal argument could coincidentally contain "@3".
-function numReferencesColumn(expr: NumExpr, id: number): boolean {
-  switch (expr.kind) {
-    case 'literal': case 'numvar': return false
-    case 'SUM': case 'MULT': case 'MIN': case 'MAX': return expr.args.some(a => numReferencesColumn(a, id))
-    case 'NEG': case 'INV': return numReferencesColumn(expr.arg, id)
-    case 'ROUND': return numReferencesColumn(expr.arg, id)
-    case 'IF': return boolReferencesColumn(expr.cond, id) || numReferencesColumn(expr.then, id) || numReferencesColumn(expr.else_, id)
-    case 'colref': return expr.id === id
+// ── Walking a typed expression ────────────────────────────────────────────────
+
+const num = (expr: NumExpr): TypedExpr => ({ type: 'n', expr })
+const bool = (expr: BoolExpr): TypedExpr => ({ type: 'b', expr })
+const str = (expr: StrExpr): TypedExpr => ({ type: 's', expr })
+
+/** The sub-expressions directly under `t` (a reference: its column's expression). */
+function children(t: TypedExpr): TypedExpr[] {
+  switch (t.type) {
+    case 'n': {
+      const e = t.expr
+      switch (e.kind) {
+        case 'literal': case 'numvar': return []
+        case 'SUM': case 'MULT': case 'MIN': case 'MAX': return e.args.map(num)
+        case 'NEG': case 'INV': case 'ROUND': return [num(e.arg)]
+        case 'IF': return [bool(e.cond), num(e.then), num(e.else_)]
+        case 'colref': return [num(e.target)]
+      }
+      break
+    }
+    case 'b': {
+      const e = t.expr
+      switch (e.kind) {
+        case 'boolvar': return []
+        case 'AND': case 'OR': return e.args.map(bool)
+        case 'NOT': return [bool(e.arg)]
+        case 'LEQ': return [num(e.left), num(e.right)]
+        case 'EQ': return [e.left, e.right]
+        case 'IF': return [bool(e.cond), bool(e.then), bool(e.else_)]
+        case 'colref': return [bool(e.target)]
+      }
+      break
+    }
+    case 's': {
+      const e = t.expr
+      switch (e.kind) {
+        case 'strlit': case 'strvar': return []
+        case 'SUBSTR': return [str(e.str), num(e.len)]
+        case 'IF': return [bool(e.cond), str(e.then), str(e.else_)]
+        case 'colref': return [str(e.target)]
+      }
+    }
   }
 }
 
-function boolReferencesColumn(expr: BoolExpr, id: number): boolean {
-  switch (expr.kind) {
-    case 'AND': case 'OR': return expr.args.some(a => boolReferencesColumn(a, id))
-    case 'NOT': return boolReferencesColumn(expr.arg, id)
-    case 'LEQ': return numReferencesColumn(expr.left, id) || numReferencesColumn(expr.right, id)
-    case 'EQ': return referencesColumn(expr.left, id) || referencesColumn(expr.right, id)
-    case 'boolvar': return false
-    case 'IF': return boolReferencesColumn(expr.cond, id) || boolReferencesColumn(expr.then, id) || boolReferencesColumn(expr.else_, id)
-    case 'colref': return expr.id === id
-  }
+/** `t` and every expression within it. */
+export function* walk(t: TypedExpr): Generator<TypedExpr> {
+  yield t
+  for (const c of children(t)) yield* walk(c)
 }
 
-function strReferencesColumn(expr: StrExpr, id: number): boolean {
-  switch (expr.kind) {
-    case 'strlit': case 'strvar': return false
-    case 'SUBSTR': return strReferencesColumn(expr.str, id) || numReferencesColumn(expr.len, id)
-    case 'IF': return boolReferencesColumn(expr.cond, id) || strReferencesColumn(expr.then, id) || strReferencesColumn(expr.else_, id)
-    case 'colref': return expr.id === id
-  }
-}
+/**
+ * Whether `t` refers to column `id` — to warn before deleting a column a
+ * filter or sort depends on. (The tree, not the text: a string literal
+ * could contain "@3".)
+ */
+export const referencesColumn = (t: TypedExpr, id: number): boolean =>
+  [...walk(t)].some(x => x.expr.kind === 'colref' && x.expr.id === id)
 
-export function referencesColumn(expr: TypedExpr, id: number): boolean {
-  switch (expr.type) {
-    case 'n': return numReferencesColumn(expr.expr, id)
-    case 'b': return boolReferencesColumn(expr.expr, id)
-    case 's': return strReferencesColumn(expr.expr, id)
+/** The variables `t` reads (through any column it refers to as well). */
+export function variablesOf(t: TypedExpr) {
+  const vars = { num: new Set<NumVarName>(), str: new Set<StrVarName>(), bool: new Set<BoolVarName>() }
+  for (const x of walk(t)) {
+    if (x.type === 'n' && x.expr.kind === 'numvar') vars.num.add(x.expr.name)
+    if (x.type === 's' && x.expr.kind === 'strvar') vars.str.add(x.expr.name)
+    if (x.type === 'b' && x.expr.kind === 'boolvar') vars.bool.add(x.expr.name)
   }
+  return vars
 }
