@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseAndTypeCheck, referencesColumn, ParseError, TypeCheckError, type ColumnTypeInfo } from './expr'
+import { parseAndTypeCheck, referencesColumn, ParseError, TypeCheckError, type ColumnInfo, type TypedExpr, type Closed } from './expr'
 import { evaluate, blankEnv } from './evaluate'
 import { VAR_COMPLETIONS } from './variables'
 
@@ -53,6 +53,22 @@ describe('literals and variables', () => {
 })
 
 describe('function calls', () => {
+  it('MIN and MAX need at least one argument (there is no number for none)', () => {
+    expect(() => parseAndTypeCheck('MIN()')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('MAX()')).toThrow(TypeCheckError)
+  })
+
+  it('ROUND takes its digits as an integer literal within ±15', () => {
+    expect(parseAndTypeCheck('ROUND(#area, -2)')).toEqual({ type: 'n', expr: { kind: 'ROUND', arg: { kind: 'numvar', name: 'area' }, digits: -2 } })
+    expect(() => parseAndTypeCheck('ROUND(#area, 1.5)')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('ROUND(#area, 16)')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('ROUND(#area, #setai)')).toThrow(/桁数/)
+  })
+
+  it('a number literal too large for a number is a parse error', () => {
+    expect(() => parseAndTypeCheck('9'.repeat(400))).toThrow(ParseError)
+  })
+
   it('type-checks SUM over numvars', () => {
     const t = parseAndTypeCheck('SUM(#femalepop, #malepop)')
     expect(t.type).toBe('n')
@@ -106,7 +122,19 @@ describe('function calls', () => {
   })
 })
 
+// A column `@id` can refer to, with its own expression.
+const col = (id: number, src: string): ColumnInfo => ({ id, typed: parseAndTypeCheck(src) })
+
 describe('@id column references', () => {
+  it('a column expression cannot hold a reference: checked by the compiler', () => {
+    const open = parseAndTypeCheck('@0 + 1', [col(0, '#area')])
+    // @ts-expect-error an expression with `@id` is not a closed (column) expression
+    const closed: TypedExpr<Closed> = open
+    expect(closed.type).toBe('n')
+    const fine: TypedExpr = parseAndTypeCheck('#area')   // and a closed one is fine anywhere
+    expect(fine.type).toBe('n')
+  })
+
   it('rejects @id when no column context is given (column-expression position)', () => {
     expect(() => parseAndTypeCheck('@0')).toThrow(TypeCheckError)
   })
@@ -115,51 +143,51 @@ describe('@id column references', () => {
     expect(() => parseAndTypeCheck('@')).toThrow(ParseError)
   })
 
-  it('resolves to the referenced column\'s type when context is given', () => {
-    expect(parseAndTypeCheck('@0', [{ id: 0, type: 'n' }])).toEqual({ type: 'n', expr: { kind: 'colref', id: 0 } })
-    expect(parseAndTypeCheck('@1', [{ id: 1, type: 'b' }])).toEqual({ type: 'b', expr: { kind: 'colref', id: 1 } })
-    expect(parseAndTypeCheck('@2', [{ id: 2, type: 's' }])).toEqual({ type: 's', expr: { kind: 'colref', id: 2 } })
+  it('resolves to the referenced column type, carrying the column expression', () => {
+    expect(parseAndTypeCheck('@0', [col(0, '#area')])).toEqual({ type: 'n', expr: { kind: 'colref', id: 0, target: { kind: 'numvar', name: 'area' } } })
+    expect(parseAndTypeCheck('@1', [col(1, '&seirei')])).toEqual({ type: 'b', expr: { kind: 'colref', id: 1, target: { kind: 'boolvar', name: 'seirei' } } })
+    expect(parseAndTypeCheck('@2', [col(2, '$kanji')])).toEqual({ type: 's', expr: { kind: 'colref', id: 2, target: { kind: 'strvar', name: 'kanji' } } })
   })
 
   it('rejects a reference to an id not present in the context', () => {
-    expect(() => parseAndTypeCheck('@5', [{ id: 0, type: 'n' }])).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('@5', [col(0, '#area')])).toThrow(TypeCheckError)
   })
 
   it('is usable as an argument inside a call, given context', () => {
-    const t = parseAndTypeCheck('LEQ(@0, 100)', [{ id: 0, type: 'n' }])
+    const t = parseAndTypeCheck('LEQ(@0, 100)', [col(0, '#area')])
     expect(t.type).toBe('b')
   })
 
   it('a reference id is independent of array position (ids need not be 0-based/contiguous)', () => {
-    expect(parseAndTypeCheck('@7', [{ id: 7, type: 'n' }]).type).toBe('n')
+    expect(parseAndTypeCheck('@7', [col(7, '#area')]).type).toBe('n')
   })
 })
 
 describe('referencesColumn', () => {
   it('finds a direct reference', () => {
-    const t = parseAndTypeCheck('@3', [{ id: 3, type: 'n' }])
+    const t = parseAndTypeCheck('@3', [col(3, '#area')])
     expect(referencesColumn(t, 3)).toBe(true)
     expect(referencesColumn(t, 4)).toBe(false)
   })
 
   it('finds a reference nested inside a call (used for warning before deleting a referenced column)', () => {
-    const t = parseAndTypeCheck('LEQ(@3, 100000)', [{ id: 3, type: 'n' }])
+    const t = parseAndTypeCheck('LEQ(@3, 100000)', [col(3, '#area')])
     expect(referencesColumn(t, 3)).toBe(true)
   })
 
   it('finds a reference nested inside AND/OR/NOT/IF', () => {
-    const t = parseAndTypeCheck('AND(NOT(&seirei), IF(@0, &seirei, NOT(&seirei)))', [{ id: 0, type: 'b' }])
+    const t = parseAndTypeCheck('AND(NOT(&seirei), IF(@0, &seirei, NOT(&seirei)))', [col(0, '&seirei')])
     // @0 is used as the IF condition here, not as a plain boolvar
     expect(referencesColumn(t, 0)).toBe(true)
   })
 
   it('finds a reference on either side of EQ regardless of type', () => {
-    const t = parseAndTypeCheck('EQ($kanji, @0)', [{ id: 0, type: 's' }])
+    const t = parseAndTypeCheck('EQ($kanji, @0)', [col(0, '$kanji')])
     expect(referencesColumn(t, 0)).toBe(true)
   })
 
   it('finds a reference inside SUBSTR', () => {
-    const t = parseAndTypeCheck('SUBSTR(@0, 2)', [{ id: 0, type: 's' }])
+    const t = parseAndTypeCheck('SUBSTR(@0, 2)', [col(0, '$kanji')])
     expect(referencesColumn(t, 0)).toBe(true)
   })
 
@@ -176,7 +204,7 @@ describe('referencesColumn', () => {
 
 describe('operators', () => {
   // An operator is notation for a core function: both spellings are the same tree.
-  const same = (infix: string, prefix: string, columns?: ColumnTypeInfo[]) =>
+  const same = (infix: string, prefix: string, columns?: ColumnInfo[]) =>
     expect(parseAndTypeCheck(infix, columns)).toEqual(parseAndTypeCheck(prefix, columns))
 
   it('are the core functions they stand for', () => {
@@ -222,7 +250,7 @@ describe('operators', () => {
   it('mix with functions and column references', () => {
     same('ROUND(#totalpop / #area, 2)', 'ROUND(MULT(#totalpop, INV(#area)), 2)')
     same('IF(&seirei, #area * 2, #area)', 'IF(&seirei, MULT(#area, 2), #area)')
-    same('@0 >= 10 AND @1', 'AND(LEQ(10, @0), @1)', [{ id: 0, type: 'n' }, { id: 1, type: 'b' }])
+    same('@0 >= 10 AND @1', 'AND(LEQ(10, @0), @1)', [col(0, '#area'), col(1, '&seirei')])
   })
 
   it('evaluate as the arithmetic they look like', () => {
@@ -236,9 +264,10 @@ describe('operators', () => {
     expect(parseAndTypeCheck('(#area = 1) = &seirei').type).toBe('b')
   })
 
-  it('< and > are not offered (NOT(b <= a) would pass a missing value)', () => {
-    expect(() => parseAndTypeCheck('#area < 1')).toThrow(ParseError)
-    expect(() => parseAndTypeCheck('#area > 1')).toThrow(ParseError)
+  it('< and > are the negated <= (sound under three-valued logic: see evaluate.test)', () => {
+    same('#area < 1', 'NOT(LEQ(1, #area))')
+    same('#area > 1', 'NOT(LEQ(#area, 1))')
+    expect(() => parseAndTypeCheck('1 < #area < 2')).toThrow(ParseError)
   })
 
   it('reject a dangling or misplaced operator', () => {

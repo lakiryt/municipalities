@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { usedData } from './usedData'
+import { usedData as usedBy } from './usedData'
+import { parseAndTypeCheck } from '@/lang/expr'
+
+const usedData = (sources: string[]) => usedBy(sources.map(src => parseAndTypeCheck(src)))
 import { selectionFromParams, writeSelectionParams, defaultDataSelection, SELECTABLE } from '@/data/datasets'
 
 describe('usedData', () => {
@@ -19,6 +22,16 @@ describe('usedData', () => {
     expect(u.selectable.size).toBe(0)
     expect(u.designations).toBe(true)
     expect(u.coastal).toBe(true)
+  })
+
+  it('follows a column reference into the column it refers to', () => {
+    const columns = [{ id: 3, typed: parseAndTypeCheck('#rent_private') }]
+    expect([...usedBy([parseAndTypeCheck('@3 <= 2000', columns)]).selectable]).toEqual(['rent'])
+  })
+
+  it('does not take a string literal for a variable', () => {
+    expect(usedData(['$kanji = "#area &seirei"']).selectable.size).toBe(0)
+    expect(usedData(['$kanji = "#area &seirei"']).designations).toBe(false)
   })
 
   it('treats 人口増減 as its own data, separate from the population', () => {

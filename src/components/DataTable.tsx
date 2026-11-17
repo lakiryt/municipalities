@@ -4,7 +4,8 @@ import type { Env } from '../lang/evaluate'
 import type { ColumnState } from '../types'
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { formatValue } from '@/lib/format'
+import { formatValue, explainMissing } from '@/lib/format'
+import { isMissing } from '@/lang/value'
 
 type Props = {
   columns: ColumnState[]
@@ -107,14 +108,16 @@ function DataTable({
                   const numeric = col.typed.type === 'n'
                   const sorted = col.id === sortedColumnId
                   const sticky = stickyName && ci === 0
+                  const value = evaluate(col.typed, env)
                   return (
                     <td
                       key={col.id}
+                      title={isMissing(value) ? explainMissing(value) : undefined}
                       className={`${TD} whitespace-nowrap ${numeric ? 'text-right tabular-nums' : ''} ${sticky ? 'sticky left-12 z-10 font-medium' : ''} ${sorted ? 'bg-blue-50/60' : sticky ? 'bg-white' : ''} group-hover:bg-gray-50`}
                     >
                       {col.expression === '$kanji'
-                        ? <Link to={linkFor(item.code)} className="text-blue-700 hover:underline">{formatValue(evaluate(col.typed, env))}</Link>
-                        : formatValue(evaluate(col.typed, env))}
+                        ? <Link to={linkFor(item.code)} className="text-blue-700 hover:underline">{formatValue(value)}</Link>
+                        : formatValue(value)}
                     </td>
                   )
                 })}

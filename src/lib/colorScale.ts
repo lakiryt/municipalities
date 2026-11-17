@@ -35,16 +35,10 @@ export const SCALE_LABELS: Record<ScaleKind, string> = {
 
 export const isSigned = (kind: ScaleKind) => kind === 'diverging' || kind === 'symlog'
 
-declare const finiteBrand: unique symbol
-/**
- * A number that is neither NaN nor ±∞ — the only kind a color scale can
- * place. Expressions produce both (a missing value; a ratio over zero), so
- * values become Finite through asFinite, which makes the caller decide what
- * the others are (on a map: no data).
- */
-export type Finite = number & { readonly [finiteBrand]: true }
-export const asFinite = (v: number): Finite | undefined => (Number.isFinite(v) ? (v as Finite) : undefined)
-export const ZERO = 0 as Finite
+// A color scale places Finite numbers only — what an expression's number
+// always is (lang/value.ts); a missing value is the caller's to draw.
+import { asFinite, ZERO, type Finite } from '@/lang/value'
+export { asFinite, ZERO, type Finite }
 
 declare const positionBrand: unique symbol
 /** A position along a color ramp, within 0..1. */

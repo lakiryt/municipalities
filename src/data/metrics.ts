@@ -1,8 +1,9 @@
 // The figures a municipality's detail page shows, each with its national and
 // in-prefecture rank. Expressions use the same language as the table's
 // columns, so a figure means exactly what the matching column would.
-import { parseAndTypeCheck, type TypedExpr } from '@/lang/expr'
-import { evaluate } from '@/lang/evaluate'
+import { parseAndTypeCheck, type TypedNum } from '@/lang/expr'
+import { evalNum } from '@/lang/evaluate'
+import { isMissing, type Finite, type Num } from '@/lang/value'
 import { baseItemEnv, type BaseItem } from './municipalities'
 import type { DesignationSets } from './datasets'
 
@@ -29,11 +30,15 @@ export const DETAIL_METRICS: Metric[] = [
   { key: 'minwage', label: '最低賃金', unit: '円/時', expr: '#minwage', prefectureLevel: true },
 ]
 
-const typed: Map<string, TypedExpr> = new Map(DETAIL_METRICS.map(m => [m.key, parseAndTypeCheck(m.expr)]))
+const typed: Map<string, TypedNum> = new Map(DETAIL_METRICS.map(m => {
+  const t = parseAndTypeCheck(m.expr)
+  if (t.type !== 'n') throw new Error(`指標 ${m.key} の式が数値ではありません`)
+  return [m.key, t]
+}))
 
 export type MetricValue = {
   metric: Metric
-  value: number
+  value: Num
   national?: { rank: number; of: number }
   prefecture?: { rank: number; of: number }
 }
@@ -50,13 +55,14 @@ export function metricValues(
   if (!target) return []
   const pref = code.slice(0, 2)
   const pool = items.filter(i => ranked.has(i.code))
-  const valueOf = (item: BaseItem, key: string) => evaluate(typed.get(key)!, baseItemEnv(item, designations, coastal)) as number
+  const valueOf = (item: BaseItem, key: string) => evalNum(typed.get(key)!, baseItemEnv(item, designations, coastal))
 
   return DETAIL_METRICS.map(metric => {
     const value = valueOf(target, metric.key)
-    if (Number.isNaN(value) || metric.prefectureLevel || !ranked.has(code)) return { metric, value }
-    const values = pool.map(i => ({ code: i.code, v: valueOf(i, metric.key) })).filter(x => !Number.isNaN(x.v))
-    const rankIn = (list: { v: number }[]) => ({ rank: 1 + list.filter(x => x.v > value).length, of: list.length })
+    if (isMissing(value) || metric.prefectureLevel || !ranked.has(code)) return { metric, value }
+    // Ranked among the places that have a value.
+    const values = pool.flatMap(i => { const v = valueOf(i, metric.key); return isMissing(v) ? [] : [{ code: i.code, v }] })
+    const rankIn = (list: { v: Finite }[]) => ({ rank: 1 + list.filter(x => x.v > value).length, of: list.length })
     return {
       metric, value,
       national: rankIn(values),

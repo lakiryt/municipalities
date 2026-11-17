@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { evaluate } from '../lang/evaluate'
+import { evaluate, keeps } from '../lang/evaluate'
 import { parseAndTypeCheck } from '../lang/expr'
-import type { TypedExpr } from '../lang/expr'
+import type { TypedBool, TypedExpr } from '../lang/expr'
+import { isMissing } from '../lang/value'
 import { baseItemEnv, type BaseItem } from '../data/municipalities'
 import type { Env } from '../lang/evaluate'
 import { selectionFromParams, writeSelectionParams, DATA_KEYS, type DataSelection, type DataKey } from '../data/datasets'
@@ -105,12 +106,11 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // Includes labels (beyond what type-checking needs) so filter/sort modals
   // can render a human-readable picker for `@id` references.
   const columnRefs: ColumnRef[] = useMemo(
-    () => columns.map(c => ({ id: c.id, label: c.label, type: c.typed.type })),
+    () => columns.map(c => ({ id: c.id, label: c.label, typed: c.typed })),
     [columns]
   )
-  const colEnv = useMemo(() => columns.map(c => ({ id: c.id, typed: c.typed })), [columns])
 
-  const filterExpr: TypedExpr | null = useMemo(() => {
+  const filterExpr: TypedBool | null = useMemo(() => {
     if (!effectiveState.filterExpression) return null
     try {
       const t = parseAndTypeCheck(effectiveState.filterExpression, columnRefs)
@@ -192,10 +192,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   // The data the columns, filter, sort and map draw on: shown as chips and in
   // 出典, and 人口増減 is only fetched when something uses it.
-  const used = usedData([
-    ...columns.map(c => c.expression), filterExpression, sortState?.expression ?? '',
-    mapColumn?.expression ?? '',
-  ])
+  const used = usedData([...columns.map(c => c.typed), filterExpr, sortState?.typed, mapState?.typed])
   const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
 
   const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.selectable.has('change'))
@@ -221,13 +218,11 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     () => new Map(activeItems.map(item => [item.code, baseItemEnv(item, designations, coastal)])),
     [activeItems, designations, coastal]
   )
-  const envOf = useMemo(
-    () => (item: BaseItem): Env => ({ ...envs.get(item.code)!, columns: colEnv }),
-    [envs, colEnv]
-  )
+  // (A filter or sort's `@id` carries its column's expression: no column env.)
+  const envOf = useMemo(() => (item: BaseItem): Env => envs.get(item.code)!, [envs])
 
   const filteredItems = useMemo(
-    () => filterExpr !== null ? tableBaseItems.filter(item => evaluate(filterExpr, envOf(item)) === true) : tableBaseItems,
+    () => filterExpr !== null ? tableBaseItems.filter(item => keeps(filterExpr, envOf(item))) : tableBaseItems,
     [tableBaseItems, filterExpr, envOf]
   )
 
@@ -237,12 +232,12 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
     const sign = sortState.direction === 'asc' ? 1 : -1
     const keyed = filteredItems.map(item => ({ item, v: evaluate(sortState.typed, envOf(item)) }))
     keyed.sort((a, b) => {
-      if (sortState.typed.type === 's') return sign * (a.v as string).localeCompare(b.v as string, 'ja')
-      const na = a.v as number, nb = b.v as number
-      if (isNaN(na) && isNaN(nb)) return 0
-      if (isNaN(na)) return 1
-      if (isNaN(nb)) return -1
-      return sign * (na - nb)
+      // A missing value goes last in either direction (whatever the reason).
+      const ma = isMissing(a.v), mb = isMissing(b.v)
+      if (ma || mb) return ma === mb ? 0 : ma ? 1 : -1
+      if (typeof a.v === 'string' && typeof b.v === 'string') return sign * a.v.localeCompare(b.v, 'ja')
+      if (typeof a.v === 'number' && typeof b.v === 'number') return sign * (a.v - b.v)
+      return 0
     })
     return keyed.map(k => k.item)
   }, [filteredItems, sortState, envOf])
@@ -253,7 +248,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   // "order" isn't a concept a map has. (MapView narrows this further still,
   // to whatever codes actually have a drawn path.)
   const mapItems = useMemo(
-    () => filterExpr !== null ? activeItems.filter(item => evaluate(filterExpr, envOf(item)) === true) : activeItems,
+    () => filterExpr !== null ? activeItems.filter(item => keeps(filterExpr, envOf(item))) : activeItems,
     [activeItems, filterExpr, envOf]
   )
 
@@ -336,7 +331,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   }
 
   const sortedColumn = sortedColumnOf(sortState, columns)
-  const numericColumns = columnRefs.filter(c => c.type === 'n')
+  const numericColumns = columnRefs.filter(c => c.typed.type === 'n')
 
   // 表/地図: the map view is just `map=@id` on the URL. Switching to it
   // colors by the column the rows are ranked by when that's numeric (what
