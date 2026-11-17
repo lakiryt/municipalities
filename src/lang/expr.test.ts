@@ -53,6 +53,22 @@ describe('literals and variables', () => {
 })
 
 describe('function calls', () => {
+  it('MIN and MAX need at least one argument (there is no number for none)', () => {
+    expect(() => parseAndTypeCheck('MIN()')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('MAX()')).toThrow(TypeCheckError)
+  })
+
+  it('ROUND takes its digits as an integer literal within ±15', () => {
+    expect(parseAndTypeCheck('ROUND(#area, -2)')).toEqual({ type: 'n', expr: { kind: 'ROUND', arg: { kind: 'numvar', name: 'area' }, digits: -2 } })
+    expect(() => parseAndTypeCheck('ROUND(#area, 1.5)')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('ROUND(#area, 16)')).toThrow(TypeCheckError)
+    expect(() => parseAndTypeCheck('ROUND(#area, #setai)')).toThrow(/桁数/)
+  })
+
+  it('a number literal too large for a number is a parse error', () => {
+    expect(() => parseAndTypeCheck('9'.repeat(400))).toThrow(ParseError)
+  })
+
   it('type-checks SUM over numvars', () => {
     const t = parseAndTypeCheck('SUM(#femalepop, #malepop)')
     expect(t.type).toBe('n')
@@ -236,9 +252,10 @@ describe('operators', () => {
     expect(parseAndTypeCheck('(#area = 1) = &seirei').type).toBe('b')
   })
 
-  it('< and > are not offered (NOT(b <= a) would pass a missing value)', () => {
-    expect(() => parseAndTypeCheck('#area < 1')).toThrow(ParseError)
-    expect(() => parseAndTypeCheck('#area > 1')).toThrow(ParseError)
+  it('< and > are the negated <= (sound under three-valued logic: see evaluate.test)', () => {
+    same('#area < 1', 'NOT(LEQ(1, #area))')
+    same('#area > 1', 'NOT(LEQ(#area, 1))')
+    expect(() => parseAndTypeCheck('1 < #area < 2')).toThrow(ParseError)
   })
 
   it('reject a dangling or misplaced operator', () => {

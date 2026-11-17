@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { evaluate } from '@/lang/evaluate'
+import { evalNum } from '@/lang/evaluate'
+import { isMissing, type Num } from '@/lang/value'
 import { baseItemEnv, type BaseItem } from '@/data/municipalities'
 import type { DesignationSets } from '@/data/datasets'
 import type { ColumnState, ColumnRef } from '@/types'
-import { formatValue } from '@/lib/format'
+import { formatValue, explainMissing } from '@/lib/format'
 import { fitBounds, type Box } from '@/lib/mapFit'
 import {
-  makeScale, canLog, canDiverge, suggestScale, isSigned, asFinite, rampPosition, SCALE_LABELS, type ScaleChoice, type Finite,
+  makeScale, canLog, canDiverge, suggestScale, isSigned, rampPosition, SCALE_LABELS, type ScaleChoice, type Finite,
 } from '@/lib/colorScale'
 import {
   fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP, VIEW_SIZE,
@@ -35,7 +36,11 @@ type Props = {
 const legendValue = (v: number) =>
   formatValue(Number(v.toPrecision(Math.max(3, Math.floor(Math.log10(Math.abs(v) || 1)) + 1))))
 
-type Picked = { code: string; label: string; pref: string; value: number | undefined }
+// undefined: the shape isn't among the shown rows.
+type Picked = { code: string; label: string; pref: string; value: Num | undefined }
+
+const valueText = (v: Num | undefined): string =>
+  v === undefined ? 'データなし' : isMissing(v) ? explainMissing(v) : formatValue(v)
 
 const NO_DATA_FILL = '#e1e0d9'
 const MIN_SCALE = 1
@@ -75,7 +80,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
   }, { replace: true })
 
   const [paths, setPaths] = useState<MuniPaths | null>(null)
-  const [hover, setHover] = useState<{ x: number; y: number; label: string; value: number | undefined } | null>(null)
+  const [hover, setHover] = useState<{ x: number; y: number; label: string; value: Num | undefined } | null>(null)
   const [picked, setPicked] = useState<Picked | null>(null)
   // A drag that ends over a municipality still fires a click — remember how
   // far the pointer moved so a pan doesn't also pick.
@@ -161,9 +166,10 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
   const drawn = useMemo(() => new Set(owner.values()), [owner])
 
   // One value per shown row (a city drawn over its wards counts once).
-  const values = useMemo(() => {
-    if (!paths) return new Map<string, Finite>()
-    const map = new Map<string, Finite>()
+  const cells = useMemo(() => {
+    const map = new Map<string, Num>()
+    if (!paths || column.typed.type !== 'n') return map
+    const typed = column.typed
     for (const [code, item] of itemByCode) {
       // Codes without a drawn path would otherwise skew the color scale
       // toward values that never appear on the map itself. Prefecture-level
@@ -172,13 +178,17 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
       // than a municipality's, and coloring them by the prefecture's total
       // would be just as misleading as including the total itself.
       if (!drawn.has(code) || code.endsWith('000')) continue
-      // NaN (missing) and ±∞ (a ratio over a zero, e.g. no men of an age in a
-      // small village) have no place on a color scale: drawn as no data.
-      const v = asFinite(evaluate(column.typed, baseItemEnv(item, designations, coastal)) as number)
-      if (v !== undefined) map.set(code, v)
+      map.set(code, evalNum(typed, baseItemEnv(item, designations, coastal)))
     }
     return map
   }, [itemByCode, column, designations, coastal, paths, drawn])
+  // What the color scale places. A missing value (no data, or e.g. a ratio
+  // over zero men of an age in a small village) is drawn as no data.
+  const values = useMemo(() => {
+    const map = new Map<string, Finite>()
+    for (const [code, v] of cells) if (!isMissing(v)) map.set(code, v)
+    return map
+  }, [cells])
 
   const valueList = useMemo(() => [...values.values()], [values])
   const logPossible = useMemo(() => canLog(valueList), [valueList])
@@ -363,7 +373,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
     // A shape outside the shown rows still says what it is (データなし).
     const item = itemByCode.get(code) ?? allByCode.get(code)
     if (!item) { setPicked(null); return }
-    setPicked({ code, label: item.kanji || item.prefecture.kanji || '', pref: item.kanji ? item.prefecture.kanji ?? '' : '', value: values.get(code) })
+    setPicked({ code, label: item.kanji || item.prefecture.kanji || '', pref: item.kanji ? item.prefecture.kanji ?? '' : '', value: cells.get(code) })
   }
 
   return (
@@ -401,6 +411,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
                   const code = owner.get(shape) ?? shape
                   const v = values.get(code)
                   const fill = v === undefined || !scale ? NO_DATA_FILL : sequentialColor(scale.t(v), ramp)
+                  const cell = cells.get(code)
                   return (
                     <path
                       key={shape}
@@ -418,7 +429,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
                         // CSV — fall back to the prefecture's name instead of
                         // showing a blank label.
                         const label = item.kanji || item.prefecture.kanji || ''
-                        setHover({ x: e.clientX, y: e.clientY, label, value: v })
+                        setHover({ x: e.clientX, y: e.clientY, label, value: cell })
                       }}
                       onMouseLeave={() => setHover(null)}
                       onClick={() => pick(shape)}
@@ -438,7 +449,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
                 <div>
                   <div className="font-semibold">{picked.label}<span className="ml-1.5 text-xs text-gray-400 font-normal">{picked.pref}</span></div>
                   <div className="text-gray-600 tabular-nums">
-                    {column.label}: {picked.value !== undefined ? formatValue(picked.value) : 'データなし'}
+                    {column.label}: {valueText(picked.value)}
                   </div>
                   {linkFor && picked.pref && <Link to={linkFor(picked.code)} className="text-xs text-blue-600 hover:underline">詳細を見る →</Link>}
                 </div>
@@ -452,7 +463,7 @@ function MapView({ column, columnOptions, onSelectColumn, displayItems, allItems
               className="fixed pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 z-50"
               style={{ left: hover.x + 12, top: hover.y + 12 }}
             >
-              {hover.value !== undefined ? `${hover.label}: ${formatValue(hover.value)}` : `${hover.label}: データなし`}
+              {`${hover.label}: ${valueText(hover.value)}`}
             </div>
           )}
 

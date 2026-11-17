@@ -42,7 +42,7 @@ function rows(e: CatalogEntry, pref: Pref | null) {
     const env = baseItemEnv(item, data.designations, data.coastal)
     if (filter && evaluate(filter, env) !== true) continue
     shown++
-    if (Number.isFinite(evaluate(sort, env) as number)) ranked++
+    if (typeof evaluate(sort, env) === 'number') ranked++   // a number, not missing
   }
   return { shown, ranked }
 }

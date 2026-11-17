@@ -6,7 +6,8 @@ import {
 } from '@/data/datasets'
 import { useMunicipalityData } from '@/data/useMunicipalityData'
 import { metricValues } from '@/data/metrics'
-import { formatValue } from '@/lib/format'
+import { formatValue, explainMissing } from '@/lib/format'
+import { isMissing } from '@/lang/value'
 import AppHeader from '@/components/AppHeader'
 import { pageTitle } from '@/lib/brand'
 import PageHeader from '@/components/PageHeader'
@@ -150,7 +151,9 @@ function MunicipalityPage() {
                   <div key={metric.key} className="rounded-lg border border-gray-200 p-3 flex flex-col" data-testid={`metric-${metric.key}`}>
                     <div className="text-xs text-gray-500">{metric.label}</div>
                     <div className="mt-0.5 text-lg font-semibold tabular-nums">
-                      {formatValue(value)}<span className="ml-1 text-xs font-normal text-gray-500">{Number.isNaN(value) ? '' : metric.unit}</span>
+                      {isMissing(value)
+                        ? <span title={explainMissing(value)}>{formatValue(value)}</span>
+                        : <>{formatValue(value)}<span className="ml-1 text-xs font-normal text-gray-500">{metric.unit}</span></>}
                     </div>
                     {national && (
                       <div className="mt-auto pt-1.5 flex flex-col gap-1 text-xs tabular-nums">

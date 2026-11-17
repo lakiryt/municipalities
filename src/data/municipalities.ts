@@ -1,5 +1,6 @@
-import { parseAndTypeCheck } from '../lang/expr'
-import { evaluate, type Env } from '../lang/evaluate'
+import { parseAndTypeCheck, type TypedNum } from '../lang/expr'
+import { evalNum, type Env } from '../lang/evaluate'
+import { fromData, nodata, type Num, type Str, type Bool } from '../lang/value'
 import {
   DERIVED, DATA_VARS, POPULATION_VARS, VAR_COMPLETIONS, recordOf, type NumVarName, type StrVarName, type BoolVarName,
 } from '../lang/variables'
@@ -43,7 +44,12 @@ export type BaseItem = {
 // Declared in lang/variables.ts (with every other variable); parsed once here.
 export const derivedExpressions = DERIVED
 
-const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: parseAndTypeCheck(d.expr) }))
+const derivedDefs = derivedExpressions.map(d => ({ name: d.name, typed: numeric(d.name, parseAndTypeCheck(d.expr)) }))
+
+function numeric(name: string, t: ReturnType<typeof parseAndTypeCheck>): TypedNum {
+  if (t.type !== 'n') throw new Error(`派生変数 #${name} が数値ではありません`)
+  return t
+}
 
 // ── Kana normalization ────────────────────────────────────────────────────────
 
@@ -100,9 +106,13 @@ export const buildItems = (
   }))
 }
 
+// Membership in a set not loaded (yet) is unknown, not false.
+const member = (set: Set<string> | undefined, code: string, source: string): Bool =>
+  set ? set.has(code) : nodata(source)
+
 export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coastal?: Set<string>): Env => {
   // Every declared variable gets a value — the types (Record<NumVarName, …>)
-  // don't let one be left out. A population column the data lacks is NaN.
+  // don't let one be left out. Where the data has none, the value says so.
   const data: Record<typeof DATA_VARS[number], number> = {
     area: item.area,
     rent_inc0: item.rentInc0,
@@ -112,30 +122,30 @@ export const baseItemEnv = (item: BaseItem, designations?: DesignationSets, coas
     pop_from: item.popFrom,
     pop_to: item.popTo,
   }
-  const numvars: Record<NumVarName, number> = {
-    ...recordOf(POPULATION_VARS, k => item.population[k] ?? NaN),
-    ...data,
-    ...recordOf(DERIVED.map(d => d.name), () => NaN),
+  const numvars: Record<NumVarName, Num> = {
+    ...recordOf(POPULATION_VARS, k => fromData(item.population[k], `#${k}`)),
+    ...recordOf(DATA_VARS, k => fromData(data[k], `#${k}`)),
+    ...recordOf(DERIVED.map(d => d.name), k => nodata(`#${k}`)),   // computed below
   }
-  const strvars: Record<StrVarName, string> = {
+  const strvars: Record<StrVarName, Str> = {
     code:      item.code,
     kanji:     item.kanji,
     kana:      normalizeKana(item.kana),
     prefcode:  item.prefecture.code,
-    prefkanji: item.prefecture.kanji ?? '',
-    prefkana:  item.prefecture.kana ?? '',
+    prefkanji: item.prefecture.kanji ?? nodata('$prefkanji'),
+    prefkana:  item.prefecture.kana ?? nodata('$prefkana'),
     kind:      item.kind,
   }
-  const boolvars: Record<BoolVarName, boolean> = {
-    seirei:  designations?.seirei.has(item.code)  ?? false,
-    chukaku: designations?.chukaku.has(item.code) ?? false,
-    tokurei: designations?.tokurei.has(item.code) ?? false,
-    coastal: coastal?.has(item.code) ?? false,
+  const boolvars: Record<BoolVarName, Bool> = {
+    seirei:  member(designations?.seirei, item.code, '&seirei'),
+    chukaku: member(designations?.chukaku, item.code, '&chukaku'),
+    tokurei: member(designations?.tokurei, item.code, '&tokurei'),
+    coastal: member(coastal, item.code, '&coastal'),
     official: item.official,
   }
   // In declaration order: a derived variable may use an earlier one.
   for (const { name, typed } of derivedDefs) {
-    numvars[name] = evaluate(typed, { numvars, strvars, boolvars }) as number
+    numvars[name] = evalNum(typed, { numvars, strvars, boolvars })
   }
   return { numvars, strvars, boolvars }
 }

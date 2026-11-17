@@ -4,14 +4,15 @@
 // needs neither the 7MB boundary file nor the full municipality data.
 // Everything is computed by the same code the ranking pages use.
 import { parseAndTypeCheck } from '@/lang/expr'
-import { evaluate } from '@/lang/evaluate'
+import { evalNum, keeps } from '@/lang/evaluate'
+import { isMissing } from '@/lang/value'
 import { baseItemEnv, buildItems, type BaseItem } from '@/data/municipalities'
 import {
   fetchArea, fetchPopulation, fetchRent, fetchMinWages, fetchDesignations, fetchCoastal, fetchMunicipalityCodes, fetchPopulationChange,
   defaultDataSelection, type DesignationSets,
 } from '@/data/datasets'
 import { fetchMunicipalityPaths, sequentialColor, COLOR_SCHEMES, DIVERGING_RAMP } from '@/lib/topoMap'
-import { makeScale, isSigned, asFinite, rampPosition, ZERO, type Finite } from '@/lib/colorScale'
+import { makeScale, isSigned, rampPosition, ZERO, type Finite } from '@/lib/colorScale'
 import { featuredRankings, type Featured } from './featured'
 
 export type FeaturedSnapshot = {
@@ -50,18 +51,20 @@ export function evaluateFeatured(f: Featured, items: BaseItem[], designations: D
   const value = parseAndTypeCheck(column.expression)
   const filter = f.config.filterExpression ? parseAndTypeCheck(f.config.filterExpression) : null
   const sort = parseAndTypeCheck(f.config.sortExpression)
+  if (value.type !== 'n' || sort.type !== 'n') throw new Error(`${f.path}: 地図の列と並べ替えは数値の式にしてください`)
+  if (filter && filter.type !== 'b') throw new Error(`${f.path}: 絞り込みは真偽値の式にしてください`)
   const sign = f.config.sortDirection === 'desc' ? -1 : 1
 
   const values = new Map<string, Finite>()
-  const ranked: { item: BaseItem; value: Finite; key: number }[] = []
+  const ranked: { item: BaseItem; value: Finite; key: Finite }[] = []
   for (const item of items) {
     const env = baseItemEnv(item, designations, coastal)
-    if (filter && evaluate(filter, env) !== true) continue
-    const v = asFinite(evaluate(value, env) as number)
-    if (v === undefined) continue   // missing, or a ratio over zero: no color (as in the map view)
+    if (filter && !keeps(filter, env)) continue
+    const v = evalNum(value, env)
+    if (isMissing(v)) continue   // no color (as in the map view)
     values.set(item.code, v)
-    const key = evaluate(sort, env) as number
-    if (!Number.isNaN(key)) ranked.push({ item, value: v, key })
+    const key = evalNum(sort, env)
+    if (!isMissing(key)) ranked.push({ item, value: v, key })
   }
   ranked.sort((a, b) => sign * (a.key - b.key))
   return { values, top: ranked.slice(0, TOP) }

@@ -4,6 +4,8 @@ import Sidebar from '@/components/Sidebar'
 import { derivedExpressions } from '@/data/municipalities'
 import Canonical from '@/components/Canonical'
 import { pageTitle } from '@/lib/brand'
+import { formatMissing } from '@/lib/format'
+import { nodata, DIVZERO, OVERFLOW } from '@/lang/value'
 
 // Each operator is the function beside it, written between its operands.
 const operators = [
@@ -12,12 +14,20 @@ const operators = [
   { sig: 'n * n',   ret: 'n', fn: 'MULT(n, n)' },
   { sig: 'n / n',   ret: 'n', fn: 'MULT(n, INV(n))' },
   { sig: '-n',      ret: 'n', fn: 'NEG(n)' },
+  { sig: 'n < n',   ret: 'b', fn: 'NOT(LEQ(第2項, 第1項))' },
   { sig: 'n <= n',  ret: 'b', fn: 'LEQ(n, n)' },
+  { sig: 'n > n',   ret: 'b', fn: 'NOT(LEQ(n, n))' },
   { sig: 'n >= n',  ret: 'b', fn: 'LEQ(第2項, 第1項)' },
   { sig: 'a = a',   ret: 'b', fn: 'EQ(a, a)' },
   { sig: 'a != a',  ret: 'b', fn: 'NOT(EQ(a, a))' },
   { sig: 'b AND b', ret: 'b', fn: 'AND(b, b)' },
   { sig: 'b OR b',  ret: 'b', fn: 'OR(b, b)' },
+]
+
+const missingMarks = [
+  { mark: formatMissing(nodata('')), desc: 'データなし（その自治体の値がデータにない）' },
+  { mark: formatMissing(DIVZERO), desc: '0で割っているため計算できない' },
+  { mark: formatMissing(OVERFLOW), desc: '値が大きすぎて計算できない' },
 ]
 
 const functions = [
@@ -32,7 +42,7 @@ const functions = [
   { sig: 'MAX(n…)',    ret: 'n', desc: '最大値' },
   { sig: 'NEG(n)',     ret: 'n', desc: '符号反転（× −1）' },
   { sig: 'INV(n)',     ret: 'n', desc: '逆数（1 ÷ n）' },
-  { sig: 'ROUND(n, d)',  ret: 'n', desc: '小数点以下 d 桁に丸め（d < 0 で整数位）' },
+  { sig: 'ROUND(n, d)',  ret: 'n', desc: '小数点以下 d 桁に丸め（d は −15〜15 の整数。d < 0 で整数位）' },
   { sig: 'SUBSTR(s, n)',    ret: 's', desc: 'n ≥ 0: 先頭 n 文字、n < 0: 末尾 |n| 文字' },
   { sig: 'IF(b, a, a)',    ret: 'a', desc: '条件が真なら第2引数、偽なら第3引数（両引数は同じ型）' },
 ]
@@ -135,6 +145,22 @@ function FormulasPage() {
           </table>
           <p className="mt-2 text-xs text-gray-400">
             結びつきの強い順に「-n」「* /」「+ -」「比較」「AND」「OR」。比較は続けて書けないので、括弧でくくります。
+          </p>
+        </Section>
+
+        <Section title="値がないとき">
+          <table className="w-full text-sm">
+            <tbody>
+              {missingMarks.map(m => (
+                <tr key={m.mark} className="border-b border-gray-100 last:border-0">
+                  <td className="py-1.5 pr-6 font-mono text-gray-700 whitespace-nowrap w-20">{m.mark}</td>
+                  <td className="py-1.5 text-gray-500">{m.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-gray-400">
+            値がないものを使った計算や比較も値がなくなり、絞り込みでは除かれます（AND・OR は結果が決まる場合を除く）。
           </p>
         </Section>
 

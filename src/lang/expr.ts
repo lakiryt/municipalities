@@ -1,10 +1,11 @@
 import { isNumVar, isStrVar, isBoolVar, type NumVarName, type StrVarName, type BoolVarName } from './variables'
+import { asFinite, type Finite } from './value'
 // ── Raw parse tree (untyped) ──────────────────────────────────────────────────
 
 // `op` is set when the call was written as an operator (`a + b` is SUM(a, b)):
 // it names what the user wrote, for error messages.
 type RawCall    = { kind: 'call';    name: string; args: RawExpr[]; op?: string }
-type RawLiteral = { kind: 'literal'; value: number }
+type RawLiteral = { kind: 'literal'; value: Finite }
 type RawVar     = { kind: 'numvar';     name: string }
 type RawStrLit  = { kind: 'strlit';  value: string }
 type RawStrVar  = { kind: 'strvar';  name: string }
@@ -14,7 +15,7 @@ type RawExpr    = RawCall | RawLiteral | RawVar | RawStrLit | RawStrVar | RawBoo
 
 // ── Typed AST ─────────────────────────────────────────────────────────────────
 
-export type NumLiteral = { kind: 'literal'; value: number }
+export type NumLiteral = { kind: 'literal'; value: Finite }
 export type NumVar     = { kind: 'numvar';  name: NumVarName }
 export type NumSum     = { kind: 'SUM';     args: NumExpr[] }
 export type NumMult    = { kind: 'MULT';    args: NumExpr[] }
@@ -22,7 +23,11 @@ export type NumMin     = { kind: 'MIN';     args: NumExpr[] }
 export type NumMax     = { kind: 'MAX';     args: NumExpr[] }
 export type NumNeg     = { kind: 'NEG';     arg: NumExpr }
 export type NumInv     = { kind: 'INV';     arg: NumExpr }
-export type NumRound   = { kind: 'ROUND';   arg: NumExpr; digits: NumExpr }
+// `digits` is written as an integer literal within ±ROUND_DIGITS: a number
+// has about 15 significant decimal digits, and past them rounding means
+// nothing (or overflows) — so other digits are a type error, not a NaN.
+export const ROUND_DIGITS = 15
+export type NumRound   = { kind: 'ROUND';   arg: NumExpr; digits: number }
 export type NumIf      = { kind: 'IF'; cond: BoolExpr; then: NumExpr;  else_: NumExpr }
 export type NumColRef  = { kind: 'colref'; id: number }
 export type NumExpr    = NumLiteral | NumVar | NumSum | NumMult | NumMin | NumMax | NumNeg | NumInv | NumRound | NumIf | NumColRef
@@ -57,7 +62,7 @@ export type TypedExpr = TypedNum | TypedBool | TypedStr
 // ── Tokenizer ─────────────────────────────────────────────────────────────────
 
 type TokIdent   = { kind: 'ident';   value: string }
-type TokNumber  = { kind: 'number';  value: number }
+type TokNumber  = { kind: 'number';  value: Finite }
 type TokVar     = { kind: 'numvar';  name: string }
 type TokStrLit  = { kind: 'strlit'; value: string }
 type TokStrVar  = { kind: 'strvar'; name: string }
@@ -70,7 +75,7 @@ type TokOp      = { kind: 'op'; value: SymbolOp }
 type TokEof     = { kind: 'eof' }
 type Token = TokIdent | TokNumber | TokVar | TokStrLit | TokStrVar | TokBoolVar | TokColRef | TokLParen | TokRParen | TokComma | TokOp | TokEof
 
-type SymbolOp = '+' | '-' | '*' | '/' | '=' | '!=' | '<=' | '>='
+type SymbolOp = '+' | '-' | '*' | '/' | '=' | '!=' | '<' | '<=' | '>' | '>='
 type InfixOp = SymbolOp | 'AND' | 'OR'
 
 const japaneseDescriptions: Record<Token['kind'], string> = {
@@ -118,7 +123,9 @@ function tokenize(input: string): Token[] {
         j++
         while (j < input.length && /[0-9]/.test(input[j])) j++
       }
-      tokens.push({ kind: 'number', value: Number(input.slice(i, j)) })
+      const value = asFinite(Number(input.slice(i, j)))
+      if (value === undefined) throw new ParseError(`数値が大きすぎます（${i + 1}文字目）`)
+      tokens.push({ kind: 'number', value })
       i = j
       continue
     }
@@ -174,11 +181,7 @@ function tokenize(input: string): Token[] {
 
     const two = input.slice(i, i + 2)
     if (two === '!=' || two === '<=' || two === '>=') { tokens.push({ kind: 'op', value: two }); i += 2; continue }
-    if (ch === '+' || ch === '-' || ch === '*' || ch === '/' || ch === '=') { tokens.push({ kind: 'op', value: ch }); i++; continue }
-    // `a < b` as NOT(b <= a) would be true when either side is missing (NaN),
-    // so it isn't offered until the core has a comparison of its own.
-    if (ch === '<' || ch === '>')
-      throw new ParseError(`「${ch}」は使えません。「<=」か「>=」を使ってください（${i + 1}文字目）`)
+    if (ch === '+' || ch === '-' || ch === '*' || ch === '/' || ch === '=' || ch === '<' || ch === '>') { tokens.push({ kind: 'op', value: ch }); i++; continue }
 
     throw new ParseError(`式に使用できない文字「${ch}」が用いられています（${i + 1}文字目）`)
   }
@@ -190,7 +193,9 @@ function tokenize(input: string): Token[] {
 // ── Parser (recursive descent, operators by binding power) ──────────────────
 
 // Operators are notation for the core functions: `a - b` is SUM(a, NEG(b)),
-// `a / b` is MULT(a, INV(b)), `a >= b` is LEQ(b, a). The typed AST and the
+// `a / b` is MULT(a, INV(b)), `a < b` is NOT(LEQ(b, a)) — the same as a
+// comparison of its own, since a comparison with a missing side is missing
+// and so is its NOT (lang/value.ts). The typed AST and the
 // evaluator know nothing of them. A higher binding power binds tighter;
 // comparisons don't associate (`a <= b <= c` is an error, not a guess).
 const INFIX: Record<InfixOp, { bp: number; assoc: 'left' | 'none' }> = {
@@ -198,7 +203,9 @@ const INFIX: Record<InfixOp, { bp: number; assoc: 'left' | 'none' }> = {
   'AND': { bp: 2, assoc: 'left' },
   '=':   { bp: 3, assoc: 'none' },
   '!=':  { bp: 3, assoc: 'none' },
+  '<':   { bp: 3, assoc: 'none' },
   '<=':  { bp: 3, assoc: 'none' },
+  '>':   { bp: 3, assoc: 'none' },
   '>=':  { bp: 3, assoc: 'none' },
   '+':   { bp: 4, assoc: 'left' },
   '-':   { bp: 4, assoc: 'left' },
@@ -231,7 +238,9 @@ function infix(op: InfixOp, left: RawExpr, right: RawExpr): RawExpr {
     case 'OR':  return extend('OR', '「OR」', left, right)
     case '=':   return call('EQ', [left, right], '「=」')
     case '!=':  return call('NOT', [call('EQ', [left, right], '「!=」')], '「!=」')
+    case '<':   return call('NOT', [call('LEQ', [right, left], '「<」')], '「<」')
     case '<=':  return call('LEQ', [left, right], '「<=」')
+    case '>':   return call('NOT', [call('LEQ', [left, right], '「>」')], '「>」')
     case '>=':  return call('LEQ', [right, left], '「>=」')
   }
 }
@@ -314,7 +323,7 @@ class Parser {
       const operand = this.parseExpr(PREFIX_MINUS_BP)
       // `-3` is the number -3 (so ROUND(x, -2) reads as written).
       return operand.kind === 'literal'
-        ? { kind: 'literal', value: -operand.value }
+        ? { kind: 'literal', value: -operand.value as Finite }
         : call('NEG', [operand], '符号の「-」')
     }
 
@@ -426,6 +435,10 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
   // What an error points at: the operator as written, or the function's argument.
   const at = (i: number) => op ? `${op}の項` : `${name}の${i + 1}番目の引数`
 
+  const atLeastOne = () => {
+    if (args.length === 0) throw new TypeCheckError(`${name}には引数が1つ以上必要です`)
+  }
+
   const arity = (n: number) => {
     if (args.length !== n)
       throw new TypeCheckError(`${name}が受けつける引数は${n}個ですが、${args.length}個与えられました`)
@@ -454,8 +467,10 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
     case 'MULT':
       return { type: 'n', expr: { kind: 'MULT', args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'MIN':
+      atLeastOne()
       return { type: 'n', expr: { kind: 'MIN',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'MAX':
+      atLeastOne()
       return { type: 'n', expr: { kind: 'MAX',  args: args.map((a: RawExpr, i: number) => requireNum(a, at(i), columns)) } }
     case 'NEG':
       arity(1)
@@ -463,9 +478,14 @@ function typeCheck(raw: RawExpr, columns: ColumnTypeInfo[] | undefined): TypedEx
     case 'INV':
       arity(1)
       return { type: 'n', expr: { kind: 'INV',   arg: requireNum(args[0], at(0), columns) } }
-    case 'ROUND':
+    case 'ROUND': {
       arity(2)
-      return { type: 'n', expr: { kind: 'ROUND', arg: requireNum(args[0], at(0), columns), digits: requireNum(args[1], at(1), columns) } }
+      const arg = requireNum(args[0], at(0), columns)
+      const d = args[1]
+      if (d.kind !== 'literal' || !Number.isInteger(d.value) || Math.abs(d.value) > ROUND_DIGITS)
+        throw new TypeCheckError(`${at(1)}: 桁数は -${ROUND_DIGITS}〜${ROUND_DIGITS} の整数で書いてください`)
+      return { type: 'n', expr: { kind: 'ROUND', arg, digits: d.value } }
+    }
     case 'SUBSTR': {
       arity(2)
       const str = requireStr(args[0], at(0), columns)
@@ -509,7 +529,7 @@ function numReferencesColumn(expr: NumExpr, id: number): boolean {
     case 'literal': case 'numvar': return false
     case 'SUM': case 'MULT': case 'MIN': case 'MAX': return expr.args.some(a => numReferencesColumn(a, id))
     case 'NEG': case 'INV': return numReferencesColumn(expr.arg, id)
-    case 'ROUND': return numReferencesColumn(expr.arg, id) || numReferencesColumn(expr.digits, id)
+    case 'ROUND': return numReferencesColumn(expr.arg, id)
     case 'IF': return boolReferencesColumn(expr.cond, id) || numReferencesColumn(expr.then, id) || numReferencesColumn(expr.else_, id)
     case 'colref': return expr.id === id
   }
