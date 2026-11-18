@@ -394,7 +394,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
       onViewChange={handleViewChange}
       sortLabel={sortState ? (sortedColumn?.label ?? sortState.expression) : null}
       sortDirection={sortState?.direction ?? 'desc'}
-      filterLabel={filterExpr !== null ? describeFilter(filterExpression) : null}
+      filterLabel={filterExpr !== null ? describeFilter(filterExpr) : null}
       shownCount={filteredItems.length}
       totalCount={tableBaseItems.length}
       onSortClick={() => setSortOpen(true)}

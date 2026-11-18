@@ -23,7 +23,7 @@ function Sidebar({ onClose }: Props) {
           <Link to="/data" onClick={onClose} className={link}>データと出典</Link>
         </div>
         <div className="mt-auto p-4 text-xs text-gray-400">
-          <p>© 2026 <a target="_blank" rel="noopener noreferrer" href="https://lakiryt.com">Lakiryt</a></p>
+          <p>© 2026 <a target="_blank" rel="noopener noreferrer" href="https://apps.reichido.com">apps.reichido.com</a></p>
         </div>
       </nav>
     </>

@@ -15,13 +15,13 @@ export const ALL_COL_DEFS = [
   { key: 'setai',      group: '人口', label: '世帯数',        expr: '#setai' },
   { key: 'prev_total', group: '人口', label: '前年人口',      expr: '#prev_total' },
   { key: 'area',       group: '面積', label: '面積(km²)',     expr: '#area' },
-  { key: 'density',    group: '面積', label: '人口密度',      expr: 'ROUND(MULT(#totalpop, INV(#area)), 2)' },
-  { key: 'incrate',    group: '増減', label: '増減率(%)',     expr: 'ROUND(MULT(100, #inc_rate), 2)' },
+  { key: 'density',    group: '面積', label: '人口密度',      expr: 'ROUND(#totalpop / #area, 2)' },
+  { key: 'incrate',    group: '増減', label: '増減率(%)',     expr: 'ROUND(#inc_rate * 100, 2)' },
   { key: 'inc_net',    group: '増減', label: '増減数',        expr: '#inc_net' },
   { key: 'inc_nat',    group: '増減', label: '自然増減数',    expr: '#inc_nat' },
-  { key: 'natrate',    group: '増減', label: '自然増減率(%)', expr: 'ROUND(MULT(100, #inc_nat_rate), 2)' },
+  { key: 'natrate',    group: '増減', label: '自然増減率(%)', expr: 'ROUND(#inc_nat_rate * 100, 2)' },
   { key: 'inc_soc',    group: '増減', label: '社会増減数',    expr: '#inc_soc' },
-  { key: 'socrate',    group: '増減', label: '社会増減率(%)', expr: 'ROUND(MULT(100, #inc_soc_rate), 2)' },
+  { key: 'socrate',    group: '増減', label: '社会増減率(%)', expr: 'ROUND(#inc_soc_rate * 100, 2)' },
   { key: 'inc_mov',    group: '移動', label: '転入者数',      expr: '#inc_mov' },
   { key: 'dec_mov',    group: '移動', label: '転出者数',      expr: '#dec_mov' },
   { key: 'inc_born',   group: '移動', label: '出生数',        expr: '#inc_born' },
@@ -103,18 +103,18 @@ export function buildFilterExpr(state: FilterState): string | null {
   const { kana, pref, types, kubun } = state
   const parts: string[] = []
   const k = normalizeKana(kana.trim())
-  if (k) parts.push(`EQ(SUBSTR($kana, ${k.length}), "${k}")`)
-  if (pref) parts.push(`EQ($prefkanji, "${pref}")`)
+  if (k) parts.push(`SUBSTR($kana, ${k.length}) = "${k}"`)
+  if (pref) parts.push(`$prefkanji = "${pref}"`)
   const activeTypes = MUNI_TYPES.filter(t => types[t.key])
   if (activeTypes.length > 0 && activeTypes.length < MUNI_TYPES.length) {
-    const exprs = activeTypes.map(t => `EQ($kind, "${t.label}")`)
-    parts.push(exprs.length === 1 ? exprs[0] : `OR(${exprs.join(', ')})`)
+    const exprs = activeTypes.map(t => `$kind = "${t.label}"`)
+    parts.push(exprs.length === 1 ? exprs[0] : `(${exprs.join(' OR ')})`)
   }
   const activeKubun = KUBUN_OPTS.filter(o => kubun[o.key])
   if (activeKubun.length > 0 && activeKubun.length < KUBUN_OPTS.length) {
     const exprs = activeKubun.map(o => `&${o.key}`)
-    parts.push(exprs.length === 1 ? exprs[0] : `OR(${exprs.join(', ')})`)
+    parts.push(exprs.length === 1 ? exprs[0] : `(${exprs.join(' OR ')})`)
   }
   if (parts.length === 0) return null
-  return parts.length === 1 ? parts[0] : `AND(${parts.join(', ')})`
+  return parts.join(' AND ')
 }

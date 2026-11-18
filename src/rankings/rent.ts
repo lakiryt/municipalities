@@ -8,11 +8,11 @@ export function rentConfig(pref: Pref | null): RankingConfig {
     description: `${scope}の市区町村を、民営借家に住む人が払っている家賃の平均（延べ面積20m²分。家賃0円の住宅を除く）が高い順に並べたランキングです。`,
     columns: [
       { id: 1, label: '自治体名', expression: '$kanji' },
-      { id: 2, label: '民営借家の平均家賃（20㎡）', expression: 'MULT(20, #rent_private)' },
+      { id: 2, label: '民営借家の平均家賃（20㎡）', expression: '20 * #rent_private' },
       ...(pref ? [] : [{ id: 0, label: '都道府県', expression: '$prefkanji' }]),
     ],
     filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
-    sortExpression: 'MULT(20, #rent_private)',
+    sortExpression: '20 * #rent_private',
     sortDirection: 'desc',
   }
 }

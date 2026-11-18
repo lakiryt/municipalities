@@ -23,10 +23,10 @@ export const DETAIL_METRICS: Metric[] = [
   { key: 'pop', label: '人口', unit: '人', expr: '#totalpop', ranking: 'population' },
   { key: 'setai', label: '世帯数', unit: '世帯', expr: '#setai', ranking: 'households' },
   { key: 'area', label: '面積', unit: 'km²', expr: '#area', ranking: 'area' },
-  { key: 'density', label: '人口密度', unit: '人/km²', expr: 'ROUND(MULT(#totalpop, INV(#area)), 1)', ranking: 'density' },
-  { key: 'elderly', label: '老年人口比率', unit: '%', expr: 'ROUND(MULT(#elderly_total, INV(#totalpop), 100), 1)', ranking: 'elderly-ratio' },
+  { key: 'density', label: '人口密度', unit: '人/km²', expr: 'ROUND(#totalpop / #area, 1)', ranking: 'density' },
+  { key: 'elderly', label: '老年人口比率', unit: '%', expr: 'ROUND(#elderly_total / #totalpop * 100, 1)', ranking: 'elderly-ratio' },
   // The period compared is the 人口増減 chosen in データの選択 (its chip says which).
-  { key: 'change', label: '人口増減率', unit: '%', expr: 'ROUND(MULT(#pop_change_rate, 100), 2)', ranking: 'population-change' },
+  { key: 'change', label: '人口増減率', unit: '%', expr: 'ROUND(#pop_change_rate * 100, 2)', ranking: 'population-change' },
   { key: 'rent', label: '民営借家の家賃（1m²あたり）', unit: '円', expr: '#rent_private', ranking: 'rent' },
   { key: 'minwage', label: '最低賃金', unit: '円/時', expr: '#minwage', prefectureLevel: true },
 ]

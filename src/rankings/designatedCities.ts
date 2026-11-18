@@ -12,7 +12,7 @@ function listConfig(kind: 'seirei' | 'chukaku', name: string, intro: string): Ra
       { id: 1, label: '総人口', expression: '#totalpop' },
       { id: 2, label: '人口増減率(%)', expression: CHANGE_RATE },
       { id: 3, label: '面積(km²)', expression: '#area' },
-      { id: 4, label: '人口密度(人/km²)', expression: 'ROUND(MULT(#totalpop, INV(#area)), 1)' },
+      { id: 4, label: '人口密度(人/km²)', expression: 'ROUND(#totalpop / #area, 1)' },
       { id: 5, label: '都道府県', expression: '$prefkanji' },
     ],
     filterExpression: `&${kind}`,
