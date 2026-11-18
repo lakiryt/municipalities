@@ -16,6 +16,9 @@ export type Edition = {
   path: string
   adjacency?: string
   enabled?: boolean
+  // A CSV edition's columns after `code` (the pipeline reads them from the
+  // file) — what it can provide, known before it's fetched.
+  columns?: string[]
 }
 export type DatasetMeta = {
   label: string; name?: string; agency?: string; page?: string
@@ -67,7 +70,16 @@ const fetchCsv = (path: string) => fetch(`/${path}`).then(r => r.text()).then(pa
 // apart — usually the date, but e.g. 国勢調査 has a 速報 and a 確定 edition
 // for the same date, and surveys read better as "令和5年" / "2026年度".
 // `key` identifies the edition in URLs (?pop=jumin:2025, ?area=2026-04-01).
-export type Source = { dataset: string; key: string; label: string; name: string; as_of: string; path: string }
+export type Source = {
+  dataset: string; key: string; label: string; name: string; as_of: string; path: string
+  // The columns every row read from it can have (src/data/schema.ts).
+  columns: ReadonlySet<string>
+}
+
+const columnsOf = (e: Edition): ReadonlySet<string> => new Set(e.columns ?? [])
+// Read from several editions together: only what they all have.
+const commonColumns = ([first, ...rest]: Edition[]): ReadonlySet<string> =>
+  new Set((first?.columns ?? []).filter(c => rest.every(e => columnsOf(e).has(c))))
 
 const NAMED_EDITIONS = new Set(['kokusei', 'rent', 'minwage'])
 // Population mixes two datasets, so its keys carry the dataset id.
@@ -81,6 +93,7 @@ const sourcesOf = (id: string): Source[] =>
     name: NAMED_EDITIONS.has(id) ? (e.label ?? e.as_of) : e.as_of,
     as_of: e.as_of,
     path: e.path,
+    columns: columnsOf(e),
   }))
 
 // The default minimum wage isn't an edition but "whatever is in effect today"
@@ -91,7 +104,10 @@ export const populationSources: Source[] = [...sourcesOf('jumin'), ...sourcesOf(
 export const areaSources: Source[] = sourcesOf('area')
 export const rentSources: Source[] = sourcesOf('rent')
 export const minWageSources: Source[] = [
-  { dataset: 'minwage', key: MINWAGE_EFFECTIVE, label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE },
+  {
+    dataset: 'minwage', key: MINWAGE_EFFECTIVE, label: dataset('minwage').label, name: '現在（都道府県ごとに発効済みの額）', as_of: '', path: MINWAGE_EFFECTIVE,
+    columns: commonColumns(dataset('minwage').editions.slice(0, 2)),   // see fetchMinWages
+  },
   ...sourcesOf('minwage'),
 ]
 
@@ -111,6 +127,7 @@ const pairSource = (id: string, from: Edition, to: Edition): Source => ({
   name: `${from.as_of.slice(0, 4)}→${to.as_of.slice(0, 4)}年`,
   as_of: to.as_of,
   path: `${from.path}${PAIR_SEP}${to.path}`,
+  columns: commonColumns([from, to]),
 })
 
 export const changeSources: Source[] = (() => {
@@ -123,6 +140,7 @@ export const changeSources: Source[] = (() => {
 })()
 
 export type ChangeMap = Map<string, { from: number; to: number }>
+export const CHANGE_COLUMN = 'totalpop'
 const changeCache = new Map<string, Promise<ChangeMap>>()
 export const fetchPopulationChange = (path: string): Promise<ChangeMap> => {
   const [fromPath, toPath] = path.split(PAIR_SEP)
@@ -130,8 +148,8 @@ export const fetchPopulationChange = (path: string): Promise<ChangeMap> => {
   let p = changeCache.get(path)
   if (!p) {
     p = Promise.all([fetchCsv(fromPath), fetchCsv(toPath)]).then(([from, to]) => {
-      const before = new Map(from.map(r => [r.code, toNum(r.totalpop)]))
-      return new Map(to.map(r => [r.code, { from: before.get(r.code) ?? NaN, to: toNum(r.totalpop) }]))
+      const before = new Map(from.map(r => [r.code, toNum(r[CHANGE_COLUMN])]))
+      return new Map(to.map(r => [r.code, { from: before.get(r.code) ?? NaN, to: toNum(r[CHANGE_COLUMN]) }]))
     })
     changeCache.set(path, p)
   }
@@ -200,8 +218,9 @@ export const fetchPopulation = (path: string): Promise<PopulationMap> =>
 
 // ── Area ──────────────────────────────────────────────────────────────────────
 
+export const AREA_COLUMN = 'area'
 export const fetchArea = (path: string): Promise<Map<string, number>> =>
-  !path ? Promise.resolve(new Map()) : fetchCsv(path).then(rows => new Map(rows.map(r => [r.code, toNum(r.area)])))
+  !path ? Promise.resolve(new Map()) : fetchCsv(path).then(rows => new Map(rows.map(r => [r.code, toNum(r[AREA_COLUMN])])))
 
 // ── Rent ──────────────────────────────────────────────────────────────────────
 
@@ -211,10 +230,11 @@ export const fetchArea = (path: string): Promise<Map<string, number>> =>
 // for a place to rent would pay — the total also averages in 公営住宅 and
 // 社宅, which are far cheaper).
 export type RentMap = Map<string, { inc0: number; exc0: number; private: number }>
+export const RENT_COLUMNS = { inc0: 'inc0_total', exc0: 'exc0_total', private: 'exc0_private' } as const
 
 export const fetchRent = (path: string): Promise<RentMap> =>
   !path ? Promise.resolve(new Map()) : fetchCsv(path).then(rows => new Map(
-    rows.map((r): [string, { inc0: number; exc0: number; private: number }] => [r.code, { inc0: toNum(r.inc0_total), exc0: toNum(r.exc0_total), private: toNum(r.exc0_private) }])
+    rows.map((r): [string, { inc0: number; exc0: number; private: number }] => [r.code, { inc0: toNum(r[RENT_COLUMNS.inc0]), exc0: toNum(r[RENT_COLUMNS.exc0]), private: toNum(r[RENT_COLUMNS.private]) }])
   ))
 
 // ── Minimum wage ──────────────────────────────────────────────────────────────
@@ -243,8 +263,9 @@ export const pickEffectiveMinWages = (editions: MinWageRow[][], today: string): 
   return out
 }
 
+export const MINWAGE_COLUMN = 'min'
 const minWageRows = (path: string): Promise<MinWageRow[]> =>
-  fetchCsv(path).then(rows => rows.map(r => ({ code: r.code, min: toNum(r.min), since: r.since })))
+  fetchCsv(path).then(rows => rows.map(r => ({ code: r.code, min: toNum(r[MINWAGE_COLUMN]), since: r.since })))
 
 export const fetchMinWages = (path: string): Promise<MinWageMap> => {
   if (!path) return Promise.resolve(new Map())

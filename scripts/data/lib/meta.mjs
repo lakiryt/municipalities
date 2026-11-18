@@ -1,11 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { META_PATH, MANIFEST_PATH } from './paths.mjs'
+import { resolve } from 'node:path'
+import { META_PATH, MANIFEST_PATH, PUBLIC_DIR } from './paths.mjs'
 
 // src/assets/meta.json is generated and is the repo's record of what it
 // holds ("B"): one entry per dataset, each edition with its generated
 // file(s), provenance, the `ref` needed to fetch it again, and `enabled` —
 // whether the app offers/uses it ("C"). The app only ever sees enabled
-// editions.
+// editions. A CSV edition also lists its `columns` (the header after
+// `code`), read from the file itself on every write — so the app knows which
+// variables an edition provides before fetching it (src/data/schema.ts).
 
 export const readManifest = () => JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8'))
 
@@ -20,6 +23,20 @@ const indexOr = (arr, v) => { const i = arr.indexOf(v); return i === -1 ? Infini
 // Same date: the plain edition before its variants ("2025" before "2025-sokuho").
 const byNewest = (a, b) => (b.as_of ?? '').localeCompare(a.as_of ?? '') || a.id.length - b.id.length || b.id.localeCompare(a.id)
 
+/** A generated CSV's columns after `code`, or undefined for other files. */
+function csvColumns(path) {
+  const file = resolve(PUBLIC_DIR, path ?? '')
+  if (!path?.endsWith('.csv') || !existsSync(file)) return undefined
+  const header = readFileSync(file, 'utf-8').split('\n', 1)[0].trim()
+  const [first, ...rest] = header.split(',')
+  if (first !== 'code') throw new Error(`${path}: 1列目が code ではありません`)
+  return rest
+}
+const withColumns = (e) => {
+  const columns = csvColumns(e.path)
+  return columns ? { ...e, columns } : e
+}
+
 function writeMeta(meta) {
   const manifest = readManifest()
   const order = Object.keys(manifest)
@@ -28,10 +45,13 @@ function writeMeta(meta) {
     const src = manifest[id] ?? {}
     const attribution = Object.fromEntries(ATTRIBUTION_KEYS.filter(k => src[k] !== undefined).map(k => [k, src[k]]))
     const { extras } = meta.datasets[id]
-    datasets[id] = { ...attribution, ...(extras ? { extras } : {}), editions: [...meta.datasets[id].editions].sort(byNewest) }
+    datasets[id] = { ...attribution, ...(extras ? { extras } : {}), editions: meta.datasets[id].editions.map(withColumns).sort(byNewest) }
   }
   writeFileSync(META_PATH, JSON.stringify({ datasets }, null, 2) + '\n')
 }
+
+/** Rewrites meta.json as is (refreshing each edition's `columns`). */
+export const refreshMeta = () => writeMeta(readMeta())
 
 /**
  * Adds or replaces editions (matched by id). A rebuilt edition keeps its

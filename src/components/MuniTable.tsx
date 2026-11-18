@@ -11,6 +11,8 @@ import { useMunicipalityData } from '../data/useMunicipalityData'
 import type { ColumnState, ColumnRef, ModalState, SortState } from '../types'
 import { decodeExploreState, encodeExploreState, nextColumnId, type ExploreState } from '@/lib/exploreState'
 import { usedData } from '@/lib/usedData'
+import { fitSelection, scopeOf } from '@/data/schema'
+import { DataScope } from '@/components/dataScope'
 import { describeFilter } from '@/lib/filterLabel'
 import { pageTitle } from '@/lib/brand'
 import AppHeader from '@/components/AppHeader'
@@ -150,7 +152,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   // データの選択 lives in the URL too (?pop=…&area=…), so it survives reloads
   // and shared links — and carries over when an edit moves a page to /explore.
-  const selection: DataSelection = useMemo(() => selectionFromParams(searchParams), [searchParams])
+  const requestedSelection: DataSelection = useMemo(() => selectionFromParams(searchParams), [searchParams])
   const setSelection = (next: DataSelection) => setSearchParams(prev => writeSelectionParams(new URLSearchParams(prev), next))
   const exploreUrl = (next: ExploreState, extra: Record<string, string> = {}) => {
     const params = writeSelectionParams(new URLSearchParams(), selection)
@@ -192,7 +194,17 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
 
   // The data the columns, filter, sort and map draw on: shown as chips and in
   // 出典, and 人口増減 is only fetched when something uses it.
-  const used = usedData([...columns.map(c => c.typed), filterExpr, sortState?.typed, mapState?.typed])
+  const usedExprs = useMemo(
+    () => [...columns.map(c => c.typed), filterExpr, sortState?.typed, mapState?.typed],
+    [columns, filterExpr, sortState, mapState]
+  )
+  // The selection in effect: as asked for, except that an edition lacking
+  // something the expressions use (a hand-edited or carried-over URL — the
+  // データの選択 dialog doesn't offer one) gives way to one that has it.
+  // (Cheap, and what reads it keys on the paths — no memo needed.)
+  const selection = fitSelection(requestedSelection, usedExprs)
+  const scope = scopeOf(selection)
+  const used = usedData(usedExprs)
   const usedKeys = DATA_KEYS.filter(k => used.selectable.has(k))
 
   const { items: activeItems, designations, coastal } = useMunicipalityData(selection, used.selectable.has('change'))
@@ -391,7 +403,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
   )
 
   return (
-    <>
+    <DataScope.Provider value={scope}>
       {modal !== null && (
         <ColumnModal
           key={modal.kind === 'edit' ? modal.id : 'new'}
@@ -435,6 +447,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
         <DataModal
           focus={dataModal.focus} used={usedKeys}
           selection={selection}
+          expressions={usedExprs}
           onApply={next => {
             setSelection(next)
             setDataModal(null)
@@ -492,7 +505,7 @@ function MuniTable({ title, initialColumns, initialFilter = null, initialSort = 
           />
         </main>
       )}
-    </>
+    </DataScope.Provider>
   )
 }
 
