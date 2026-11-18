@@ -20,7 +20,14 @@
             "url": "https://www.soumu.go.jp/main_content/000323625.csv",
             "as_of": "2023-08-22"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "name",
+            "kana",
+            "pref_name",
+            "parent_name",
+            "group_name"
+          ]
         }
       ]
     },
@@ -83,7 +90,84 @@
             "main": "000040479049",
             "age": "000040479050"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         },
         {
           "id": "2025",
@@ -108,7 +192,84 @@
             "main": "000040306653",
             "age": "000040306654"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         },
         {
           "id": "2024",
@@ -133,7 +294,84 @@
             "main": "000040306672",
             "age": "000040306674"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         },
         {
           "id": "2023",
@@ -158,7 +396,84 @@
             "main": "000040306647",
             "age": "000040306648"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         },
         {
           "id": "2022",
@@ -183,7 +498,84 @@
             "main": "000032224636",
             "age": "000032224637"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         },
         {
           "id": "2021",
@@ -208,7 +600,84 @@
             "main": "000040306659",
             "age": "000040306661"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         },
         {
           "id": "2020",
@@ -233,7 +702,84 @@
             "main": "000031971203",
             "age": "000031971230"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "malepop",
+            "femalepop",
+            "totalpop",
+            "setai",
+            "inc_mov_dom",
+            "inc_mov_intl",
+            "inc_born",
+            "inc_other",
+            "dec_mov_dom",
+            "dec_mov_intl",
+            "dec_deaths",
+            "dec_other",
+            "total0_4",
+            "total5_9",
+            "total10_14",
+            "total15_19",
+            "total20_24",
+            "total25_29",
+            "total30_34",
+            "total35_39",
+            "total40_44",
+            "total45_49",
+            "total50_54",
+            "total55_59",
+            "total60_64",
+            "total65_69",
+            "total70_74",
+            "total75_79",
+            "total80_84",
+            "total85_89",
+            "total90_94",
+            "total95_99",
+            "total100_",
+            "male0_4",
+            "male5_9",
+            "male10_14",
+            "male15_19",
+            "male20_24",
+            "male25_29",
+            "male30_34",
+            "male35_39",
+            "male40_44",
+            "male45_49",
+            "male50_54",
+            "male55_59",
+            "male60_64",
+            "male65_69",
+            "male70_74",
+            "male75_79",
+            "male80_84",
+            "male85_89",
+            "male90_94",
+            "male95_99",
+            "male100_",
+            "female0_4",
+            "female5_9",
+            "female10_14",
+            "female15_19",
+            "female20_24",
+            "female25_29",
+            "female30_34",
+            "female35_39",
+            "female40_44",
+            "female45_49",
+            "female50_54",
+            "female55_59",
+            "female60_64",
+            "female65_69",
+            "female70_74",
+            "female75_79",
+            "female80_84",
+            "female85_89",
+            "female90_94",
+            "female95_99",
+            "female100_"
+          ]
         }
       ]
     },
@@ -260,7 +806,12 @@
             "label": "令和7年 確定（人口等基本集計）",
             "statsDataId": "0004065881"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "totalpop",
+            "malepop",
+            "femalepop"
+          ]
         },
         {
           "id": "2025-sokuho",
@@ -279,7 +830,12 @@
             "label": "令和7年 速報集計",
             "statsDataId": "0004050397"
           },
-          "enabled": false
+          "enabled": false,
+          "columns": [
+            "totalpop",
+            "malepop",
+            "femalepop"
+          ]
         },
         {
           "id": "2020",
@@ -298,7 +854,12 @@
             "label": "令和2年 確定（人口等基本集計）",
             "statsDataId": "0003445078"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "totalpop",
+            "malepop",
+            "femalepop"
+          ]
         },
         {
           "id": "2020-sokuho",
@@ -317,7 +878,12 @@
             "label": "令和2年 速報集計",
             "statsDataId": "0003433219"
           },
-          "enabled": false
+          "enabled": false,
+          "columns": [
+            "totalpop",
+            "malepop",
+            "femalepop"
+          ]
         }
       ]
     },
@@ -341,7 +907,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2026-07-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2026-04-01",
@@ -357,7 +927,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2026-04-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2026-01-01",
@@ -373,7 +947,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2026-01-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2025-10-01",
@@ -389,7 +967,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2025-10-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2025-07-01",
@@ -405,7 +987,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2025-07-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2025-04-01",
@@ -421,7 +1007,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2025-04-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2025-01-01",
@@ -437,7 +1027,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2025-01-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2024-10-01",
@@ -453,7 +1047,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2024-10-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2024-07-01",
@@ -469,7 +1067,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2024-07-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2024-04-01",
@@ -485,7 +1087,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2024-04-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2024-01-01",
@@ -501,7 +1107,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R8_07_mencho.csv",
             "as_of": "2024-01-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2023-10-01",
@@ -517,7 +1127,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
             "as_of": "2023-10-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2022-10-01",
@@ -533,7 +1147,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
             "as_of": "2022-10-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2021-10-01",
@@ -549,7 +1167,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
             "as_of": "2021-10-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         },
         {
           "id": "2020-10-01",
@@ -565,7 +1187,11 @@
             "url": "https://www.gsi.go.jp/KOKUJYOHO/MENCHO/backnumber/R1_R5_mencho.csv",
             "as_of": "2020-10-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "area",
+            "note"
+          ]
         }
       ]
     },
@@ -593,7 +1219,11 @@
           "ref": {
             "as_of": "2023-04-01"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "type",
+            "since"
+          ]
         }
       ]
     },
@@ -622,7 +1252,19 @@
             "label": "令和5年",
             "statInfId": "000040210062"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "inc0_total",
+            "inc0_public",
+            "inc0_ur",
+            "inc0_private",
+            "inc0_company",
+            "exc0_total",
+            "exc0_public",
+            "exc0_ur",
+            "exc0_private",
+            "exc0_company"
+          ]
         },
         {
           "id": "2018",
@@ -643,7 +1285,19 @@
             "label": "平成30年",
             "statInfId": "000031865896"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "inc0_total",
+            "inc0_public",
+            "inc0_ur",
+            "inc0_private",
+            "inc0_company",
+            "exc0_total",
+            "exc0_public",
+            "exc0_ur",
+            "exc0_private",
+            "exc0_company"
+          ]
         }
       ]
     },
@@ -668,7 +1322,11 @@
             "year": 2026,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         },
         {
           "id": "2025",
@@ -685,7 +1343,11 @@
             "year": 2025,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         },
         {
           "id": "2024",
@@ -702,7 +1364,11 @@
             "year": 2024,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         },
         {
           "id": "2023",
@@ -719,7 +1385,11 @@
             "year": 2023,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         },
         {
           "id": "2022",
@@ -736,7 +1406,11 @@
             "year": 2022,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         },
         {
           "id": "2021",
@@ -753,7 +1427,11 @@
             "year": 2021,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         },
         {
           "id": "2020",
@@ -770,7 +1448,11 @@
             "year": 2020,
             "url": "https://www.mhlw.go.jp/content/11200000/001756130.xlsx"
           },
-          "enabled": true
+          "enabled": true,
+          "columns": [
+            "min",
+            "since"
+          ]
         }
       ]
     },

@@ -6,6 +6,7 @@ import {
 } from '@/data/datasets'
 import { useMunicipalityData } from '@/data/useMunicipalityData'
 import { metricValues } from '@/data/metrics'
+import { scopeOf } from '@/data/schema'
 import { formatValue, explainMissing } from '@/lib/format'
 import { isMissing } from '@/lang/value'
 import AppHeader from '@/components/AppHeader'
@@ -82,8 +83,8 @@ function MunicipalityPage() {
   }, [adjacency, targets])
 
   const metrics = useMemo(
-    () => (loaded ? metricValues(code, items, officialCodes, designations, coastal) : []),
-    [loaded, code, items, designations, coastal]
+    () => (loaded ? metricValues(code, items, officialCodes, designations, coastal, scopeOf(selection)) : []),
+    [loaded, code, items, designations, coastal, selection]
   )
 
   const query = writeSelectionParams(new URLSearchParams(), selection).toString()

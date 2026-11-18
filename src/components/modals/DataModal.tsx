@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SELECTABLE, DATA_KEYS, dataset, type Source, type DataSelection, type DataKey } from '@/data/datasets'
+import { scopeOf, unavailableIn, type Unavailable } from '@/data/schema'
+import type { TypedExpr } from '@/lang/expr'
 
 type Props = {
   selection: DataSelection
@@ -9,6 +11,10 @@ type Props = {
   focus?: DataKey
   // Data the page actually uses; the rest is folded away below.
   used?: DataKey[]
+  // The page's expressions: an edition lacking a variable they use isn't
+  // offered (a page without its own expressions, e.g. a municipality's,
+  // just shows less).
+  expressions?: (TypedExpr | null | undefined)[]
   onApply: (selection: DataSelection) => void
   onClose: () => void
 }
@@ -22,11 +28,13 @@ function groupByLabel(sources: Source[]): [string, Source[]][] {
   return [...map.entries()]
 }
 
-function SourceSection({ radioName, sources, selectedPath, onChange, autoFocus = false }: {
+function SourceSection({ radioName, sources, selectedPath, onChange, lacking, autoFocus = false }: {
   radioName: string
   sources: Source[]
   selectedPath: string
   onChange: (path: string) => void
+  // What choosing this edition would leave the page without, if anything.
+  lacking: (path: string) => Unavailable | undefined
   autoFocus?: boolean
 }) {
   const groups = groupByLabel(sources)
@@ -40,37 +48,44 @@ function SourceSection({ radioName, sources, selectedPath, onChange, autoFocus =
     <div className="space-y-1">
       {groups.map(([label, srcs]) => {
         const isActive = label === activeLabel
+        const usable = srcs.filter(s => !lacking(s.path))
+        const blocked = usable.length === 0 ? lacking(srcs[0].path) : undefined
         return (
-          <label
-            key={label}
-            className={`flex items-center gap-3 px-3 py-2 rounded ${single ? '' : 'cursor-pointer hover:bg-gray-50'}`}
-          >
-            {!single && (
-              <input
-                type="radio"
-                name={radioName}
-                checked={isActive}
-                onChange={() => {
-                  const match = srcs.find(s => s.as_of === selectedSrc?.as_of)
-                  onChange((match ?? srcs[0]).path)
-                }}
-              />
-            )}
-            <span className="text-sm flex-1">{label}</span>
-            <select
-              className={`text-xs border border-gray-200 rounded px-1 py-0.5 bg-white max-w-[60%] ${
-                isActive ? '' : 'pointer-events-none opacity-40'
-              }`}
-              value={isActive ? selectedPath : srcs[0].path}
-              tabIndex={isActive ? 0 : -1}
-              autoFocus={autoFocus && isActive}
-              onChange={e => onChange(e.target.value)}
+          <div key={label}>
+            <label
+              className={`flex items-center gap-3 px-3 py-2 rounded ${single ? '' : blocked ? 'text-gray-400' : 'cursor-pointer hover:bg-gray-50'}`}
             >
-              {srcs.map(src => (
-                <option key={src.path} value={src.path}>{src.name}</option>
-              ))}
-            </select>
-          </label>
+              {!single && (
+                <input
+                  type="radio"
+                  name={radioName}
+                  checked={isActive}
+                  disabled={blocked !== undefined}
+                  onChange={() => {
+                    const match = usable.find(s => s.as_of === selectedSrc?.as_of)
+                    onChange((match ?? usable[0]).path)
+                  }}
+                />
+              )}
+              <span className="text-sm flex-1">{label}</span>
+              <select
+                className={`text-xs border border-gray-200 rounded px-1 py-0.5 bg-white max-w-[60%] ${
+                  isActive ? '' : 'pointer-events-none opacity-40'
+                }`}
+                value={isActive ? selectedPath : srcs[0].path}
+                tabIndex={isActive ? 0 : -1}
+                autoFocus={autoFocus && isActive}
+                onChange={e => onChange(e.target.value)}
+              >
+                {srcs.map(src => {
+                  // Some editions only: say which (all of them: said once below).
+                  const u = blocked ? undefined : lacking(src.path)
+                  return <option key={src.path} value={src.path} disabled={u !== undefined}>{src.name}{u && `（#${u.variable} なし）`}</option>
+                })}
+              </select>
+            </label>
+            {blocked && <p className="px-3 -mt-1 mb-1 text-[11px] text-gray-500">使用中の #{blocked.variable} がありません</p>}
+          </div>
         )
       })}
     </div>
@@ -89,7 +104,7 @@ function SourceLink({ source }: { source: Source | undefined }) {
   )
 }
 
-function DataModal({ selection, focus, used, onApply, onClose }: Props) {
+function DataModal({ selection, focus, used, expressions = [], onApply, onClose }: Props) {
   const [pending, setPending] = useState(selection)
   const focusedRef = useRef<HTMLDivElement>(null)
   useEffect(() => { focusedRef.current?.scrollIntoView({ block: 'nearest' }) }, [])
@@ -115,6 +130,7 @@ function DataModal({ selection, focus, used, onApply, onClose }: Props) {
           sources={SELECTABLE[k].sources}
           selectedPath={pending[k]}
           onChange={path => setPending(p => ({ ...p, [k]: path }))}
+          lacking={path => unavailableIn(expressions, scopeOf({ ...pending, [k]: path })).find(u => u.key === k)}
           autoFocus={focused}
         />
         <SourceLink source={SELECTABLE[k].sources.find(s => s.path === pending[k])} />

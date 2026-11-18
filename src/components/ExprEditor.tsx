@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect, forwardRef } from 'react'
+import { useState, useRef, useEffect, useContext, forwardRef } from 'react'
 import { parseAndTypeCheck, ParseError, TypeCheckError, type TypedExpr, type ColumnInfo } from '../lang/expr'
 import ExprInput, { type ExprInputHandle } from './ExprInput'
+import { DataScope } from './dataScope'
+import { unavailableIn, unavailableMessage } from '../data/schema'
 
 type LiveResult =
   | { status: 'idle' }
@@ -41,9 +43,17 @@ const ExprEditor = forwardRef<ExprInputHandle, Props>(function ExprEditor(
   { initialExpression = '', placeholder, requiredType, columns, onValidExpr, onExpressionChange }, ref
 ) {
   const [result, setResult] = useState<LiveResult>({ status: 'idle' })
+  const scope = useContext(DataScope)
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => { if (errorTimer.current) clearTimeout(errorTimer.current) }, [])
+
+  // Errors show after a pause in typing (an expression is wrong while half-typed).
+  const fail = (message: string) => {
+    setResult({ status: 'pending' })
+    onValidExpr?.(null)
+    errorTimer.current = setTimeout(() => setResult({ status: 'error', message }), ERROR_DELAY_MS)
+  }
 
   const runCheck = (raw: string) => {
     if (errorTimer.current) clearTimeout(errorTimer.current)
@@ -61,14 +71,14 @@ const ExprEditor = forwardRef<ExprInputHandle, Props>(function ExprEditor(
         onValidExpr?.(null)
         return
       }
+      // A variable the selected data doesn't have (e.g. an age bracket with 国勢調査).
+      const [lacking] = unavailableIn([typed], scope)
+      if (lacking) { fail(unavailableMessage(lacking)); return }
       setResult({ status: 'ok', type: typed.type })
       onValidExpr?.(typed)
     } catch (e) {
       const prefix = e instanceof ParseError ? 'まだ構文に問題があるようです' : e instanceof TypeCheckError ? 'まだ型に問題があるようです' : 'エラーが発生しています'
-      const message = `${prefix}：${e instanceof Error ? e.message : String(e)}`
-      setResult({ status: 'pending' })
-      onValidExpr?.(null)
-      errorTimer.current = setTimeout(() => setResult({ status: 'error', message }), ERROR_DELAY_MS)
+      fail(`${prefix}：${e instanceof Error ? e.message : String(e)}`)
     }
   }
 

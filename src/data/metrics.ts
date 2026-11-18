@@ -6,6 +6,7 @@ import { evalNum } from '@/lang/evaluate'
 import { isMissing, type Finite, type Num } from '@/lang/value'
 import { baseItemEnv, type BaseItem } from './municipalities'
 import type { DesignationSets } from './datasets'
+import { ANY_DATA, unavailableIn, type Scope } from './schema'
 
 export type Metric = {
   key: string
@@ -47,9 +48,12 @@ export type MetricValue = {
  * Values for `code`, ranked (highest first) among `ranked` — the official
  * municipalities, so designated-city wards and grouping rows never take a
  * place. A code that isn't itself ranked (a ward) gets values but no ranks.
+ * Only the figures the selected data has (`scope`): with 国勢調査 there is
+ * no 世帯数 or 老年人口比率 to show.
  */
 export function metricValues(
   code: string, items: BaseItem[], ranked: Set<string>, designations: DesignationSets | undefined, coastal: Set<string>,
+  scope: Scope = ANY_DATA,
 ): MetricValue[] {
   const target = items.find(i => i.code === code)
   if (!target) return []
@@ -57,7 +61,8 @@ export function metricValues(
   const pool = items.filter(i => ranked.has(i.code))
   const valueOf = (item: BaseItem, key: string) => evalNum(typed.get(key)!, baseItemEnv(item, designations, coastal))
 
-  return DETAIL_METRICS.map(metric => {
+  const shown = DETAIL_METRICS.filter(m => unavailableIn([typed.get(m.key)], scope).length === 0)
+  return shown.map(metric => {
     const value = valueOf(target, metric.key)
     if (isMissing(value) || metric.prefectureLevel || !ranked.has(code)) return { metric, value }
     // Ranked among the places that have a value.

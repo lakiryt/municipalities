@@ -7,7 +7,8 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { parseAndTypeCheck } from '@/lang/expr'
 import { evaluate } from '@/lang/evaluate'
 import { baseItemEnv, type BaseItem } from '@/data/municipalities'
-import type { DesignationSets } from '@/data/datasets'
+import { dataset, type DesignationSets } from '@/data/datasets'
+import meta from '@/assets/meta.json'
 import { loadDefaultItems } from './featuredSnapshot'
 import { RANKINGS, type CatalogEntry } from './catalog'
 import type { Pref } from './filters'
@@ -56,5 +57,19 @@ describe('every ranking, on the shipped data', () => {
       // fine; one that is there for almost none is a broken join.
       expect(ranked / shown, `${e.slug}: ${ranked} of ${shown} rows have a value`).toBeGreaterThan(0.5)
     })
+  }
+})
+
+// What the app knows an edition provides (src/data/schema.ts) is what its
+// file has — meta.json's columns are read from the file by the pipeline.
+describe('each edition lists the columns its file has', () => {
+  for (const id of Object.keys(meta.datasets)) {
+    // (Not every edition is a file of its own: dantai is bundled.)
+    for (const e of dataset(id).editions.filter(e => e.path?.endsWith('.csv'))) {
+      it(`${id} ${e.id}`, async () => {
+        const [header] = (await files[`/public/${e.path}`]()).split(/\r?\n/, 1)
+        expect(['code', ...(e.columns ?? [])].join(',')).toBe(header)
+      })
+    }
   }
 })
