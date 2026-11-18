@@ -8,7 +8,7 @@ function SiteFooter() {
         <span>{BRAND_FULL}</span>
         <Link to="/data" className="hover:underline">データと出典</Link>
         <Link to="/formulas" className="hover:underline">式の記述方法</Link>
-        <span>© 2026 <a target="_blank" rel="noopener noreferrer" href="https://lakiryt.com" className="hover:underline">Lakiryt</a></span>
+        <span>© 2026 <a target="_blank" rel="noopener noreferrer" href="https://apps.reichido.com" className="hover:underline">apps.reichido.com</a></span>
       </p>
     </footer>
   )
