@@ -28,7 +28,7 @@ export function householdsConfig(pref: Pref | null): RankingConfig {
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
       { id: 1, label: '世帯数', expression: '#setai' },
-      { id: 2, label: '1世帯あたり人数', expression: 'ROUND(MULT(#totalpop, INV(#setai)), 2)' },
+      { id: 2, label: '1世帯あたり人数', expression: 'ROUND(#totalpop / #setai, 2)' },
       { id: 3, label: '総人口', expression: '#totalpop' },
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],

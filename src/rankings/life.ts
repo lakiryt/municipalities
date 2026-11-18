@@ -14,7 +14,7 @@ const LOVE_SIDES = {
   men:   { rivals: '#male25_29', partners: '#female20_24', rivalLabel: '25〜29歳の男性', partnerLabel: '20〜24歳の女性', seenBy: '男性', per: '女性1人あたりの男性' },
 }
 export type LoveSide = keyof typeof LOVE_SIDES
-export const loveRatio = (side: LoveSide) => `MULT(${LOVE_SIDES[side].rivals}, INV(${LOVE_SIDES[side].partners}))`
+export const loveRatio = (side: LoveSide) => `${LOVE_SIDES[side].rivals} / ${LOVE_SIDES[side].partners}`
 
 export function loveCompetitionConfig(pref: Pref | null, side: LoveSide): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
@@ -29,7 +29,7 @@ export function loveCompetitionConfig(pref: Pref | null, side: LoveSide): Rankin
       { id: 3, label: s.partnerLabel, expression: s.partners },
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],
-    filterExpression: allOf(OFFICIAL, pref && inPref(pref), `LEQ(100, ${s.partners})`),
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref), `${s.partners} >= 100`),
     sortExpression: loveRatio(side),
     sortDirection: 'desc',
   }
@@ -38,7 +38,7 @@ export function loveCompetitionConfig(pref: Pref | null, side: LoveSide): Rankin
 // 年金だけで暮らしたら、家賃を払っていくら残る？ — 国民年金（老齢基礎年金）
 // の満額（2025年度・月額）から、30m²分の家賃を引いた額。
 export const PENSION_MONTHLY = 69308
-export const PENSION_LEFT = `SUM(${PENSION_MONTHLY}, NEG(MULT(30, #rent_private)))`
+export const PENSION_LEFT = `${PENSION_MONTHLY} - 30 * #rent_private`
 export function pensionRentConfig(pref: Pref | null): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
   return {
@@ -47,7 +47,7 @@ export function pensionRentConfig(pref: Pref | null): RankingConfig {
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
       { id: 1, label: '家賃を払った残り（円/月）', expression: `ROUND(${PENSION_LEFT}, 0)` },
-      { id: 2, label: '民営借家の平均家賃（30m²）', expression: 'ROUND(MULT(30, #rent_private), 0)' },
+      { id: 2, label: '民営借家の平均家賃（30m²）', expression: 'ROUND(30 * #rent_private, 0)' },
       ...(pref ? [] : [{ id: 3, label: '都道府県', expression: '$prefkanji' }]),
     ],
     filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
@@ -60,7 +60,7 @@ export function pensionRentConfig(pref: Pref | null): RankingConfig {
 // Arrivals from abroad are their own ranking (below): in ski resorts and
 // farming villages they are mostly seasonal workers who leave again within
 // the year, a different story from settling in.
-export const NEWCOMER_RATIO = 'ROUND(MULT(#inc_mov_dom, INV(#totalpop), 100), 2)'
+export const NEWCOMER_RATIO = 'ROUND(#inc_mov_dom / #totalpop * 100, 2)'
 export function newcomersConfig(pref: Pref | null): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
   return {
@@ -74,13 +74,13 @@ export function newcomersConfig(pref: Pref | null): RankingConfig {
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],
     filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
-    sortExpression: 'MULT(#inc_mov_dom, INV(#totalpop))',
+    sortExpression: '#inc_mov_dom / #totalpop',
     sortDirection: 'desc',
   }
 }
 
 // 世界中から、人がやってくるまち — 去年、国外から引っ越してきた人の割合。
-export const FROM_ABROAD_RATIO = 'ROUND(MULT(#inc_mov_intl, INV(#totalpop), 100), 2)'
+export const FROM_ABROAD_RATIO = 'ROUND(#inc_mov_intl / #totalpop * 100, 2)'
 export function fromAbroadConfig(pref: Pref | null): RankingConfig {
   const scope = pref ? pref.kanji : '全国'
   return {
@@ -95,7 +95,7 @@ export function fromAbroadConfig(pref: Pref | null): RankingConfig {
       ...(pref ? [] : [{ id: 5, label: '都道府県', expression: '$prefkanji' }]),
     ],
     filterExpression: allOf(OFFICIAL, pref && inPref(pref)),
-    sortExpression: 'MULT(#inc_mov_intl, INV(#totalpop))',
+    sortExpression: '#inc_mov_intl / #totalpop',
     sortDirection: 'desc',
   }
 }
@@ -116,7 +116,7 @@ export function birthsConfig(pref: Pref | null): RankingConfig {
       { id: 3, label: '総人口', expression: '#totalpop' },
       ...(pref ? [] : [{ id: 4, label: '都道府県', expression: '$prefkanji' }]),
     ],
-    filterExpression: allOf(OFFICIAL, pref && inPref(pref), 'LEQ(1, #totalpop)'),
+    filterExpression: allOf(OFFICIAL, pref && inPref(pref), '#totalpop >= 1'),
     sortExpression: '#inc_born',
     sortDirection: 'asc',
   }

@@ -326,7 +326,7 @@ test('a ratio column that divides by zero somewhere still maps (that municipalit
   const s = JSON.stringify({
     columns: [
       { id: 0, label: '自治体名', expression: '$kanji' },
-      { id: 1, label: '20-24', expression: 'MULT(#female20_24, INV(#male20_24))' },
+      { id: 1, label: '20-24', expression: '#female20_24 / #male20_24' },
     ],
     filterExpression: '', sortExpression: '#totalpop', sortDirection: 'desc',
   })

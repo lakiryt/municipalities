@@ -5,7 +5,7 @@ import { selectedSource, defaultDataSelection, type DataSelection } from '../dat
 // 人口増減: the two editions compared come from データの選択 (by default the
 // last two 国勢調査), and the title and columns name that period. 増加率の
 // 高い順（growth）と減少率の大きい順（decline）は検索のされ方が違うので別ページ。
-export const CHANGE_RATE = 'ROUND(MULT(#pop_change_rate, 100), 2)'
+export const CHANGE_RATE = 'ROUND(#pop_change_rate * 100, 2)'
 
 /** "2020→2025年" for the selected (or default) comparison. */
 export const changePeriod = (selection: DataSelection = defaultDataSelection()) =>
@@ -17,7 +17,7 @@ export function populationChangeConfig(pref: Pref | null, order: 'growth' | 'dec
   const what = order === 'growth' ? '人口増加率' : '人口減少率'
   const [y0, y1] = period.replace('年', '').split('→')
   // A zero (an evacuated town) or missing earlier count has no rate.
-  const hasRate = 'LEQ(1, #pop_from)'
+  const hasRate = '#pop_from >= 1'
   return {
     title: `${scope}の市区町村の${what}ランキング（${period}）`,
     description:
